@@ -10,8 +10,10 @@ int LenArray(char *a[])
    return nlen;
 }
 
-void main(void)
+int main(void)
 {
    char *menu[] = {"Incluir", "Remover", "Listar", "Imprimir", 0};
 	printf("Tamanho do Array: %d\n", LenArray(menu));
+	return LenArray(menu);
+
 }

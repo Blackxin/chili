@@ -3,7 +3,8 @@
 
 c=1
 for x in * ; do
-   y=`echo "$x" | tr -s ' ' '-' | tr [:upper:] [:lower:] | sed 'y/\[\]\(\)�&?ÇÁÀÃÂÄÉÈẼÊËÍÌĨÎÏÓÒÕÔÖÙÚŨÛüçáàãâäéèẽêëíìĩîïóòõôöùúũûü/----eeecaaaaaeeeeeiiiiiooooouuuuucaaaaaeeeeeiiiiiooooouuuuu/'`
+#   y=`echo "$x" | tr -s ' ' '-' | tr [:upper:] [:lower:] | sed 'y/\[\]\(\)�&?ÇÁÀÃÂÄÉÈẼÊËÍÌĨÎÏÓÒÕÔÖÙÚŨÛüçáàãâäéèẽêëíìĩîïóòõôöùúũûü/----eeecaaaaaeeeeeiiiiiooooouuuuucaaaaaeeeeeiiiiiooooouuuuu/'`
+   y=`echo "$x" | tr -s ' ' '-' | tr [:upper:] [:lower:]`
 
    if [ ! -e $y ]; then let c++
       sudo mv "$x" "$y" ; echo Renomeando... "$x" para "$y"

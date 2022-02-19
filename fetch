@@ -5,7 +5,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2020/12/17
+ # Altered: 2022/02/17
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.00.20201217"
+	readonly _VERSION_="2.05.01.20220217"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -2634,10 +2634,11 @@ function logo()
 {
 	_CAT << 'EOF'
   __      _       _
- / _| ___| |_ ___| |__           Copyright (C) 2019-2020 Vilmar Catafesta <vcatafesta@gmail.com>
-| |_ / _ \ __/ __| '_ \
-|  _|  __/ || (__| | | |         Este programa pode ser redistribuído livremente
-|_|  \___|\__\___|_| |_|         sob os termos da Licença Pública Geral GNU.
+ / _| ___| |_ ___| |__     Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
+| |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 Chilios Linux Development Team
+|  _|  __/ || (__| | | |
+|_|  \___|\__\___|_| |_|   Este programa pode ser redistribuído livremente
+                           sob os termos da Licença Pública Geral GNU.
 EOF
 	sh_version
 }

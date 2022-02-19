@@ -1882,7 +1882,8 @@ function sh_generatepkg()
 	    	field_build=${DESC_BUILD}
 	   fi
 	   [[ -z "$field_build" ]] && field_build=$DESC_BUILD
-		[[ -z "$DESC" ]] && DESC="$field_pkgname-$field_version-$field_build"
+#		[[ -z "$DESC" ]] && DESC="$field_pkgname-$field_version-$field_build"
+		[[ -z "$DESC" ]] && DESC="$field_pkgname-$field_version"
 		_GENERATE_DESC "$field_pkgname" "$field_version" "$field_build" || return 1
 	fi
 	evaluate_retval

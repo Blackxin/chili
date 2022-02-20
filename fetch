@@ -2009,7 +2009,7 @@ function sh_installpkg()
 		if [ ${retval} -eq 0 ]; then
 			cfileinstalled=${aPKGSPLIT[PKG_BASE_VERSION]}
 			_pkg=${aPKGSPLIT[PKG_BASE_VERSION]}
-			[[ $retval = 0 ]] && > $VARCACHE_INSTALLED/${_pkg}
+			[[ $retval = 0 ]] && > ${VARCACHE_INSTALLED}/${_pkg}
 			[[ $retval = 0 ]] && echo "$USER|$(date)|yes" >> $VARCACHE_INSTALLED/${_pkg}
 			[[ $retval = 0 ]] && sed -i '/'${_pkg}'/d' $VARCACHE_SEARCH/packages-installed-split
 			sh_ascanpkg "$cfileinstalled" "5"

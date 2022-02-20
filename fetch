@@ -5,7 +5,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/02/17
+ # Altered: 2022/02/20
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.01.20220217"
+	readonly _VERSION_="2.05.02.20220220"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -2007,6 +2007,7 @@ function sh_installpkg()
 		sh_doinstallpkg "$1" || return 1
 		local retval=${?}
 		if [ ${retval} -eq 0 ]; then
+			sh_splitpkg "$1"
 			cfileinstalled=${aPKGSPLIT[PKG_BASE_VERSION]}
 			_pkg=${aPKGSPLIT[PKG_BASE_VERSION]}
 			[[ $retval = 0 ]] && > ${VARCACHE_INSTALLED}/${_pkg}

@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='chili-clonedisk'
+version='1.0-1'
+build='1'
+license='GPL2'
+lfs_version='10.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='chili'
+desc='ChiliOS linux disk cloning utility'
+size=''
+url='http://www.linuxfromscratch.org/lfs/view/systemd/'
+dep=('')

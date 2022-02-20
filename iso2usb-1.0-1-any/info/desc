@@ -3,15 +3,15 @@
 # Generated with alienpkg
 ######################################################################
 maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
-pkgname='chili-clonedisk'
+pkgname='iso2usb'
 version='1.0-1'
 build='1'
 license='GPL2'
-lfs_version='10.0'
+lfs_version='8.4'
 lfs_init='SYSTEMD'
 arch='x86_64'
 distro='chili'
-desc='chili-clonedisk-1.0-1'
+desc='ChiliOS Utility to write iso to pendrive'
 size=''
 url='http://www.linuxfromscratch.org/lfs/view/systemd/'
 dep=('')

@@ -5,7 +5,7 @@
 #      created: 						2020/09/20   	                #
 #      altered:                  2020/09/27	                   #
 #################################################################
-declare -r version="v1.0.04-20201005"
+declare -r _VERSION_="v1.0.05-20222302"
 readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput)
 #. /lib/lsb/init-functions
 
@@ -87,7 +87,7 @@ xdistro=$(uname -n)
 # variavel comuns
 grafico=$true
 xapp="Chili clone disk"
-ccabec="Chili clone disk $version"
+ccabec="Chili clone disk $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
 
@@ -990,11 +990,34 @@ function checkDependencies()
   	fi
 }
 
+function sh_version()
+{
+   printf "$0 $_VERSION_\n"
+}
+
+#figlet
+function logo()
+{
+   cat << 'EOF'
+      _                      _ _     _
+  ___| | ___  _ __   ___  __| (_)___| | __   Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
+ / __| |/ _ \| '_ \ / _ \/ _` | / __| |/ /   Copyright (c) 2019-2022 Chilios Linux Development Team
+| (__| | (_) | | | |  __/ (_| | \__ \   <
+ \___|_|\___/|_| |_|\___|\__,_|_|___/_|\_\   Este programa pode ser redistribuído livremente
+                                             sob os termos da Licença Pública Geral GNU.
+EOF
+   sh_version
+}
+
 # entrypoint - configuracao inicial
 setvarcolors
 en_US
 sh_checkroot
 checkDependencies
+if [[ $1 = "-v" ]] || [[ $1 = "--version" ]] || [[ $1 = "-V" ]]; then
+   logo
+   exit 0
+fi
 init
 
 :<<'LIXO'

@@ -164,7 +164,9 @@ tux(){
         fi
 	done
 	echo -n "${red}$(replicate "=" $COLUMNS)${reset}"
-    echo
+	hostnamectl
+	echo -n "${red}$(replicate "=" $COLUMNS)${reset}"
+   echo
 }
 setvar
 echo "Wait..."

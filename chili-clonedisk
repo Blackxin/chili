@@ -416,14 +416,44 @@ function sh_checkdisk()
 	return $nchoice
 }
 
+function size_to_human(){
+   awk -v size="$1" '
+   BEGIN {
+      suffix[1] = "B"
+      suffix[2] = "KiB"
+      suffix[3] = "MiB"
+      suffix[4] = "GiB"
+      suffix[5] = "TiB"
+      suffix[6] = "PiB"
+      suffix[7] = "EiB"
+      count = 1
+
+      while (size > 1024) {
+         size /= 1024
+         count++
+      }
+
+      sizestr = sprintf("%.2f", size)
+      sub(/\.?0+$/, "", sizestr)
+      printf("%s %s", sizestr, suffix[count])
+   }'
+}
+
 function choosedisk()
 {
 	while true
 	do
 		# Choose disk to be parted
 		################################################################
-		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
+#		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]|/dev/nvme[0-9][a-z][0-9]'|uniq))
+		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
 		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
+		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+
+#info "${size[@]}"
+
 		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 
     	LDISK=0
@@ -491,8 +521,14 @@ function choosediskdestin()
 	do
 		# Choose disk to be parted
 		################################################################
-		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
+#		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
+#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
+#		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
 		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
+		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
 		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 
     	LDISK=0

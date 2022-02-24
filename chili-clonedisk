@@ -6,7 +6,7 @@
 #      altered:                  2020/09/27	                   #
 #################################################################
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v1.0.06-20222302"
+declare -r _VERSION_="v1.0.11-20222402"
 readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput dd)
 #. /lib/lsb/init-functions
 

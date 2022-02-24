@@ -1,0 +1,8 @@
+label: dos
+label-id: 0x6219625c
+device: /dev/sdd
+unit: sectors
+sector-size: 512
+
+/dev/sdd1 : start=          64, size=     1505216, type=0, bootable
+/dev/sdd2 : start=     1505280, size=      157696, type=ef

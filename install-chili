@@ -9,7 +9,7 @@ declare -r version="v2.1.2-20201001"
 #      altered: 				2020/25/09	   			            #
 ################################################################
 #. /lib/lsb/init-functions
-readonly DEPENDENCIES=(which tar curl sed grep cat awk tput dialog whiptail tree)
+readonly DEPENDENCIES=(which tar curl sed grep cat awk tput dialog whiptail)
 # flag dialog exit status codes
 : ${D_OK=0}
 : ${D_CANCEL=1}
@@ -2192,7 +2192,7 @@ function init()
 	      0 80 0                                 						\
 	      1 'Português'						 									\
 			2 'English'							  									\
-		   3 'Wiki'																	)
+		   3 'Wiki (en)'															)
 
 		exit_status=$?
 		case $exit_status in

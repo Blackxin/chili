@@ -5,8 +5,9 @@
 #      created: 						2020/09/20   	                #
 #      altered:                  2020/09/27	                   #
 #################################################################
-declare -r _VERSION_="v1.0.05-20222302"
-readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput)
+declare -r _APP_="chili-clonedisk"
+declare -r _VERSION_="v1.0.06-20222302"
+readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput dd)
 #. /lib/lsb/init-functions
 
 # flag dialog exit status codes
@@ -18,6 +19,7 @@ readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput)
 : ${D_ESC=255}
 
 # vars bool
+DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
 trancarstderr=2>&-
 true=0
 TRUE=0
@@ -106,6 +108,13 @@ welcome="Welcome to the $xapp"
 : ${LGRUB="EFI"}
 : ${LAUTOMATICA=$false}
 : ${xLABEL=$cdistro}
+
+replicate(){
+    for counter in $(seq 1 $2);
+    do
+        printf "%s" $1
+    done
+}
 
 function setvarcolors()
 {
@@ -340,11 +349,14 @@ function display_result()
 
 function alerta()
 {
-	dialog 								      \
+#	whiptail								      \
+	dialog								      \
 		--title 		"$1" 			     		\
+		--no-collapse							\
+		--cr-wrap    		           		\
 		--backtitle	"$ccabec"		      \
 		--msgbox 	"$2\n$3\n$4\n$5\n$6"	\
-		10 60
+		0 0
 }
 
 function info()
@@ -439,6 +451,33 @@ function size_to_human(){
    }'
 }
 
+function now()
+{
+	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+   printf "%s\n" $DIAHORA
+}
+
+function sh_backup_partitions()
+{
+	local device_origem="${1}"
+	local cdatetime=$(now)
+	local tmpdir="/tmp/$_APP_"
+	local filetmp="$tmpdir/${device_origem}.$cdatetime.dump"
+
+	mkdir -p $tmpdir 2> /dev/null
+	sfdisk -d $sd > $filetmp 2> /dev/null
+	alerta "BACKUP DA TABELA DE PARTICOES" 	\
+			 "Dispositivo : $sd" 				\
+			 "  Backup on : ${filetmp}"		\
+			"$(replicate "=" 80)" 				\
+			 "$(cat $filetmp)"
+}
+
+function sh_restore_partitions()
+{
+	sfdisk $sd < /tmp/sda.dump
+}
+
 function choosedisk()
 {
 	while true
@@ -446,36 +485,40 @@ function choosedisk()
 		# Choose disk to be parted
 		################################################################
 #		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]|/dev/nvme[0-9][a-z][0-9]'|uniq))
-		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
-					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+#		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+#					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
 		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
 		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
 				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-
-#info "${size[@]}"
-
 		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+#info "${disks[@]}"
 
     	LDISK=0
-		local xmsg=$cdisco
-		if [ $1 = "GRUB" ] ; then
+		local xmsg=$cmsg_disco_origem
+		if [ "$1" = "GRUB" ] ; then
 			xmsg=$1
     	fi
 		local array=()
+		local devices=()
 		local i=0
 		local x=0
 		local y=0
-		for i in ${devices[@]}
+		for i in ${disks[@]}
 		do
-			array[((n++))]=$i
+			devices[((n++))]="/dev/$i"
+			array[((n++))]="/dev/$i"
 			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
 		done
 
     	sd=$(dialog 		 																			\
     				--title 			"$xmsg"								  							\
     				--backtitle	 	"$ccabec"					 									\
-					--ok-label		"$cmsgOK"	 													\
+					--ok-label		"$cmsg_select" 												\
     				--cancel-label "$buttonback"													\
+    				--extra-button																		\
+    				--extra-label  "$buttonpart"													\
     				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
@@ -485,6 +528,11 @@ function choosedisk()
     			;;
     		$CANCEL)
     			init
+    			;;
+    		3)
+         	local result=$( fdisk -l $sd );
+    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+    			continue
     			;;
     	esac
 
@@ -508,7 +556,9 @@ function choosedisk()
                ((index++))
             done
 			}
+			DEVICE_ORIGEM="${disks[index]}"
 			MODELO_ORIGEM="$sd [${size[index]}] [${modelo[index]}]"
+			sh_backup_partitions "${DEVICE_ORIGEM}"
 			choosediskdestin
     	fi
     	break
@@ -524,25 +574,31 @@ function choosediskdestin()
 #		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
 #		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
 #		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
-					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+#		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+#					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
 		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
 		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
 				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
 		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 
+#info "${disks[@]}"
+
     	LDISK=0
-		local xmsg=$cdisco
+		local xmsg=$cmsg_disco_destino
 		if [ $1 = "GRUB" ] ; then
 			xmsg=$1
     	fi
 		local array=()
+		local devices=()
 		local i=0
 		local x=0
 		local y=0
-		for i in ${devices[@]}
+		for i in ${disks[@]}
 		do
-			array[((n++))]=$i
+			devices[((n++))]="/dev/$i"
+			array[((n++))]="/dev/$i"
 			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
 		done
 
@@ -551,6 +607,8 @@ function choosediskdestin()
     				--backtitle	 	"$ccabec"					 									\
 					--ok-label		"$cmsgOK"	 													\
     				--cancel-label "$buttonback"													\
+    				--extra-button																		\
+    				--extra-label  "$buttonpart"													\
     				--menu 			"\nSOURCE DISK: $MODELO_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
@@ -560,6 +618,11 @@ function choosediskdestin()
     			;;
     		$CANCEL)
     			choosedisk
+    			;;
+    		3)
+         	local result=$( fdisk -l $sd );
+    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+    			continue
     			;;
     	esac
 
@@ -583,9 +646,12 @@ function choosediskdestin()
                ((index++))
             done
 			}
+			DEVICE_DESTINO="${disks[index]}"
 			MODELO_DESTINO="$sddest [${size[index]}] [${modelo[index]}]"
+			sh_backup_partitions "${DEVICE_DESTINO}"
+
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO são iguais! \n\n      SOURCE DISK : $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO"
+				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      SOURCE DISK : $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO"
 				init
 				return
 			fi
@@ -635,11 +701,13 @@ function pt_BR()
 	lang="pt_BR"
   	cmsgErro="ERRO"
 	buttonback="Voltar"
+	buttonpart="Info disco"
   	cmsgNaoEncontreiOComando="não encontrei o comando "
   	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
    cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Aceitar"
+	cmsgOK="Ok"
 	cmsg000="Sair"
+	cmsg_select="Selecionar"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
 	cmsg003="Bem-vindo ao instalador do $cdistro"
@@ -751,6 +819,8 @@ function pt_BR()
 	cmsg_mkfs_ok="Formatacao terminada com sucesso."
 	cmsg_mkfs_error="Erro na Formatacao."
 	cdisco="DISCO"
+	cmsg_disco_origem="DISCO DE ORIGEM"
+	cmsg_disco_destino="DISCO DE DESTINO"
 	cparticao="PARTIÇÃO"
 	cmsg_extracting="Aguarde, extraindo arquivos..."
 	cmsg_part_disk="Visualizar partições do disco"
@@ -777,12 +847,14 @@ function en_US()
 {
 	lang="en_US"
 	buttonback="Back"
+	buttonpart="Disk Info"
   	cmsgErro="ERROR"
   	cmsgNaoEncontreiOComando="não encontrei o comando "
   	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
    cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Accept"
+	cmsgOK="Ok"
 	cmsg000="Exit"
+	cmsg_select="Select"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
 	cmsg003=$welcome
@@ -896,6 +968,8 @@ function en_US()
 	cmsg_mkfs_ok="Formation completed successfully."
 	cmsg_mkfs_error="Formatting error."
 	cdisco="DISK"
+	cmsg_disco_origem="SOURCE DISK"
+	cmsg_disco_destino="DESTINATION DISK"
 	cparticao="PARTITION"
 	cmsg_extracting="Wait, Extracting files..."
 	cmsg_part_disk="View disk partitions"

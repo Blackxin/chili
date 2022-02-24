@@ -88,8 +88,8 @@ xdistro=$(uname -n)
 
 # variavel comuns
 grafico=$true
-xapp="Chili clone disk"
-ccabec="Chili clone disk $_VERSION_"
+xapp="Chili clonedisk"
+ccabec="Chili clonedisk $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
 
@@ -109,11 +109,33 @@ welcome="Welcome to the $xapp"
 : ${LAUTOMATICA=$false}
 : ${xLABEL=$cdistro}
 
+# choosedisk
+: ${disks=()}
+: ${size=()}
+: ${model=()}
+
 replicate(){
     for counter in $(seq 1 $2);
     do
         printf "%s" $1
     done
+}
+
+function sh_disk_device()
+{
+	disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+	 		 $(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
+}
+
+function sh_disk_size()
+{
+	size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+	   	$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+}
+
+function sh_disk_model()
+{
+	model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 }
 
 function setvarcolors()
@@ -411,7 +433,6 @@ function quit()
 	[ $? -ne 0 ] && { clear ; exit ;}
 }
 
-
 function sh_checkdisk()
 {
 	local nchoice=0
@@ -487,19 +508,16 @@ function choosedisk()
 #		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]|/dev/nvme[0-9][a-z][0-9]'|uniq))
 #		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
 #					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
-		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
-					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
-		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
-				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-#info "${disks[@]}"
+#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
+#		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+#				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+		sh_disk_device
+		sh_disk_size
+		sh_disk_model
 
     	LDISK=0
 		local xmsg=$cmsg_disco_origem
-		if [ "$1" = "GRUB" ] ; then
-			xmsg=$1
-    	fi
 		local array=()
 		local devices=()
 		local i=0
@@ -509,7 +527,7 @@ function choosedisk()
 		do
 			devices[((n++))]="/dev/$i"
 			array[((n++))]="/dev/$i"
-			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
+			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
 		done
 
     	sd=$(dialog 		 																			\
@@ -542,11 +560,6 @@ function choosedisk()
     		continue
     	fi
 
-    	if [ "$1" = "GRUB" ] ; then
-    		LDISK=1
-    		return 0
-    	fi
-
     	if [ $sd != "" ]; then
 			{	local item
             index=0
@@ -557,7 +570,7 @@ function choosedisk()
             done
 			}
 			DEVICE_ORIGEM="${disks[index]}"
-			MODELO_ORIGEM="$sd [${size[index]}] [${modelo[index]}]"
+			MODEL_ORIGEM="$sd [${size[index]}] [${model[index]}]"
 			sh_backup_partitions "${DEVICE_ORIGEM}"
 			choosediskdestin
     	fi
@@ -569,27 +582,26 @@ function choosediskdestin()
 {
 	while true
 	do
-		# Choose disk to be parted
+		# Choose disk
 		################################################################
 #		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
 #		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-#		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 #		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
 #					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
-		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
-					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
-		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
-				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+#		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+#					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
+#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
+#		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+#				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
 
-#info "${disks[@]}"
+		sh_disk_device
+		sh_disk_size
+		sh_disk_model
 
     	LDISK=0
 		local xmsg=$cmsg_disco_destino
-		if [ $1 = "GRUB" ] ; then
-			xmsg=$1
-    	fi
 		local array=()
 		local devices=()
 		local i=0
@@ -599,7 +611,7 @@ function choosediskdestin()
 		do
 			devices[((n++))]="/dev/$i"
 			array[((n++))]="/dev/$i"
-			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
+			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
 		done
 
     	sddest=$(dialog 		 																		\
@@ -609,7 +621,7 @@ function choosediskdestin()
     				--cancel-label "$buttonback"													\
     				--extra-button																		\
     				--extra-label  "$buttonpart"													\
-    				--menu 			"\nSOURCE DISK: $MODELO_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
+    				--menu 			"\nSOURCE DISK: $MODEL_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in
@@ -632,11 +644,6 @@ function choosediskdestin()
     		continue
     	fi
 
-    	if [ "$1" = "GRUB" ] ; then
-    		LDISK=1
-    		return 0
-    	fi
-
     	if [ $sddest != "" ]; then
 			{	local item
             index=0
@@ -647,11 +654,11 @@ function choosediskdestin()
             done
 			}
 			DEVICE_DESTINO="${disks[index]}"
-			MODELO_DESTINO="$sddest [${size[index]}] [${modelo[index]}]"
+			MODEL_DESTINO="$sddest [${size[index]}] [${model[index]}]"
 			sh_backup_partitions "${DEVICE_DESTINO}"
 
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      SOURCE DISK : $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO"
+				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      SOURCE DISK : $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO"
 				init
 				return
 			fi
@@ -670,8 +677,8 @@ function sh_confclone()
 {
 	conf 	" *** WARNING *** " 								\
 			"\n$cmsgTodos_os_dados_serao_perdidos\n" 	\
-			"${MODELO_DESTINO}" 								\
-			"\n\n       SOURCE DISK: $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO" \
+			"${MODEL_DESTINO}" 								\
+			"\n\n       SOURCE DISK: $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO" \
 			"\n\n" 																								\
      		"Continuar com o clone?\n"
 
@@ -687,7 +694,7 @@ function sh_domkclone()
 	LFORMAT=0
 	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
 	(pv -n $sd | dd of=$sddest conv=notrunc,noerror,sync) 2>&1 | dialog --gauge \
-	"Running dd command (cloning), please wait...\n\n     SOURCE DISK : $MODELO_ORIGEM \n DISK DESTINATION: $MODELO_DESTINO" 10 70 0
+	"Running dd command (cloning), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 70 0
 	local nchoice=$?
 	if [ $nchoice = $true ]; then
 		display_result "$(fdisk -l $sddest)"

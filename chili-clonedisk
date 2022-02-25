@@ -35,6 +35,10 @@ ESC=255
 HEIGHT=0
 WIDTH=0
 
+# dialog --colors
+color-red="\Z1"
+color-red-reverse="\Z1\r"
+
 # Use a colored prefix
 NORMAL="\\033[0;39m"         # Standard console grey
 SUCCESS="\\033[1;32m"        # Success is green
@@ -377,28 +381,30 @@ function display_result()
 		--no-cr-wrap               \
 		--backtitle	"$xbacktitle"	\
 		--msgbox 	"$1" 				\
-		25 80
+		0 0
 }
 
 function alerta()
 {
 #	whiptail								      \
 	dialog								      \
+		--colors			 			     		\
 		--title 		"$1" 			     		\
 		--no-collapse							\
 		--cr-wrap    		           		\
 		--backtitle	"$ccabec"		      \
-		--msgbox 	"$2\n$3\n$4\n$5\n$6"	\
-		15 84
+		--msgbox 	"\Z2$2\n\Z1$3\n\Z3$4\n\Z4$5\n\Z5$6"	\
+		0 0
 }
 
 function info()
 {
 	dialog 			 				\
+		--colors                \
 		--beep                  \
 		--title 		"$cmsg002"	\
 		--backtitle	"$ccabec"	\
-		--msgbox 	"$*" 			\
+		--msgbox 	"\Z1$*"		\
 		10 60
 }
 
@@ -500,7 +506,7 @@ function sh_backup_partitions()
 	mkdir -p $tmpdir 2> /dev/null
 	sfdisk -d $disk > $filetmp 2> /dev/null
 	alerta "BACKUP DA TABELA DE PARTICOES" 	\
-			 "Dispositivo : $device" 				\
+			 "Dispositivo : $disk" 					\
 			 "  Backup on : ${filetmp}"			\
 			"$(replicate "=" 80)" 					\
 			 "$(cat $filetmp)"
@@ -548,9 +554,10 @@ function choosedisk()
 
     	sd=$(dialog 		 																			\
     				--title 			"$xmsg"								  							\
-    				--backtitle	 	"$ccabec"					 									\
+    				--backtitle	 	"$ccabec"				 									\
 					--ok-label		"$cmsg_select" 												\
     				--cancel-label "$buttonback"													\
+    				--colors																				\
     				--extra-button																		\
     				--extra-label  "$buttonpart"													\
     				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
@@ -672,15 +679,18 @@ function choosediskdestin()
                ((index++))
             done
 			}
+
 			DEVICE_DESTINO="${disks[index]}"
 			MODEL_DESTINO="$sddest [${size[index]}] [${model[index]}]"
-			sh_backup_partitions "${sddest}" "${DEVICE_DESTINO}"
 
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      SOURCE DISK : $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO"
+				alerta " *** WING *** " "\n   \Z1Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
 				init
 				return
 			fi
+
+			sh_backup_partitions "${sddest}" "${DEVICE_DESTINO}"
+
 			sh_checkdisk
 			local nmontada=$?
 			if [ $nmontada = 1 ]; then

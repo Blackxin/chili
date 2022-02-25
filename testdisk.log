@@ -1,0 +1,32 @@
+
+
+Thu Feb 24 14:58:22 2022
+Command line: TestDisk
+
+TestDisk 7.1, Data Recovery Utility, July 2019
+Christophe GRENIER <grenier@cgsecurity.org>
+https://www.cgsecurity.org
+OS: Linux, kernel 5.16.10-arch1-1 (#1 SMP PREEMPT Wed, 16 Feb 2022 19:35:18 +0000) x86_64
+Compiler: GCC 11.1
+ext2fs lib: 1.46.5, ntfs lib: libntfs-3g, reiserfs lib: 0.3.0.5, ewf lib: none, curses lib: ncurses 6.2
+/dev/sda: LBA, HPA, LBA48, DCO support
+/dev/sda: size       625142448 sectors
+/dev/sda: user_max   625142448 sectors
+/dev/sda: native_max 625142448 sectors
+/dev/sdb: LBA, HPA, LBA48, DCO support
+/dev/sdb: size       625140335 sectors
+/dev/sdb: user_max   625140335 sectors
+/dev/sdb: native_max 625142448 sectors
+/dev/sdb: dco        625142448 sectors
+Warning: can't get size for Disk /dev/mapper/control - 0 B - 0 sectors, sector size=512
+Hard disk list
+Disk /dev/sda - 320 GB / 298 GiB - CHS 38913 255 63, sector size=512 - SAMSUNG HD321HJ, S/N:S13RJ90Z320427, FW:1AC01118
+Disk /dev/sdb - 320 GB / 298 GiB - CHS 38913 255 63, sector size=512 - SAMSUNG HD322GJ, S/N:S2BJJ90Z947357, FW:1AR10001
+Disk /dev/sdc - 128 GB / 119 GiB - CHS 15566 255 63, sector size=512 - sage 3639S, FW:0056
+Disk /dev/sdd - 7747 MB / 7389 MiB - CHS 7389 64 32, sector size=512, FW:PMAP
+Disk /dev/nvme0n1 - 1000 GB / 931 GiB - CHS 953869 64 32, sector size=512
+
+/dev/sdb: Host Protected Area (HPA) present.
+Partition table type (auto): EFI GPT
+
+TestDisk exited normally.

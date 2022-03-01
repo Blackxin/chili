@@ -1216,6 +1216,7 @@ function sh_splitpkg()
 					$pkg_version-$pkg_build
 					$pkg_build
 				)
+
 #	aPKGLIST=${aPKGSPLIT[*]}
 #	arr=(${aPKGSPLIT[*]})
 	return $?

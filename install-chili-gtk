@@ -176,9 +176,9 @@ function info()
 
 function mensagem()
 {
-    msg="$1"
-    titulo="$2"
-    txt="\n<b><big>${msg}</big></b>\n"
+	msg="$1"
+	titulo="$2"
+	txt="\n<b><big>${msg}</big></b>\n"
 	zenity --text="${txt}" --timeout=1 --progress --title="$title" --width=$width --pulsate --auto-close --no-cancel
 }
 

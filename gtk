@@ -233,11 +233,11 @@ function sh_initvars()
 		cod=`echo $line | awk '{print $1}'`
 		nat=`echo $line | awk '{print $2, $3, $4, $5}'`
 		if [ "$cod" = "$codnatdefault" ]; then
-			paises+=( False "^$cod" "$nat" )
+			paises+=(False "^$cod" "$nat")
 		else
-			paises+=( False "$cod" "$nat" )
+			paises+=(False "$cod" "$nat")
 		fi
-	done << (grep -v "#" /usr/share/zoneinfo/iso3166.tab)
+	done < <(grep -v "#" /usr/share/zoneinfo/iso3166.tab)
 }
 
 

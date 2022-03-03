@@ -353,17 +353,19 @@ Ponto de montagem swap  $MOUNTSWAP\nUser: $MUSER" \
 function sh_doinstall()
 {
 	resume
-	rsync -cravp --info=progress2 /lib/initramfs/system/ $dir_install/ | grep -o "[0-9]*%" | tr -d '%' | \
-	yad --progress 			\
-		--title="$title" 	\
-		--width=$width		\
-		--height=$height	\
-		--center 			\
-		--text="\nAguarde a enquanto a instalação finaliza.\n" \
-		--progress-text="installing... wait 3-10 minutes..." \
-		--pulsate 			\
-		--percentage=0 		\
-		--auto-close 		\
+	rsync -cravp --info=progress2 /lib/initramfs/system/ $dir_install/ | \
+	grep -o "[0-9]*%" | 														\
+	tr -d '%' | 																\
+	yad --progress 															\
+		--title="$title" 														\
+		--width=$width															\
+		--height=$height														\
+		--center 																\
+		--text="\nAguarde a enquanto a instalação finaliza.\n" 	\
+		--progress-text="installing... wait 3-10 minutes..."		\
+		--pulsate 																\
+		--percentage=0 														\
+		--auto-close 															\
 		--auto-kill
 }
 

@@ -8,7 +8,7 @@ for module in modules:
     except Exception as e:
         print('Installing modules...')
         os.system('pip3 install ' + str(module))
-        os.system('clear')
+#        os.system('clear')
 
 import urllib
 

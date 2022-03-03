@@ -98,11 +98,11 @@ COMMENT
 
 
 title="Install Chili GNU/Linux"
-btnOk="gtk-ok:0"
-btnClose="gtk-close:1"
+btnOk="yad-ok:0"
+btnClose="yad-close:1"
 btnNext="_Continuar:2"
 btnPrevious="_Voltar:3"
-btnCancel="gtk-cancel:4"
+btnCancel="yad-cancel:4"
 btnExpert="_Experiente:5"
 btnNewbie="_Novato:6"
 ClickOk=0
@@ -113,8 +113,49 @@ ClickCancel=4
 ClickExpert=5
 ClickNewbie=6
 width="700"
-height="300"
+height="50"
 dir_install=/mnt/lfs
+
+# choosedisk
+: ${devices=()}
+: ${disks=()}
+: ${size=()}
+: ${model=()}
+
+function sh_disk()
+{
+#	disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+#	 		 $(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
+	disks=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+}
+
+function sh_disk_device()
+{
+#	devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+#	 		 $(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+	devices=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+}
+
+function sh_disk_size()
+{
+#	size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+#	   	$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+	size=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+}
+
+function sh_disk_model()
+{
+#	model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+	model=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+}
+
+
+replicate(){
+    for counter in $(seq 1 $2);
+    do
+        printf "%s" $1
+    done
+}
 
 
 function toupper()
@@ -122,7 +163,6 @@ function toupper()
     declare -u TOUPPER=${@}
     echo ${TOUPPER}
 }
-
 
 function tolower()
 {
@@ -226,7 +266,7 @@ function sh_initvars()
 
 	local cod nat codnatdefault
 #	cat /usr/share/zoneinfo/iso3166.tab | grep -v "#" > /tmp/iso3166.tab
-	codnatdefault=$(localectl status | grep LANGUAGE| cut -d_ -f2)
+	codnatdefault=$(localectl status | grep LANG| cut -d= -f2)
 	paises=()
 	paises+=( True "BR" "Brasil" )
 	while read line; do
@@ -240,8 +280,31 @@ function sh_initvars()
 	done < <(grep -v "#" /usr/share/zoneinfo/iso3166.tab)
 }
 
-
 function sh_choosedisk()
+{
+	sh_disk
+	sh_disk_device
+	sh_disk_size
+	sh_disk_model
+
+	local n=0
+	local i
+	sd=()
+	array=()
+	for i in ${devices[@]}
+	do
+		#array[((n++))]=$i
+		#array[((n++))]="$i [${size[((x++))]}]  ${modelo[((y++))]}#"
+		array+=("$i [${size[$n]}] ${model[$n]}#")
+		sd+=("$i" "${size[$n]}" "${model[$n]}")
+		((n++))
+	done
+	export sd
+	export SD=("${array[*]}")
+	export HDS=("${devices[*]}")
+}
+
+function sh_choosedisk_old()
 {
 	devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
 	size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
@@ -277,12 +340,12 @@ function resume()
 		--text="\n\n
 Resumo...\n\n
 Linguagem: $LANGUAGE\nKeyboard: $KEYBOARD\n
-Ponto de montagem /: $MOUNTROOT\n
-Ponto de montagem /home: $MOUNTHOME\n
-Ponto de montagem swap: $MOUNTSWAP\nUser: $MUSER" \
+Ponto de montagem /     $MOUNTROOT\n
+Ponto de montagem /home $MOUNTHOME\n
+Ponto de montagem swap  $MOUNTSWAP\nUser: $MUSER" \
 		--field="Deseja instalar?":LBL 	\
-		--button="gtk-close:1" 			\
-		--button="gtk-ok:0"
+		--button="yad-close:1" 			\
+		--button="yad-ok:0"
 	) || exit 1
 }
 
@@ -319,10 +382,10 @@ function sh_newbie()
 <b>Particionar discos</b>\n\n
 Esta é uma visão geral de suas partições e ponto de montagem atualmente configurados.\n
 <b><i>$form_part</i></b>" \
-		--field="":TXT 			\
-		--button=$btnCancel 	\
-		--button=$btnPrevious 	\
-		--button=$btnNext		\
+		--field="":TXT 				\
+		--button=$btnCancel 		\
+		--button=$btnPrevious 		\
+		--button=$btnNext				\
 		"$result"
     )
 
@@ -385,8 +448,8 @@ function conf()
 	--center 					\
 	--image="interrogacao.jpg" 	\
 	--text="\n\n$1"				\
-	--button="gtk-yes:0" 		\
-	--button="gtk-no:1"
+	--button="yad-yes:0" 		\
+	--button="yad-no:1"
 	return $?
 }
 
@@ -403,9 +466,9 @@ function partitions()
 		--height=$height    	\
 		--image="hd.png" 										\
 		--text="\nDefina os principais pontos de montagem:\n" 	\
-		--field="(root*) /:":CB  "not mounted"!$partitions 		\
-		--field="(home) /home:":CB "not mounted"!$partitions 	\
-		--field="(swap) :":CB "not mounted"!$partitions 		\
+		--field="(root*) /   ":CB "not mounted"!$partitions 		\
+		--field="(home) /home":CB "not mounted"!$partitions 		\
+		--field="(swap)      ":CB "not mounted"!$partitions 		\
 		--button=$btnCancel 									\
 		--button=$btnPrevious 									\
 		--button=$btnNext 										\
@@ -427,7 +490,7 @@ function partitions()
 				if [[ $MOUNTROOT == "not mounted" ]] ; then
 					yad --title="Error" \
 						--text "Sem partição / não podemos instalar!" \
-						--button="gtk-close:1"
+						--button="yad-close:1"
 						exit 0
 				else
 					mkdir -p dir_install
@@ -522,13 +585,14 @@ function sh_mainform()
 
 function sh_usuarioform()
 {
-	form_user=$(yad 			\
-		--form 					\
-		--center 				\
-		--width=$width			\
-		--height=$height		\
-		--title="$title" 		\
+	form_user=$(yad 				\
+		--form 						\
+		--center 					\
+		--width=$width				\
+		--height=$height			\
+		--title="$title" 			\
 		--image="usuario.png"	\
+		--image-on-top				\
 		--text="\n
 <b>Configurar usuario, computador e rede</b>\n\n\
 Por favor, introduza o nome completo do usuario e computador para este sistema. \
@@ -537,14 +601,14 @@ deverá ser o nome do computador, consulte o administrador da rede. Caso esteja 
 própria rede doméstica, pode utilizar qualquer nome.\n\n
 <i>Nome do computador:</i>" \
 		--field="Nome Completo :"			\
-		--field="Nome Computador :"			\
+		--field="Nome Computador :"		\
 		--field="Usuário :"					\
 		--field="Senha :":H					\
 		--field="Confirme sua Senha :":H	\
-		--columns=1 						\
-		--button=$btnCancel 				\
+		--columns=3 							\
+		--button=$btnCancel					\
 		--button=$btnPrevious 				\
-		--button=$btnNext					\
+		--button=$btnNext						\
 		"" `hostname`)
 
   		local nchoice=$?
@@ -658,7 +722,7 @@ function installok()
 		--image="sucess.png"    \
 		--align="center"        \
 		--text="\n\nSua instalação está completa! Obrigado por utilizar a Chili OS - dúvidas? visite nosso fórum em: \nhttp://chilios.com/forum\n" \
-		--button="gtk-close:0"  \
+		--button="yad-close:0"  \
         --button="Reboot!:1")
 
 		local nchoice=$?
@@ -731,7 +795,7 @@ function sh_installcompleteform()
 		--form                              \
 		--field="/dev/sd(x)":CB $HDS        \
 		--field="O GRUB é um multi-carregador para boot do sistema operacional.\nSe caso seu computador não possui um carredor já instalado é altamente recomendado instalá-lo.":LBL \
-		--button="gtk-close:1" --button="gtk-ok:0"
+		--button="yad-close:1" --button="yad-ok:0"
 		)
 
 	ret=$?
@@ -753,11 +817,11 @@ function sh_installcompleteform()
 	installok
 }
 
-mensagem "Aguarde, inicializando"
+#mensagem "Aguarde, inicializando"
 clear
-#sh_splash
-#sh_initvars
-#sh_init
-#sh_mainform
-#sh_choosediskform
+sh_splash
+sh_initvars
+sh_init
+sh_mainform
+sh_choosediskform
 sh_usuarioform

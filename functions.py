@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 
 def aliquotas(valor):
     ir = valor * 0.16

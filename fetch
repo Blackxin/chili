@@ -2449,7 +2449,7 @@ function sh_alienpkg_exec()
 			(( ntotalpkg-- ))
 		done
 	else
-		log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}target ${yellow}${param} ${reset}was ${red}NOT ${reset}found."
+		log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
 	fi
 	popd >/dev/null 2>&1
 	unset size

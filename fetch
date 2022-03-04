@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.05.20220304"
+	readonly _VERSION_="2.05.06.20220304"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib

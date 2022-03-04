@@ -5,7 +5,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/02/20
+ # Altered: 2022/03/04
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.02.20220220"
+	readonly _VERSION_="2.05.05.20220304"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -107,6 +107,7 @@ GITSITE='0'
 PKG_SITE='http://localhost'													# for use set GITSITE=0
 #PKG_SITE='http://201.7.66.107'												# for use set GITSITE=0
 #PKG_SITE='http://mazonos.com'												# for use set GITSITE=0
+#PKG_SITE='https://github.com/vcatafesta/ChiliOS/tree/master'
 
 #not needed change
 PKG_RAW='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master'
@@ -133,6 +134,8 @@ PKGDIR="$PKGCORE"
 CACHEDIR='/var/cache/fetch/'
 ALIEN_CACHE_DIR='/var/cache/pacman/pkg'
 IGNOREPKG=('glibc' 'file')
+
+#end
 _EOF_
 }
 
@@ -2338,112 +2341,116 @@ function sh_alienpkg_exec()
 	nfullpkg=${ntotalpkg}
 	LFORCELOCAL=$LFORCE
 
-	for package in $pkg
-	do
-		packagedir=${package}
-		file=${package}
-		FULLDIR=$BUILDDIR/$packagedir
-		ncount=0
+	if [[ "${#arraypkg}" -gt 0 ]]; then # package found?
+		for package in $pkg
+		do
+			packagedir=${package}
+			file=${package}
+			FULLDIR=$BUILDDIR/$packagedir
+			ncount=0
 
-		pkgtar=$(echo ${file##*/})                   #remove diretorio deixando somente nome do pacote
-		pkgtar=$(echo ${pkgtar%%.pkg.tar.zst})       #remove .pkg.tar.zst
-		pkgtar=$(echo ${pkgtar%%.pkg.tar.xz})        #remove .pkg.tar.xz
+			pkgtar=$(echo ${file##*/})                   #remove diretorio deixando somente nome do pacote
+			pkgtar=$(echo ${pkgtar%%.pkg.tar.zst})       #remove .pkg.tar.zst
+			pkgtar=$(echo ${pkgtar%%.pkg.tar.xz})        #remove .pkg.tar.xz
 
-		cPacoteSemExt=$(echo ${pkgtar%%.*})          # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
-		cPacoteSemExt=$(echo ${cPacoteSemExt%-*})    # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
+			cPacoteSemExt=$(echo ${pkgtar%%.*})          # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
+			cPacoteSemExt=$(echo ${cPacoteSemExt%-*})    # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
 
-		if !(( $LFORCELOCAL )); then
-			local firstletter=${pkgtar::1}
-			local FilteredPackage=$pkgtar.chi.zst
-			local destpkgGIT="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
-			local destpkgCORE="${GITDIR}/packages/core/${FilteredPackage}"
+			if !(( $LFORCELOCAL )); then
+				local firstletter=${pkgtar::1}
+				local FilteredPackage=$pkgtar.chi.zst
+				local destpkgGIT="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
+				local destpkgCORE="${GITDIR}/packages/core/${FilteredPackage}"
 
-			if [[ -e ${destpkgGIT} ]]; then
-				log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${GITDIR}/packages/${firstletter/}${reset} Use the -f option to force rebuild."
-				(( ntotalpkg-- ))
-				continue
+				if [[ -e ${destpkgGIT} ]]; then
+					log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${GITDIR}/packages/${firstletter/}${reset} Use the -f option to force rebuild."
+					(( ntotalpkg-- ))
+					continue
+				fi
+				if [[ -e ${destpkgCORE} ]]; then
+					log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${PKGCORE}/${reset} Use the -f option to force rebuild."
+					(( ntotalpkg-- ))
+					continue
+				fi
 			fi
-			if [[ -e ${destpkgCORE} ]]; then
-				log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${PKGCORE}/${reset} Use the -f option to force rebuild."
-				(( ntotalpkg-- ))
-				continue
-			fi
-		fi
 
-		destdir=$BUILDDIR/$pkgtar
-		((ncount++))
-		log_info_msg "$(fmt) Creating directory $destdir"
-		mkdir -p $destdir
-		evaluate_retval
-
-		((ncount++))
-		log_info_msg "$(fmt) Unpacking package $package at $destdir"
-		tar --force-local --extract --file $package -C $destdir >/dev/null 2>&1
-		evaluate_retval
-
-		case $packagedir in
-			luit-[0-9]* )
-			sed -i -e "/D_XOPEN/s/5/6/" configure
-			;;
-		esac
-
-#		CFG_FILE=$destdir/.PKGINFO
-#		CFG_CONTENT=$(cat $CFG_FILE | sed -r '/[^=]+=[^=]+/!d' | sed -r 's/\s+=\s/=/g')
-#		eval "$CFG_CONTENT"
-#		info $CFG_CONTENT
-
-#		while read var value
-#		do
-#		    export "$var" "$value"
-#		done < $destdir/.PKGINFO
-
-		sed -i 's/ = /="/g' $destdir/.PKGINFO  >/dev/null 2>&1
-		sed -i 's/$/"/g' $destdir/.PKGINFO  >/dev/null 2>&1
-		source "$destdir/.PKGINFO"
-
-		export    ALIEN_DESC_BUILD="${pkgtar: -1}"
-		export          DESC_BUILD="${pkgtar: -1}"
-		export           ALIEN_URL="$url"
-		export                 URL="$url"
-		export       ALIEN_LICENSE="$license"
-		export             LICENSE="$license"
-		export          ALIEN_ARCH="$arch"
-		export                ARCH="$arch"
-		export          ALIEN_SIZE="$size"
-		export                SIZE="$size"
-		export          ALIEN_DESC="$pkgdesc"
-		export                DESC="$pkgdesc"
-		export           ALIEN_DEP="$depend"
-		export                 DEP="$depend"
-		export ALIEN_DESC_PACKNAME="$pkgname"
-		export       DESC_PACKNAME="$pkgname"
-		export 	ALIEN_DESC_VERSION="$pkgver"
-		export        DESC_VERSION="$pkgver"
-		export    ALIEN_DESC_BUILD="${pkgver: -1}"
-		export          DESC_BUILD="${pkgver: -1}"
-		export deps=$(cat $destdir/.PKGINFO | grep ^depend | awk -F'"' '{print $2}')
-
-		pushd $destdir	>/dev/null 2>&1
-		rm -f $destdir/.BUILDINFO >/dev/null 2>&1
-		rm -f $destdir/.MTREE     >/dev/null 2>&1
-		rm -f $destdir/.PKGINFO   >/dev/null 2>&1
-
-		((ncount++))
-		sh_createpkg $pkgtar $pkgtar -Y -F
-		sh_alienpkg_pkgsize
-
-		if !(( $LKEEP )); then
+			destdir=$BUILDDIR/$pkgtar
 			((ncount++))
-			log_wait_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
-			#removeoldpkgchili $cPacoteSemExt
-			((ncount++))
-			log_info_msg "$(fmt) Removing ${red}OLD ${reset}package ${yellow}${GITDIR}/packages/$cPacoteSemExt"
-			fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
+			log_info_msg "$(fmt) Creating directory $destdir"
+			mkdir -p $destdir
 			evaluate_retval
-		fi
-		echo
-		(( ntotalpkg-- ))
-	done
+
+			((ncount++))
+			log_info_msg "$(fmt) Unpacking package $package at $destdir"
+			tar --force-local --extract --file $package -C $destdir >/dev/null 2>&1
+			evaluate_retval
+
+			case $packagedir in
+				luit-[0-9]* )
+				sed -i -e "/D_XOPEN/s/5/6/" configure
+				;;
+			esac
+
+	#		CFG_FILE=$destdir/.PKGINFO
+	#		CFG_CONTENT=$(cat $CFG_FILE | sed -r '/[^=]+=[^=]+/!d' | sed -r 's/\s+=\s/=/g')
+	#		eval "$CFG_CONTENT"
+	#		info $CFG_CONTENT
+
+	#		while read var value
+	#		do
+	#		    export "$var" "$value"
+	#		done < $destdir/.PKGINFO
+
+			sed -i 's/ = /="/g' $destdir/.PKGINFO  >/dev/null 2>&1
+			sed -i 's/$/"/g' $destdir/.PKGINFO  >/dev/null 2>&1
+			source "$destdir/.PKGINFO"
+
+			export    ALIEN_DESC_BUILD="${pkgtar: -1}"
+			export          DESC_BUILD="${pkgtar: -1}"
+			export           ALIEN_URL="$url"
+			export                 URL="$url"
+			export       ALIEN_LICENSE="$license"
+			export             LICENSE="$license"
+			export          ALIEN_ARCH="$arch"
+			export                ARCH="$arch"
+			export          ALIEN_SIZE="$size"
+			export                SIZE="$size"
+			export          ALIEN_DESC="$pkgdesc"
+			export                DESC="$pkgdesc"
+			export           ALIEN_DEP="$depend"
+			export                 DEP="$depend"
+			export ALIEN_DESC_PACKNAME="$pkgname"
+			export       DESC_PACKNAME="$pkgname"
+			export 	ALIEN_DESC_VERSION="$pkgver"
+			export        DESC_VERSION="$pkgver"
+			export    ALIEN_DESC_BUILD="${pkgver: -1}"
+			export          DESC_BUILD="${pkgver: -1}"
+			export deps=$(cat $destdir/.PKGINFO | grep ^depend | awk -F'"' '{print $2}')
+
+			pushd $destdir	>/dev/null 2>&1
+			rm -f $destdir/.BUILDINFO >/dev/null 2>&1
+			rm -f $destdir/.MTREE     >/dev/null 2>&1
+			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
+
+			((ncount++))
+			sh_createpkg $pkgtar $pkgtar -Y -F
+			sh_alienpkg_pkgsize
+
+			if !(( $LKEEP )); then
+				((ncount++))
+				log_wait_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+				#removeoldpkgchili $cPacoteSemExt
+				((ncount++))
+				log_info_msg "$(fmt) Removing ${red}OLD ${reset}package ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+				fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
+				evaluate_retval
+			fi
+			echo
+			(( ntotalpkg-- ))
+		done
+	else
+		log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}target ${yellow}${param} ${reset}was ${red}NOT ${reset}found."
+	fi
 	popd >/dev/null 2>&1
 	unset size
 	unset ncount

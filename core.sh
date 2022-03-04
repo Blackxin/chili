@@ -120,6 +120,19 @@ CURS_ZERO="\\033[0G"
 
 # SUBROUTINES
 
+
+
+#Autor Julio C. Neves
+function string.rfill() {
+     local string=${1// /^}    # Trocando eventuais espaços preexistentes
+     declare -i size=$2
+     local char=$3
+     local fillString
+     printf -v fillString %-${size}s $string
+     fillString=${fillString// /$char}
+     echo "${fillString//^/ }"        # Restaurando espaços anteriores }
+}
+
 function zshdw()
 {
 	sudo git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install
@@ -685,6 +698,18 @@ function join()
 	read -t 1 car cdr || return
 	test "${cdr}" || { echo "${car}" ; return ; }
 	echo "${car}${outdelimiter}${cdr}" | ${FUNCNAME} "${indelimiter}" "${outdelimiter}"
+}
+
+function string.alltrim(){
+	local cstr=$1
+	echo "${cstr//[$'\t\r\n ']}"
+}
+
+function string.len()
+{
+	local cstr=$1
+#	echo ${#cstr}
+	printf ${#cstr}
 }
 
 function len()

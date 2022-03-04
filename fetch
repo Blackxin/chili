@@ -38,6 +38,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #########################################################################
 
+function string.removespace(){
+     local string=${1// /^}    # Trocando eventuais espaços preexistentes
+     echo "${string}"
+}
+
 function configure()
 {
 	export LC_ALL=C
@@ -531,13 +536,17 @@ function sh_update()
 	> $VARCACHE_SEARCH/metapackages
 	evaluate_retval
 
-	HTTP_SERVER=$(curl -s --insecure --head --url "${SITE}" | grep ^[Ss]erver | cut -d: -f2)
+	local HTTP_SERVER=$(curl -s -k --insecure --head --url "${SITE}" | grep ^[Ss]erver | awk '{print $2}')
+	HTTP_SERVER="$(string.alltrim "${HTTP_SERVER}")"
 
-info "${HTTP_SERVER}"
+	info "${HTTP_SERVER}"
+	info "$(string.len "${HTTP_SERVER}")"
 
-	case "${HTTP_SERVER}" in
+	case ${HTTP_SERVER} in
 		Apache);;
-		nginx);;
+		nginx)
+			info "${HTTP_SERVER}"
+			;;
 		LiteSpeed);;
 		GitHub.com);;
 	esac
@@ -548,7 +557,9 @@ info "${HTTP_SERVER}"
 		#curl --insecure --silent --url "${SITE}/packages/"|grep "/</a" |grep '[a-z]'|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
 		#curl --insecure --silent --url "${SITE}/packages/"|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
 		#curl --insecure --silent --url "${SITE}/packages/"|grep href|sed 's/[*<>]//g'|sed 's/[*=/"]/:/g'|cut -d: -sf3 > ${VARCACHE_SEARCH}/folders
-		curl --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' > ${VARCACHE_SEARCH}/folders
+		if [[ "$HTTP_SERVER" = "nginx" ]]; then
+			curl --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' > ${VARCACHE_SEARCH}/folders
+		fi
 	else
 		#repositorio github
 		curl --insecure --silent --url "${SITE}/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' > ${VARCACHE_SEARCH}/folders

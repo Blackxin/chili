@@ -2,6 +2,7 @@
 
  # fetch - search, install, create, remove, upgrade packages compatible with:
  # ChiliOS GNU/Linux - https://github.com/vcatafesta/ChiliOS
+ # ChiliOS GNU/Linux - https://chilios.com.br
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
@@ -104,10 +105,10 @@ GITSITE='0'
 
 # distro hosting website/packages
 #PKG_SITE='https://github.com/vcatafesta/ChiliOS/tree/master'		# for use set GITSITE=1
-PKG_SITE='http://localhost'													# for use set GITSITE=0
+PKG_SITE='https://chilios.com.br'											# for use set GITSITE=0
+#PKG_SITE='http://localhost'													# for use set GITSITE=0
 #PKG_SITE='http://201.7.66.107'												# for use set GITSITE=0
 #PKG_SITE='http://mazonos.com'												# for use set GITSITE=0
-#PKG_SITE='https://github.com/vcatafesta/ChiliOS/tree/master'
 
 #not needed change
 PKG_RAW='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master'
@@ -530,9 +531,20 @@ function sh_update()
 	> $VARCACHE_SEARCH/metapackages
 	evaluate_retval
 
+	HTTP_SERVER=$(curl -s --insecure --head --url "${SITE}" | grep ^[Ss]erver | cut -d: -f2)
+
+info "${HTTP_SERVER}"
+
+	case "${HTTP_SERVER}" in
+		Apache);;
+		nginx);;
+		LiteSpeed);;
+		GitHub.com);;
+	esac
+
 	log_info_msg "Updating Folders from ${SITE}"
 	if !(( $GITSITE )); then
-		#sites com gninx/apache/etc
+		#sites com nginx/apache/etc
 		#curl --insecure --silent --url "${SITE}/packages/"|grep "/</a" |grep '[a-z]'|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
 		#curl --insecure --silent --url "${SITE}/packages/"|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
 		#curl --insecure --silent --url "${SITE}/packages/"|grep href|sed 's/[*<>]//g'|sed 's/[*=/"]/:/g'|cut -d: -sf3 > ${VARCACHE_SEARCH}/folders
@@ -550,6 +562,7 @@ function sh_update()
 	FoldersInRepo=$(cat $VARCACHE_SEARCH/folders)
 	spinner & SPINNERPID=$!
 	local Folders
+
 
 	for Folders in ${FoldersInRepo}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"

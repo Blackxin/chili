@@ -342,8 +342,8 @@ function evaluate_retval()
 }
 
 function info(){
-#	dialog							\
-	whiptail							\
+#	whiptail							\
+	dialog							\
 		--title     "[debug]$0"	\
 		--backtitle "\n$*\n"	   \
 		--yesno     "${1}"		\

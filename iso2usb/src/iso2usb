@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #########################################################################
-version="1.0.0.20190614"
+version="1.0.0.20220304"
 
 yad_message()
 {
@@ -171,7 +171,7 @@ function sh_main()
 			"${comargs[@]}"
 			--text="<b><big><big>Drive Properties</big></big></b>\n"
 			--button="Refresh:3"
-			--button="gtk-close:1"
+			--button="yad-close:1"
 			--button="Executar:2"
 			--form
 			--columns=1

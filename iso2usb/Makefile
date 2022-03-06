@@ -17,8 +17,9 @@ DIRMODE=755
 
 install:
 	mkdir -p ${BINDIR}
-	install -m ${MODE} src/iso2usb ${BINDIR}/iso2usb
-	install -m ${MODE} src/pendrive.png ${BINDIR}/pendrive.png
+	install -m ${MODE} src/iso2usb ${BINDIR}/
+	install -m ${MODE} src/pendrive.png ${BINDIR}/
+	install -m ${MODE} src/iso2usb.desktop ${BINDIR}/
 	install -m ${MODE} src/iso2usb.desktop ${DESTDIR}/usr/share/applications/iso2usb.desktop
 	mkdir -p ${INFODIR}
 	cp ChangeLog INSTALL LICENSE MAINTAINERS README.md ${INFODIR}/
@@ -27,6 +28,7 @@ install:
 uninstall:
 	rm ${BINDIR}/iso2usb
 	rm ${BINDIR}/pendrive.png
+	rm ${BINDIR}/iso2usb.desktop
 	rm ${DESTDIR}/usr/share/applications/iso2usb.desktop
 	rm -rf ${INFODIR}
 	@echo "Software was removed."

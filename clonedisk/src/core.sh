@@ -120,8 +120,10 @@ CURS_ZERO="\\033[0G"
 
 # SUBROUTINES
 
+
+
 #Autor Julio C. Neves
-function string_rfill() {
+function string.rfill() {
      local string=${1// /^}    # Trocando eventuais espaços preexistentes
      declare -i size=$2
      local char=$3
@@ -699,12 +701,12 @@ function join()
 	echo "${car}${outdelimiter}${cdr}" | ${FUNCNAME} "${indelimiter}" "${outdelimiter}"
 }
 
-function string_alltrim(){
+function string.alltrim(){
 	local cstr=$1
 	echo "${cstr//[$'\t\r\n ']}"
 }
 
-function string_len()
+function string.len()
 {
 	local cstr=$1
 #	echo ${#cstr}
@@ -997,7 +999,23 @@ function checkDependencies(){
   fi
 }
 
-function checkDependencies() {
+function sh_checkparametros()
+{
+	local param=$@
+	local s
+
+	for s in ${param[@]}
+	do
+		[[ $(toupper "${s}") = "--quiet" ]]   && verbose=0
+		[[ $(toupper "${s}") = "-q" ]]   	  && verbose=0
+		[[ $(toupper "${s}") = "--NOCOLOR" ]] && unsetvarcolors;USE_COLOR='n'
+		[[ $(toupper "${s}") = "-Y" ]]        && LAUTO=$true
+		[[ $(toupper "${s}") = "-F" ]]        && LFORCE=$true
+		[[ $(toupper "${s}") = "OFF" ]]       && LLIST=$false
+	done
+}
+
+checkDependencies() {
   local errorFound=0
 
   for command in "${DEPENDENCIES[@]}"; do

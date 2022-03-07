@@ -552,7 +552,7 @@ function sh_update()
 	> $VARCACHE_SEARCH/metapackages
 	evaluate_retval
 
-	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep ^[Ss]erver | awk '{print $2}'))"
+	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep ^[Ss]erver | awk '{print $2}') | cut -d/ -f1)"
 
 #debug "${HTTP_SERVER}"
 #debug "$(string_len "${HTTP_SERVER}")"
@@ -582,6 +582,7 @@ function sh_update()
 	#spinner & SPINNERPID=$!
 	local Folders
 
+#debug "${FoldersInRepo}"
 
 	for Folders in ${FoldersInRepo}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
@@ -599,7 +600,8 @@ function sh_update()
 				SizePkgInFolders=($(grep $GREP_RE $FOLDER_TEMP | awk '{print $5}' ))
 				;;
 			LiteSpeed)
-				curl --insecure --silent --url "${SITE}/packages/"|grep -o 'packages/[a-z]'|sed 's/packages\///g' > ${VARCACHE_SEARCH}/folders
+				PackagesInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".${PRG}$"| awk '{print $NF}')
+				MetaPkgInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/" |sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".meta$" | awk '{print $NF}')
 				;;
 			GitHub.com)
 				#repositorio github

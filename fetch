@@ -39,6 +39,7 @@
 #########################################################################
 function configure()
 {
+	shopt -s nullglob       # enable suppress error message of a command
 	export LC_ALL=C
 	export LANG=C
 	readonly _VERSION_="2.05.07.20220307"
@@ -1990,21 +1991,24 @@ function sh_initinstallpkg()
 	local nfiles
 
 	shopt -s nullglob       # enable suppress error message of a command
-	if [[ "${param}" == "" ]] || [[ $(toupper "${param}") = "ALL" ]] || [[ $(toupper "${param}") = "ALL OFF" ]]; then
-		pkg=$(find "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")
+#	if [[ "${param}" == "" ]] || [[ $(toupper "${param}") = "ALL" ]] || [[ $(toupper "${param}") = "ALL OFF" ]]; then
+#		pkg=$(find "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")
+#		pkg="$pkg $(echo $pkg1)"
+
+	if (( $LALL )); then
+		pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")"
 	else
 		for s in ${param[@]}; do
-			if [[ $(toupper "${s}") = "-Y" ]]; then
-				LAUTO=$true
-			elif [[ $(toupper "${s}") = "-F" ]]; then
-				LFORCE=$true
-			elif [[ $(toupper "${s}") = "OFF" ]]; then
-				LLIST=$false
-			else
+#			if [[ $(toupper "${s}") = "-Y" ]]; then
+#				LAUTO=$true
+#			elif [[ $(toupper "${s}") = "-F" ]]; then
+#				LFORCE=$true
+#			elif [[ $(toupper "${s}") = "OFF" ]]; then
+#				LLIST=$false
+#			else
 				cfile=$(echo $s | sed 's/\// /g' | awk '{print $NF}')
-				files=$(find "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}" |grep "$cfile")
-				pkg="$pkg $(echo $files| grep $cfile)"
-			fi
+				pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}" | grep "$cfile")"
+#			fi
 		done
 	fi
 
@@ -2771,6 +2775,8 @@ function sh_parseparam()
       [[ $(toupper "${s}") = "ON"        ]] && { LLIST=$true; continue; }
       [[ $(toupper "${s}") = "-EXACT"    ]] && { LEXACT=$true; continue; }
       [[ $(toupper "${s}") = "--EXACT"   ]] && { LEXACT=$true; continue; }
+      [[ $(toupper "${s}") = "ALL"       ]] && { LALL=$true; continue; }
+      [[ $(toupper "${s}") = "-ALL"      ]] && { LALL=$true; continue; }
       [[ $(toupper "${s}") = "--ALL"     ]] && { LALL=$true; continue; }
       [[ $(toupper "${s}") = "-NOCOLOR"  ]] && unsetvarcolors;USE_COLOR='n'
       [[ $(toupper "${s}") = "--NOCOLOR" ]] && unsetvarcolors;USE_COLOR='n'

@@ -774,7 +774,7 @@ function sh_show()
 		log_msg "Reading package lists..."
 	fi
 
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-split" ${param} --nodeps --exact
+	LDEPS=$false; LEXACT=$true; sh_listpkgdisp "$VARCACHE_SEARCH/packages-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
@@ -850,7 +850,7 @@ function sh_remove()
 	local param=$@
 	local x
 
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-installed-split" ${param} --nodeps exact
+	LDEPS=$false; LEXACT=$true; sh_listpkgdisp "$VARCACHE_SEARCH/packages-installed-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
@@ -923,7 +923,7 @@ function sh_download()
 		log_msg "Downloading package..."
 	fi
 
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-split" ${param} --nodeps "EXACT"
+	LDEPS=$false; LEXACT=$true; sh_listpkgdisp "$VARCACHE_SEARCH/packages-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
@@ -1356,7 +1356,7 @@ function sh_search()
 	local param=$@
 
 	[[ $verbose -gt 1 ]] || (( verbose=0 ))
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-split" ${param} --nodeps
+	LDEPS=$false; sh_listpkgdisp "$VARCACHE_SEARCH/packages-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
@@ -1586,7 +1586,7 @@ function sh_listinstalled()
 	if (( verbose )); then
 		log_msg "Listing packages installed"
 	fi
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-installed-split" ${param} --nodeps
+	LDEPS=$false; sh_listpkgdisp "$VARCACHE_SEARCH/packages-installed-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 }
@@ -2559,7 +2559,7 @@ function sh_upgrade()
 #	sh_checkparametros "$@"
 #	sh_listinstalled ${param} "OFF" "EXACT"
 	[[ $verbose -gt 1 ]] || (( verbose=0 ))
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-installed-split" ${param} --nodeps exact off
+	LDEPS=$false; LEXACT=$true; LLIST=$false; sh_listpkgdisp	"$VARCACHE_SEARCH/packages-installed-split" ${param}
 
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}

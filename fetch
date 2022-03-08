@@ -39,7 +39,6 @@
 #########################################################################
 function configure()
 {
-	shopt -s nullglob       # enable suppress error message of a command
 	export LC_ALL=C
 	export LANG=C
 	readonly _VERSION_="2.05.07.20220307"
@@ -112,7 +111,7 @@ PKG_SITE='https://chilios.com.br'											# for use set GITSITE=0
 
 #not needed change
 PKG_RAW='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master'
-PKG_RAW_FETCH='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master/updater/fetch'
+PKG_RAW_FETCH='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master/updater/src/fetch'
 PKG_RAW_FILE='https://raw.githubusercontent.com/vcatafesta/ChiliOS/master/packages/t/tree-1.8.0-2.chi.zst'
 
 # configuration for generation new packages
@@ -446,7 +445,6 @@ function sh_selfupdate()
 		local link="$PKG_RAW_FETCH"
 		local tmp_dir_full="/tmp/${APP}"
 		local tmp_dir="/tmp/${APP}/src"
-		local m
 
 		#internet?
 		sh_checknet; [[ $? = $false ]] || { return 1;}
@@ -463,9 +461,8 @@ function sh_selfupdate()
 		chmod +x ${tmp_dir}/fetch
 		evaluate_retval
 
-		log_info_msg "${cyan}Copying file ${yellow}fetch ${red}to ${yellow}/sbin/$m"
-		cp -f ${tmp_dir}/fetch /sbin/fetch
-		ln -sf /sbin/fetch /sbin/apt
+		log_info_msg "${cyan}Copying file ${yellow}fetch ${red}to ${yellow}$0"
+		cp -f ${tmp_dir}/fetch $0
 		evaluate_retval
 
 		log_info_msg "${cyan}Removing temporary files"
@@ -538,7 +535,10 @@ function sh_checkdir()
 
 function sh_update()
 {
-	[[ $(toupper "${1}") = "SELF" ]] && { shift; sh_selfupdate "$@"; return $?;}
+	if (( $LSELF )); then
+		sh_selfupdate "$@"
+		return $?
+	fi
 
 	#internet?
 	sh_checknet; [[ $? = $false ]] || { return 1;}
@@ -553,11 +553,10 @@ function sh_update()
 	> $VARCACHE_SEARCH/metapackages
 	evaluate_retval
 
-	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep ^[Ss]erver | awk '{print $2}') | cut -d/ -f1)"
+	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
 
 #debug "${HTTP_SERVER}"
 #debug "$(string_len "${HTTP_SERVER}")"
-
 	log_info_msg "Updating Folders from ${SITE}"
 	case ${HTTP_SERVER} in
 		Apache|nginx)
@@ -1994,6 +1993,7 @@ function sh_initinstallpkg()
 		test $# -lt 2 && die "Missing value for the required argument '$param'. ${yellow}Try $0 -Sl <package>" 1; _arg_unit="$2"
 	fi
 
+	shopt -s nullglob       # enable suppress error message of a command
 	if (( $LALL )); then
 		pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")"
 	else
@@ -2036,7 +2036,7 @@ function sh_initinstallpkg()
 		msg "${orange}$param ${red}NOT FOUND ${reset}local package in ${orange}${PWD} ${reset}"
 		printf "${reset}Use: # $0 -Sy to update with the repository${reset}\n"
 	fi
-#	shopt -u nullglob       # disable suppress error message of a command
+	shopt -u nullglob       # disable suppress error message of a command
 }
 
 function sh_installpkg()
@@ -2747,9 +2747,13 @@ function sh_parseparam()
 	LLIST=$false
 	LEXACT=$false
 	LALL=$false
+	LSELF=$false
 
 	for s in ${param[@]}
    do
+      [[ $(toupper "${s}") = "SELF"      ]] && { LSELF=$true; continue; }
+      [[ $(toupper "${s}") = "-SELF"     ]] && { LSELF=$true; continue; }
+      [[ $(toupper "${s}") = "--SELF"    ]] && { LSELF=$true; continue; }
       [[ $(toupper "${s}") = "-NODEPS"   ]] && { LDEPS=$false; continue; }
       [[ $(toupper "${s}") = "--NODEPS"  ]] && { LDEPS=$false; continue; }
       [[ $(toupper "${s}") = "-Y"        ]] && { LAUTO=$true; continue; }

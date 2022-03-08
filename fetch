@@ -1990,25 +1990,16 @@ function sh_initinstallpkg()
 	local arr
 	local nfiles
 
-	shopt -s nullglob       # enable suppress error message of a command
-#	if [[ "${param}" == "" ]] || [[ $(toupper "${param}") = "ALL" ]] || [[ $(toupper "${param}") = "ALL OFF" ]]; then
-#		pkg=$(find "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")
-#		pkg="$pkg $(echo $pkg1)"
+	if !(( $LALL )); then
+		test $# -lt 2 && die "Missing value for the required argument '$param'. ${yellow}Try $0 -Sl <package>" 1; _arg_unit="$2"
+	fi
 
 	if (( $LALL )); then
 		pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}")"
 	else
 		for s in ${param[@]}; do
-#			if [[ $(toupper "${s}") = "-Y" ]]; then
-#				LAUTO=$true
-#			elif [[ $(toupper "${s}") = "-F" ]]; then
-#				LFORCE=$true
-#			elif [[ $(toupper "${s}") = "OFF" ]]; then
-#				LLIST=$false
-#			else
-				cfile=$(echo $s | sed 's/\// /g' | awk '{print $NF}')
-				pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}" | grep "$cfile")"
-#			fi
+			cfile=$(echo $s | sed 's/\// /g' | awk '{print $NF}')
+			pkg="$pkg $(find "$PWD/" "$VARCACHE_ARCHIVES/" -type f -iname "*.${PRG}" | grep "$cfile")"
 		done
 	fi
 
@@ -2017,7 +2008,8 @@ function sh_initinstallpkg()
 	arr=(${pkg[*]})
 	nfiles=${#arr[*]}
 
-	if [[ $nfiles -gt 0 ]]; then # pacote?
+#	if [[ $nfiles -gt 0 ]]; then # pacote?
+	if (( $nfiles )); then # pacote?
 		for i in $pkg; do
 			[[ $LLIST = $true ]] && log_success_msg2 "${blue}FOUND local package ${orange}$i"
 			((pkgCheckNumber++))
@@ -2025,7 +2017,8 @@ function sh_initinstallpkg()
 
 		if (( $pkgCheckNumber )); then
 			if !(( $LAUTO )); then
-				conf "$(DOT)Install package(s)?"
+				echo
+				conf "$(DOT)continue installation?"
 				LAUTO=$?
 			fi
 		fi
@@ -2043,7 +2036,7 @@ function sh_initinstallpkg()
 		msg "${orange}$param ${red}NOT FOUND ${reset}local package in ${orange}${PWD} ${reset}"
 		printf "${reset}Use: # $0 -Sy to update with the repository${reset}\n"
 	fi
-	shopt -u nullglob       # disable suppress error message of a command
+#	shopt -u nullglob       # disable suppress error message of a command
 }
 
 function sh_installpkg()

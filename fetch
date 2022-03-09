@@ -6,7 +6,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/03/07
+ # Altered: 2022/03/09
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.07.20220307"
+	readonly _VERSION_="2.05.09.20220309"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -77,7 +77,6 @@ function configure()
 	export VARLIB_LIST="/var/cache/${APP}/list"
 	export VARLIB_DESC="/var/cache/${APP}/desc"
 	export VARLIB_REMO="/var/cache/${APP}/remove"
-#	verbose=2
 	#PKG_RE='^([a-z-]+)(-)([0-9\\.]+)(-)([0-9])(-)(.*)(.chi.zst)$'
 	#PKG_RE='([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)-(([0-9]+(\.[0-9]+)*)(-([0-9]+))?)-([^.]+).*'
 	if [[ "$PKG_EXT" = "chi.zst" ]]; then
@@ -251,6 +250,72 @@ function sh_footer()
 	log_msg "${green}($pkgCheckNumber)${reset} package(s) found."
 }
 
+function sh_list()
+{
+	local param=$@
+	local nfiles
+	local arr
+	local s
+	local x
+	pkg=
+
+	sh_checkdir "OFF"
+	LLIST=$true
+
+	if (( $LLIST )); then
+		if (( verbose >= 2 )); then
+			log_msg "Reading package lists in the repository"
+		fi
+	fi
+
+	for s in ${param[@]}; do
+#		[[ $(toupper "${s}") = "--NODEPS" ]] && { LDEPS=$false; continue; }
+#		[[ $(toupper "${s}") = "-Y" ]]       && { LAUTO=$true; continue; }
+#    	[[ $(toupper "${s}") = "-F" ]]       && { LFORCE=$true; continue; }
+#    	[[ $(toupper "${s}") = "OFF" ]]      && { LLIST=$false; continue; }
+#		[[ $(toupper "${s}") = "EXACT" ]]    && { LEXACT=$true; continue; }
+#		[[ $(toupper "${s}") = "ALL" ]]      && { LALL=$true; continue; }
+		cListSearch="$cListSearch $(echo ${s})"
+	done
+
+	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
+		if (( $LALL )); then
+			pkg=$(cat $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)
+		else
+			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
+			exit 1
+		fi
+	else
+		for x in ${cListSearch}; do
+			if (( $LEXACT )); then
+				pkg="$pkg $(grep ^$x$SEP $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
+			else
+				pkg="$pkg $(grep $x $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
+			fi
+		done
+	fi
+
+	arr=(${pkg[*]})
+	nfiles=${#arr[*]}
+	param="$@"
+
+	if (( $LLIST )); then
+		pkgCheckNumber=0
+		if [[ $nfiles -gt 0 ]]; then
+			if (( verbose )); then
+				sh_cabec $nfiles
+			fi
+			for i in $pkg; do
+				((pkgCheckNumber++))
+				if (( verbose )); then
+					[[ $LLIST = $true ]] && sh_write $i "0" $pkgCheckNumber
+				fi
+			done
+		fi
+	fi
+	sh_cdroot
+}
+
 function sh_listpkgdisp()
 {
 	local file_list_package="$1"
@@ -347,73 +412,6 @@ function sh_listpkgdisp()
 	fi
 	sh_cdroot
 	return $public_ntotal_pkg_listed
-}
-
-function sh_list()
-{
-	local param=$@
-	local nfiles
-	local arr
-	local s
-	local x
-	pkg=
-
-	sh_checkdir "OFF"
-	LLIST=$true
-
-	if (( $LLIST )); then
-		if (( verbose >= 2 )); then
-			log_msg "Reading package lists in the repository"
-		fi
-	fi
-
-	for s in ${param[@]}; do
-#		[[ $(toupper "${s}") = "--NODEPS" ]] && { LDEPS=$false; continue; }
-#		[[ $(toupper "${s}") = "-Y" ]]       && { LAUTO=$true; continue; }
-#    	[[ $(toupper "${s}") = "-F" ]]       && { LFORCE=$true; continue; }
-#    	[[ $(toupper "${s}") = "OFF" ]]      && { LLIST=$false; continue; }
-#		[[ $(toupper "${s}") = "EXACT" ]]    && { LEXACT=$true; continue; }
-#		[[ $(toupper "${s}") = "ALL" ]]      && { LALL=$true; continue; }
-		cListSearch="$cListSearch $(echo ${s})"
-	done
-
-	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
-		if (( $LALL )); then
-			pkg=$(cat $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)
-		else
-			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
-			exit 1
-		fi
-	else
-		for x in ${cListSearch}; do
-			if (( $LEXACT )); then
-				pkg="$pkg $(grep ^$x$SEP $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
-			else
-				pkg="$pkg $(grep $x $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
-			fi
-		done
-	fi
-
-	arr=(${pkg[*]})
-	nfiles=${#arr[*]}
-	param="$@"
-
-	if (( $LLIST )); then
-		pkgCheckNumber=0
-		if [[ $nfiles -gt 0 ]]; then
-			if (( verbose )); then
-				sh_cabec $nfiles
-			fi
-
-			for i in $pkg; do
-				((pkgCheckNumber++))
-				if (( verbose )); then
-					[[ $LLIST = $true ]] && sh_write $i "0" $pkgCheckNumber
-				fi
-			done
-		fi
-	fi
-	sh_cdroot
 }
 
 function sh_checknet()
@@ -2743,7 +2741,7 @@ function sh_parseparam()
 	LDEPS=$true
 	LAUTO=$false
 	LFORCE=$false
-	verbose=0
+	verbose=1
 	LLIST=$false
 	LEXACT=$false
 	LALL=$false

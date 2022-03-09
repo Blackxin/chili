@@ -323,6 +323,7 @@ function sh_listpkgdisp()
 	local file_list_installed=$VARCACHE_SEARCH/packages-installed-split
 	local param=$@
 	local s
+	local SEARCH_CUT='-f5'
 
 #	local LLIST=$true
 #	local LEXACT=$false
@@ -351,9 +352,16 @@ function sh_listpkgdisp()
 		public_ListSearch="$public_ListSearch $(echo ${s})"
 	done
 
+	if [[ "$SPLITPOS" == "" ]]; then
+		SPLITPOS='4'
+		SEARCH_CUT='-f5'
+	fi
+	if [[ "$SPLITPOS" == "0" ]]; then
+		SEARCH_CUT='-f1'
+	fi
 	if (( $LALL )) || [[ "$public_ListSearch" == "" ]]; then
 		if (( $LALL )); then
-			public_pkg=$(grep ^ $file_list_package | cut -d$SEP -f5)
+			public_pkg=$(grep ^ $file_list_package | cut -d$SEP $SEARCH_CUT)
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
 			exit 1
@@ -362,10 +370,10 @@ function sh_listpkgdisp()
 		for x in ${public_ListSearch}; do
 			if (( $LEXACT )); then
 #				public_pkg="$public_pkg $(grep ^$x$SEP $file_list_package | cut -d$SEP -f5)"
-				pkg_grep=$(grep ^$x$SEP $file_list_package | cut -d$SEP -f5)
+				pkg_grep=$(grep ^$x$SEP $file_list_package | cut -d$SEP $SEARCH_CUT)
 			else
 #				public_pkg="$public_pkg $(grep $x $file_list_package | cut -d$SEP -f5)"
-				pkg_grep=$(grep $x $file_list_package | cut -d$SEP -f5)
+				pkg_grep=$(grep $x $file_list_package | cut -d$SEP $SEARCH_CUT)
 			fi
 			if [[ -n "$pkg_grep" ]]; then
 				public_pkg="$public_pkg $(echo $pkg_grep)"
@@ -375,6 +383,8 @@ function sh_listpkgdisp()
 			fi
 		done
 	fi
+
+debug $pkg_grep $SPLITPOS
 
   	arr=(${public_pkg[*]})
   	ncontapkg=${#arr[*]}
@@ -399,12 +409,12 @@ function sh_listpkgdisp()
 			for i in ${pkg_grep[*]}
 			do
 		  		((pkgNumber++))
-				sh_write $i "4" $pkgNumber
+				sh_write $i "$SPLITPOS" $pkgNumber
   			done
 			for i in ${public_pkg[*]}
 			do
 		  		((pkgNumber++))
-				sh_write_dep $i "4" $pkgNumber
+				sh_write_dep $i "$SPLITPOS" $pkgNumber
   			done
 		fi
 	#else
@@ -1575,8 +1585,6 @@ function sh_listinstalled()
 	local param=$@
 	local pkgNumber=0
 	local s
-	local LLIST=$true
-	local LALL=$false
 	local cListSearch
 	local ntotalpkg=0
 	local arr
@@ -1584,7 +1592,16 @@ function sh_listinstalled()
 	if (( verbose )); then
 		log_msg "Listing packages installed"
 	fi
-	LDEPS=$false; sh_listpkgdisp "$VARCACHE_SEARCH/packages-installed-split" ${param}
+	LLIST=$true
+	LALL=$false
+	LDEPS=$false
+	SPLITPOS='0'
+
+	if [[ "$param" == "" ]]; then
+		LALL=$true
+	fi
+
+	sh_listpkgdisp "$VARCACHE_SEARCH/packages-installed-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 }
@@ -1628,9 +1645,17 @@ function sh_listforinstall()
 	else
 		for x in ${cListSearch}; do
 			if (( $LEXACT )); then
-				public_pkg="$public_pkg $(grep ^$x: $VARCACHE_SEARCH/packages-split | cut -d$SEP -f5)"
+				if [[ "$SPLITPOS" == "0" ]]; then
+					public_pkg="$public_pkg $(grep ^$x: $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
+				else
+					public_pkg="$public_pkg $(grep ^$x: $VARCACHE_SEARCH/packages-split | cut -d$SEP -f5)"
+				fi
 			else
-				public_pkg="$public_pkg $(grep $x $VARCACHE_SEARCH/packages-split | cut -d$SEP -f5)"
+				if [[ "$SPLITPOS" == "0" ]]; then
+					public_pkg="$public_pkg $(grep $x $VARCACHE_SEARCH/packages-split | cut -d$SEP -f1)"
+				else
+					public_pkg="$public_pkg $(grep $x $VARCACHE_SEARCH/packages-split | cut -d$SEP -f5)"
+				fi
 			fi
 		done
 	fi
@@ -2742,6 +2767,7 @@ function sh_parseparam()
 	LAUTO=$false
 	LFORCE=$false
 	verbose=1
+	SPLITPOS='4'
 	LLIST=$false
 	LEXACT=$false
 	LALL=$false

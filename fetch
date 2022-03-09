@@ -384,8 +384,6 @@ function sh_listpkgdisp()
 		done
 	fi
 
-debug $pkg_grep $SPLITPOS
-
   	arr=(${public_pkg[*]})
   	ncontapkg=${#arr[*]}
 	public_ntotal_pkg_listed=$ncontapkg
@@ -445,7 +443,7 @@ function sh_selfupdate()
 #	sh_checkparametros ${param}
 	if !(( $LAUTO )) || !(( $LFORCE)); then
 		echo
-		conf "Update $0 from internet?"
+		conf "Update ${0##*/} from internet?"
 		LAUTO=$?
 	fi
 
@@ -469,14 +467,14 @@ function sh_selfupdate()
 		chmod +x ${tmp_dir}/fetch
 		evaluate_retval
 
-		log_info_msg "${cyan}Copying file ${yellow}fetch ${red}to ${yellow}$0"
-		cp -f ${tmp_dir}/fetch $0
+		log_info_msg "${cyan}Copying file ${yellow}fetch ${red}to ${yellow}${0}"
+		cp -f ${tmp_dir}/fetch ${0}
 		evaluate_retval
 
 		log_info_msg "${cyan}Removing temporary files"
 		[[ -d "${tmp_dir_full}" ]] && rm -r "${tmp_dir_full}"
 		evaluate_retval
-		log_info_msg "${violet}$0 updated successfully, enjoy!"
+		log_info_msg "${violet}${0##*/} updated successfully, enjoy!"
 		evaluate_retval
 		exit 0
 	fi
@@ -649,7 +647,7 @@ function sh_update()
 	log_msg "${blue}($(strzero $nfilesInReposit 5)) packages in repository${reset}"
 	log_msg "${green}($(strzero $nfilesInstalled 5)) packages installed${reset}"
 	echo
-	log_msg "${reset}Use: # $0 --help for helping${reset}"
+	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
 	popd &>/dev/null
 }
 
@@ -1429,7 +1427,7 @@ function sh_listmeta()
 		 log_failure_msg2 "${red}${param} NOT FOUND ${reset} ${orange}$i${reset}"
 		 log_failure_msg2 "($Cont) meta package(s) found."
 		 echo
-		 echo -e "${reset}Use: # $0 update - to update with the repository${reset}"
+		 echo -e "${reset}Use: # ${0##*/} update - to update with the repository${reset}"
 	fi
 	sh_cdroot
 }
@@ -2013,7 +2011,7 @@ function sh_initinstallpkg()
 	local nfiles
 
 	if !(( $LALL )); then
-		test $# -lt 2 && die "Missing value for the required argument '$param'. ${yellow}Try $0 -Sl <package>" 1; _arg_unit="$2"
+		test $# -lt 2 && die "Missing value for the required argument '$param'. ${yellow}Try ${0##*/} -Sl <package>" 1; _arg_unit="$2"
 	fi
 
 	shopt -s nullglob       # enable suppress error message of a command
@@ -2057,7 +2055,7 @@ function sh_initinstallpkg()
 	else
 		msg "${orange}$param ${red}NOT FOUND ${reset}local package in ${orange}${VARCACHE_ARCHIVES}${reset}"
 		msg "${orange}$param ${red}NOT FOUND ${reset}local package in ${orange}${PWD} ${reset}"
-		printf "${reset}Use: # $0 -Sy to update with the repository${reset}\n"
+		printf "${reset}Use: # ${0##*/} -Sy to update with the repository${reset}\n"
 	fi
 	shopt -u nullglob       # disable suppress error message of a command
 }
@@ -2549,11 +2547,11 @@ function sh_alienpkg_main()
 {
 	sh_alienpkg_init
 	if [ $# -lt 1 ]; then
-		echo "uso: $0 -a <package-alienigena-versao>"
-		echo "     $0 alienpkg <package-alienigena-versao>"
-		echo "     $0 --alienpkg <package-alienigena-versao>"
-		echo "     $0 -a all"
-		echo "     $0 -a all -keep"
+		echo "uso: ${0##*/} -a <package-alienigena-versao>"
+		echo "     ${0##*/} alienpkg <package-alienigena-versao>"
+		echo "     ${0##*/} --alienpkg <package-alienigena-versao>"
+		echo "     ${0##*/} -a all"
+		echo "     ${0##*/} -a all -keep"
 	   exit 1
 	fi
 
@@ -2712,7 +2710,7 @@ EOF
 	sh_version
 }
 
-function help()
+function usage()
 {
 	cat <<EOF
 ${cyan}Most used commands:
@@ -2754,7 +2752,6 @@ ${cyan}ex:
   fetch -a -ctime=<n> [-keep]
   fetch -a --default
 EOF
-	exit
 }
 
 function sh_parseparam()
@@ -2786,7 +2783,6 @@ function sh_parseparam()
       [[ $(toupper "${s}") = "-F"        ]] && { LFORCE=$true; continue; }
       [[ $(toupper "${s}") = "-FORCE"    ]] && { LFORCE=$true; continue; }
       [[ $(toupper "${s}") = "--FORCE"   ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "-V"        ]] && { verbose=1; continue; }
       [[ $(toupper "${s}") = "-VV"       ]] && { verbose=2; continue; }
       [[	$(toupper "${s}") = "-VVV"      ]] && { verbose=3; continue; }
       [[	$(toupper "${s}") = "-Q"        ]] && { verbose=0; continue; }
@@ -2799,8 +2795,8 @@ function sh_parseparam()
       [[ $(toupper "${s}") = "ALL"       ]] && { LALL=$true; continue; }
       [[ $(toupper "${s}") = "-ALL"      ]] && { LALL=$true; continue; }
       [[ $(toupper "${s}") = "--ALL"     ]] && { LALL=$true; continue; }
-      [[ $(toupper "${s}") = "-NOCOLOR"  ]] && unsetvarcolors;USE_COLOR='n'
-      [[ $(toupper "${s}") = "--NOCOLOR" ]] && unsetvarcolors;USE_COLOR='n'
+      [[ $(toupper "${s}") = "-NOCOLOR"  ]] && { unsetvarcolors;USE_COLOR='n';continue;}
+      [[ $(toupper "${s}") = "--NOCOLOR" ]] && { unsetvarcolors;USE_COLOR='n';continue;}
 		newparam="$newparam $(echo ${s})"
    done
 #  debug "$newparam"
@@ -2832,17 +2828,17 @@ function init()
 			-Qi|--show|show) 								shift;sh_show "$@";exit;;
 			-Su|--upgrade|upgrade)						shift;sh_upgrade "$@";exit;;
 			-Ti|--recreate-installed)					shift;sh_recreatefilepackagesinstalled;exit;;
+      	-V*|--version)									logo;exit 0;;
       	-u|--unit)										test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1; _arg_unit="$2";shift;;
 			--unit=*)										_arg_unit="${_key##--unit=}";;
 			-u*)												_arg_unit="${_key##-u}";;
-      	-V*|--version)									logo;exit 0;;
       	-f*|--force)									LFORCE=1;;
       	-y*|--auto)										LAUTO=1;;
       	-exact|--exact)								LEXACT=1;;
       	-q|--quiet)										verbose=0;;
       	--nocolor)										unsetvarcolors;USE_COLOR='n';;
       	-v*|--no-verbose|--verbose)				(( ++verbose ));test "${1:0:5}" = "--no-" && verbose=0;;
-      	-h|--help)										help;exit 0;;
+      	-h|--help)										usage;exit $(( $# ? 0 : 1 ));;
 #      	*)													help;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;
 		esac
 		shift
@@ -2872,8 +2868,10 @@ sh_checkdir "OFF"
 if [[ $1 = "" ]]; then
 	die "no operation specified (use -h for help)"
 fi
-if [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $1 = "help" ]] || [[ $1 = "-help" ]]; then
-	help
+
+if [[ -z $1 || $1 = @(-h|--help) || $1 = "-h" || $1 = "--help" || $1 = "help" || $1 = "-help" ]]; then
+	usage
+	exit $(( $# ? 0 : 1 ))
 fi
 
 sh_arraypkgfull

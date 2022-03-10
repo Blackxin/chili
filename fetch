@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.09.20220309"
+	readonly _VERSION_="2.05.20.20220309"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -339,6 +339,7 @@ function sh_listpkgdisp()
 	public_ntotal_pkg_installed=$(grep ^ ${file_list_installed} | wc -l)
 	public_ntotal_pkg_listed=$public_ntotal_pkg_installed
 	public_pkg=
+	public_pkg_deps=
 	public_size=()
 
 	for s in ${param[@]}; do
@@ -381,6 +382,12 @@ function sh_listpkgdisp()
 				log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}target was ${red}NOT ${reset}found."
 				public_pkg_not_found+=("$x")
 			fi
+			pkginstalled=$(grep ^$x$SEP $VARCACHE_SEARCH/packages-installed-split | cut -d$SEP $SEARCH_CUT)
+			sh_splitpkg ${pkginstalled}
+
+			if [[ -n "$pkginstalled" && "$pkg_grep" = "$pkginstalled" ]]; then
+				log_failure_msg "${yellow}attention${reset}: ${orange}${aPKGSPLIT[$PKG_BASE_VERSION]} ${reset}está atualizado -- reinstalando."
+	  		fi
 		done
 	fi
 
@@ -409,7 +416,7 @@ function sh_listpkgdisp()
 		  		((pkgNumber++))
 				sh_write $i "$SPLITPOS" $pkgNumber
   			done
-			for i in ${public_pkg[*]}
+			for i in ${public_pkg_deps[*]}
 			do
 		  		((pkgNumber++))
 				sh_write_dep $i "$SPLITPOS" $pkgNumber
@@ -983,7 +990,7 @@ function sh_getdeps()
 	   test -e $VARCACHE_ARCHIVES/$cfullfilename.desc || sh_wgetdesc
 		if test -e $VARCACHE_ARCHIVES/$cfullfilename.desc; then
 	   	source $VARCACHE_ARCHIVES/$cfullfilename.desc
-	   	deps="$deps ${cbase}"
+#	   	deps="$deps ${cbase}"
 			if (( $LDEPS )); then
 	   	  	deps="$deps ${dep[*]}"
       		deps="$deps $(cat $VARCACHE_ARCHIVES/${cfullfilename}.desc | grep ^depend | awk -F"'" '{print $2}')"
@@ -1003,10 +1010,14 @@ function sh_getdeps()
   				printf "${red}%s(%04d) ${orange}%-40s ${reset}%-40s\n" "     " "$ncontadep" "${i}" "WARNING! Dependency not found in the database. ${reset}Use: # fetch -Sy to update with the repository${reset}"
 			fi
   		else
-  			GETDEPS="$GETDEPS $(echo $pkgdep)"
+  			pkginstalled=$(cat $VARCACHE_SEARCH/packages-installed-split | grep ^${i}$SEP | awk -F$SEP '{print $5}')
+	  		if [[ $pkginstalled = "" ]]; then
+	  			GETDEPS="$GETDEPS $(echo $pkgdep)"
+	  		fi
   		fi
   	done
-  	public_pkg=$GETDEPS
+#  public_pkg=$GETDEPS
+  	public_pkg_deps=$GETDEPS
    return $?
 }
 
@@ -1271,6 +1282,34 @@ function sh_splitpkg()
 	return $?
 }
 
+function sh_install()
+{
+	local param="$@"
+
+	sh_checkdir "OFF"
+#	sh_checkparametros $param
+	[[ $verbose -eq 0 ]] && (( verbose=1 ))
+	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-split" ${param}
+	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
+	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
+
+	if [[ $public_pkg != "" ]]; then
+		[[ -d $VARCACHE_ARCHIVES/ ]] || mkdir -p $VARCACHE_ARCHIVES/
+		cd $VARCACHE_ARCHIVES/
+
+		if !(( $LAUTO )); then
+			echo
+			read -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
+			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
+				return
+			fi
+		fi
+      sh_installdownload
+      sh_installdoinstallpkg
+	fi
+	sh_cdroot
+}
+
 function sh_installdownload()
 {
 	for i in $public_pkg; do
@@ -1326,34 +1365,6 @@ function sh_installdoinstallpkg()
 			log_success_msg2 "${green}${cpacote} ${reset}Done. package installation successfully."
 		fi
 	done
-}
-
-function sh_install()
-{
-	local param="$@"
-
-	sh_checkdir "OFF"
-#	sh_checkparametros $param
-	[[ $verbose -eq 0 ]] && (( verbose=1 ))
-	sh_listpkgdisp	"$VARCACHE_SEARCH/packages-split" ${param}
-	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
-	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
-
-	if [[ $public_pkg != "" ]]; then
-		[[ -d $VARCACHE_ARCHIVES/ ]] || mkdir -p $VARCACHE_ARCHIVES/
-		cd $VARCACHE_ARCHIVES/
-
-		if !(( $LAUTO )); then
-			echo
-			read -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
-			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
-				return
-			fi
-		fi
-      sh_installdownload
-      sh_installdoinstallpkg
-	fi
-	sh_cdroot
 }
 
 function sh_search()
@@ -2766,7 +2777,7 @@ function sh_parseparam()
 	verbose=1
 	SPLITPOS='4'
 	LLIST=$false
-	LEXACT=$false
+	LEXACT=$true
 	LALL=$false
 	LSELF=$false
 
@@ -2839,7 +2850,8 @@ function init()
       	--nocolor)										unsetvarcolors;USE_COLOR='n';;
       	-v*|--no-verbose|--verbose)				(( ++verbose ));test "${1:0:5}" = "--no-" && verbose=0;;
       	-h|--help)										usage;exit $(( $# ? 0 : 1 ));;
-#      	*)													help;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;
+#      	*)													usage;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;
+      	*)													die "operation not supported: $1 (use -h for help)";;
 		esac
 		shift
 	done

@@ -2777,7 +2777,7 @@ function sh_parseparam()
 	verbose=1
 	SPLITPOS='4'
 	LLIST=$false
-	LEXACT=$true
+	LEXACT=$false
 	LALL=$false
 	LSELF=$false
 

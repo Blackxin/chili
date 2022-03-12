@@ -357,9 +357,11 @@ function sh_listpkgdisp()
 		SPLITPOS='4'
 		SEARCH_CUT='-f5'
 	fi
+
 	if [[ "$SPLITPOS" == "0" ]]; then
 		SEARCH_CUT='-f1'
 	fi
+
 	if (( $LALL )) || [[ "$public_ListSearch" == "" ]]; then
 		if (( $LALL )); then
 			public_pkg=$(grep ^ $file_list_package | cut -d$SEP $SEARCH_CUT)
@@ -769,6 +771,7 @@ function sh_ShortCatPkg()
 	local retval=0
 	local cpackage="${aPKGSPLIT[$PKG_BASE]}"
 	local SEARCH_CUT='-f5'
+	local pkginstalled=
 
   	source "$cpacote"
 	if (( $LSHOW )); then

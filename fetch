@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.35.20220311"
+	readonly _VERSION_="2.05.36.20220311"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -384,12 +384,13 @@ function sh_listpkgdisp()
 				log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}target was ${red}NOT ${reset}found."
 				public_pkg_not_found+=("$x")
 			fi
-			pkginstalled=$(grep ^$x$SEP $VARCACHE_SEARCH/packages-installed-split | cut -d$SEP $SEARCH_CUT)
-			sh_splitpkg ${pkginstalled}
-
-			if [[ -n "$pkginstalled" && "$pkg_grep" = "$pkginstalled" ]]; then
-				log_failure_msg "${yellow}attention${reset}: ${orange}${aPKGSPLIT[$PKG_BASE_VERSION]} ${reset}está atualizado -- reinstalando."
-	  		fi
+			if !(( $LSEARCHONLY )); then
+				pkginstalled=$(grep ^$x$SEP $VARCACHE_SEARCH/packages-installed-split | cut -d$SEP $SEARCH_CUT)
+				sh_splitpkg ${pkginstalled}
+				if [[ -n "$pkginstalled" && "$pkg_grep" = "$pkginstalled" ]]; then
+					log_failure_msg "${yellow}attention${reset}: ${orange}${aPKGSPLIT[$PKG_BASE_VERSION]} ${reset}está atualizado -- reinstalando."
+	  			fi
+  			fi
 		done
 	fi
 
@@ -2795,6 +2796,7 @@ function sh_parseparam()
 	LSELF=$false
 	LKEEP=$false
 	LFIND=$false
+	LSEARCHONLY=$false
 
 	for s in ${param[@]}
    do
@@ -2846,7 +2848,7 @@ function init()
 			-Sc|--clean|clean)							sh_clean;exit 0;;
 			-Sg|-g|--generate|generate)				sh_generatepkg "$@";exit;;
 			-Sc|--clean|clean)  							sh_clean "$@";exit;;
-			-Ss|--search|search)	     					shift;sh_search "$@";exit;;
+			-Ss|--search|search)	     					shift;LSEARCHONLY=$true;sh_search "$@";exit;;
 			-Sy|--update|update)							shift;sh_update "${param}";exit;;
 			-c|-C|--create|create)					   sh_createpkg "${param}";exit;;
 			-m|-M|--meta|meta)	                  shift;sh_meta "${param}";exit;;

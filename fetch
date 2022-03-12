@@ -2330,20 +2330,16 @@ function sh_createpkg()
 	evaluate_retval
 }
 
-function sh_alienpkg_init()
-{
-	unset BUILDDIR
-	unset size
-}
-
 function sh_alienpkg_pkgsize()
 {
-	size="$(/usr/bin/du -sk --apparent-size)"
+	size="$(du -sk --apparent-size)"
    size="$(( ${size%%[^0-9]*} * 1024 ))"
 }
 
 function sh_alienpkg_initvars()
 {
+	unset BUILDDIR
+	unset size
 	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 	PKGS=$@
 #	EXT="${EXT:-.pkg.tar.xz}"
@@ -2356,42 +2352,46 @@ function sh_alienpkg_exec()
 	local param=$*
 	local package
 	local LFORCELOCAL=
-	local LFIND=$false
-	local LALL=$false
-	local mtime=0
+#	local LFIND=$false
+#	local LALL=$false
+#	local mtime=0
 	local string=
 	local ntotalpkg=0
 	local ncount=0
 	local arraypkg=
 
-	if [[ $(toupper "${param}") = "--DEFAULT" ]]; then
-		param="all -ctime=0 -keep"
+	if [[ -z "${param}" ]]; then
+		LALL=$true
 	fi
 
+#	if [[ $(toupper "${param}") = "--DEFAULT" ]]; then
+#		param="all -atime=0 -keep"
+#	fi
+
   	for s in ${param[@]}; do
-	 	if [[ "${s}" == "" ]] || [[ $(toupper "${s}") = "ALL" ]] || [[ $(toupper "${s}") = "ALL OFF" ]]; then
-			LALL=$true
-     	elif [[ $(toupper "${s}") = "-Y" ]]; then
-        	LAUTO=$true
-		elif [[ $(toupper "${s}") = "-F" ]]; then
-			LFORCE=$true
-		elif [[ $(toupper "${s}") = "OFF" ]]; then
-			LLIST=$false
-		elif [[ $(toupper "${s:0:7}") = "-CTIME=" ]]; then
-			LFIND=$true
-			mtime=${s:7}
-		elif [[ $(toupper "${s}") = "-KEEP" ]]; then
-			LKEEP=$true
-		else
+#	 	if [[ "${s}" == "" ]] || [[ $(toupper "${s}") = "ALL" ]] || [[ $(toupper "${s}") = "ALL OFF" ]]; then
+#			LALL=$true
+#    	elif [[ $(toupper "${s}") = "-Y" ]]; then
+#        	LAUTO=$true
+#		elif [[ $(toupper "${s}") = "-F" ]]; then
+#			LFORCE=$true
+#		elif [[ $(toupper "${s}") = "OFF" ]]; then
+#			LLIST=$false
+#		elif [[ $(toupper "${s:0:7}") = "-CTIME=" ]]; then
+#			LFIND=$true
+#			mtime=${s:7}
+#		elif [[ $(toupper "${s}") = "-KEEP" ]]; then
+#			LKEEP=$true
+#		else
 			string="$string ${s}"
-		fi
+#		fi
 	done
 
 	if (( $LALL )); then
 		if !(( $LFIND )); then
 			pkg=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz})
 		else
-			pkg=$(find $ALIEN_CACHE_DIR/ -type f -ctime $mtime)
+			pkg=$(find $ALIEN_CACHE_DIR/ -type f -atime $mtime)
 		fi
 	else
   		for str in ${string[@]}; do
@@ -2399,7 +2399,7 @@ function sh_alienpkg_exec()
 				files=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz} | grep $str)
 				pkg="$pkg $(echo $files | grep $str)"
 			else
-				files=$(find $ALIEN_CACHE_DIR/*.{zst,xz} -type f -ctime $mtime | grep $str)
+				files=$(find $ALIEN_CACHE_DIR/*.{zst,xz} -type f -atime $mtime | grep $str)
 				pkg="$pkg $(echo $files | grep $str)"
 			fi
 		done
@@ -2556,15 +2556,17 @@ function sh_aliencheck()
 
 function sh_alienpkg_main()
 {
-	sh_alienpkg_init
-	if [ $# -lt 1 ]; then
-		echo "uso: ${0##*/} -a <package-alienigena-versao>"
-		echo "     ${0##*/} alienpkg <package-alienigena-versao>"
-		echo "     ${0##*/} --alienpkg <package-alienigena-versao>"
-		echo "     ${0##*/} -a all"
-		echo "     ${0##*/} -a all -keep"
-	   exit 1
-	fi
+#	if [ $# -lt 1 ]; then
+#		sh_alienpkg_logo
+#		echo
+#		echo "uso: ${0##*/} -Sa <alien-package-version>"
+#		echo "     ${0##*/} alienpkg <alien-package-version>"
+#		echo "     ${0##*/} --alienpkg <alien-package-version>"
+#		echo "     ${0##*/} -Sa --ctime=1"
+#		echo "     ${0##*/} -Sa all"
+#		echo "     ${0##*/} -Sa all -keep"
+#	   exit 1
+#	fi
 
 	sh_alienpkg_initvars $*
 	sh_alienpkg_exec $*
@@ -2775,25 +2777,34 @@ function sh_parseparam()
 	LAUTO=$false
 	LFORCE=$false
 	verbose=1
+	mtime=0
 	SPLITPOS='4'
 	LLIST=$false
 	LEXACT=$false
 	LALL=$false
 	LSELF=$false
+	LKEEP=$false
+	LFIND=$false
 
 	for s in ${param[@]}
    do
-      [[ $(toupper "${s}") = "SELF"      ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "-SELF"     ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "--SELF"    ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "-NODEPS"   ]] && { LDEPS=$false; continue; }
-      [[ $(toupper "${s}") = "--NODEPS"  ]] && { LDEPS=$false; continue; }
-      [[ $(toupper "${s}") = "-Y"        ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "-AUTO"     ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "--AUTO"    ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "-F"        ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "-FORCE"    ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "--FORCE"   ]] && { LFORCE=$true; continue; }
+      [[ $(toupper "${s:0:7}") = "-CTIME="  ]] && { LFIND=$true; mtime="${s:7}"; continue;}
+      [[ $(toupper "${s:0:8}") = "--CTIME=" ]] && { LFIND=$true; mtime="${s:8}"; continue;}
+      [[ $(toupper "${s}") = "-DEFAULT"     ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
+      [[ $(toupper "${s}") = "--DEFAULT"    ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
+      [[ $(toupper "${s}") = "-KEEP"        ]] && { LKEEP=$true; continue; }
+      [[ $(toupper "${s}") = "--KEEP"       ]] && { LKEEP=$true; continue; }
+      [[ $(toupper "${s}") = "SELF"         ]] && { LSELF=$true; continue; }
+      [[ $(toupper "${s}") = "-SELF"        ]] && { LSELF=$true; continue; }
+      [[ $(toupper "${s}") = "--SELF"       ]] && { LSELF=$true; continue; }
+      [[ $(toupper "${s}") = "-NODEPS"      ]] && { LDEPS=$false; continue; }
+      [[ $(toupper "${s}") = "--NODEPS"     ]] && { LDEPS=$false; continue; }
+      [[ $(toupper "${s}") = "-Y"           ]] && { LAUTO=$true; continue; }
+      [[ $(toupper "${s}") = "-AUTO"        ]] && { LAUTO=$true; continue; }
+      [[ $(toupper "${s}") = "--AUTO"       ]] && { LAUTO=$true; continue; }
+      [[ $(toupper "${s}") = "-F"           ]] && { LFORCE=$true; continue; }
+      [[ $(toupper "${s}") = "-FORCE"       ]] && { LFORCE=$true; continue; }
+      [[ $(toupper "${s}") = "--FORCE"      ]] && { LFORCE=$true; continue; }
       [[ $(toupper "${s}") = "-VV"       ]] && { verbose=2; continue; }
       [[	$(toupper "${s}") = "-VVV"      ]] && { verbose=3; continue; }
       [[	$(toupper "${s}") = "-Q"        ]] && { verbose=0; continue; }

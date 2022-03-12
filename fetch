@@ -6,7 +6,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/03/09
+ # Altered: 2022/03/11
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.20.20220309"
+	readonly _VERSION_="2.05.35.20220311"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -767,10 +767,17 @@ function sh_ShortCatPkg()
 	local cpacote=$1
 	local LSHOW=$2
 	local retval=0
+	local cpackage="${aPKGSPLIT[$PKG_BASE]}"
+	local SEARCH_CUT='-f5'
 
   	source "$cpacote"
 	if (( $LSHOW )); then
-		printf "%s  %s %s\n" "${yellow}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${pkgname}" "${pink}${version}-${build}" "${white}${desc}"
+		pkginstalled=$(grep ^$cpackage$SEP $VARCACHE_SEARCH/packages-installed-split | cut -d$SEP $SEARCH_CUT)
+		if [[ -z $pkginstalled ]]; then
+			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}-${build}" "${white}${desc}"
+		else
+		printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}-${build}" "${cyan}[installed] ${white}${desc}"
+		fi
     	printf "${reset}"
 	fi
 	retval=${size}

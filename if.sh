@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 
 List="one two three"
 

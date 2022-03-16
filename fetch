@@ -556,12 +556,11 @@ function sh_updaterepo()
 		sh_selfupdate "$@"
 		return $?
 	fi
-	repo="repo"
-	dw=("folders"
-		 "folders_metapackages"
-		 "metapackages"
-		 "packages-split"
-		 )
+	local dw=("folders"
+		 		 "folders_metapackages"
+		 		 "metapackages"
+		 		 "packages-split"
+		 		)
 
 	#internet?
 	sh_checknet; [[ $? = $false ]] || { return 1;}
@@ -569,21 +568,17 @@ function sh_updaterepo()
 	pushd $VARCACHE_SEARCH/ &>/dev/null
 	sh_backup
 
-	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
-
 	log_info_msg "Cleaning up $VARCACHE_SEARCH/"
-#	for i in "${dw[@]}"; do
-#		rm -f $VARCACHE_SEARCH/${i}
-#	done
-	evaluate_retval
-
-	log_info_msg "Updating file packages from ${SITE}"
 	for i in "${dw[@]}"; do
-		curl -C - --silent --insecure --url "${SITE}/repo/${i}" > "${VARCACHE_SEARCH}/${i}"
+		rm -f $VARCACHE_SEARCH/${i}
 	done
 	evaluate_retval
 
-	sh_recreatefilepackagesinstalled
+	log_info_msg "Updating file packages from ${SITE}/repo/"
+	curl --silent --insecure -O ${SITE}/repo/${dw[0]} -O ${SITE}/repo/${dw[1]} -O ${SITE}/repo/${dw[2]} -O ${SITE}/repo/${dw[3]}
+	evaluate_retval
+
+#	sh_recreatefilepackagesinstalled
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -2753,7 +2748,7 @@ function checkDependencies()
 
 function sh_cleaning()
 {
-	log_msg "Cleaning..."
+	log_msg "Cleaning temporary files..."
 	rm -rf $TMP_DIR_ROOT/ &> /dev/null
 }
 

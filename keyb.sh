@@ -18,6 +18,8 @@ keyboard=$(dialog \
 
 if [ -n "$keyboard" ]; then
 	echo "teclado carregado: $keyboard"
-	loadkeys $keyboard
+#	loadkeys $keyboard
+	localectl set-keymap $keyboard
 fi
+printf "$(localectl status)\n"
 

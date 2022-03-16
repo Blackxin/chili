@@ -26,15 +26,13 @@ function  sh_setfont()
                --menu "Escolha uma fonte:" 0 0 0 \
                "${array[@]}" "${array[@]}"
 
-whiptail --msgbox "$?" 0 0
-exit
+#whiptail --msgbox "$?" 0 0
+#exit
       retval=$?
       if [[ $retval -eq 1 ]]; then
          cd $colddir
          exit
       fi
-info "$retval"
-exit
       echo $retval
       setfont $1
    done

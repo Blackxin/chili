@@ -9,7 +9,7 @@ declare -r version="v2.1.2-20201001"
 #      altered: 				2020/25/09	   			            #
 ################################################################
 #. /lib/lsb/init-functions
-readonly DEPENDENCIES=(which tar curl sed grep cat awk tput dialog whiptail)
+readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptail)
 # flag dialog exit status codes
 : ${D_OK=0}
 : ${D_CANCEL=1}
@@ -19,9 +19,13 @@ readonly DEPENDENCIES=(which tar curl sed grep cat awk tput dialog whiptail)
 : ${D_ESC=255}
 
 #SQFS
-export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
-export MEDIUM=/lib/initramfs/system
-export LIVE=/lib/initramfs/medium/isolinux/venomlive
+#export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
+#export MEDIUM=/lib/initramfs/system
+#export LIVE=/lib/initramfs/medium/isolinux/venomlive
+export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+export MEDIUM=/run/archiso/airootfs
+export LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+
 #mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 
 #Downloader
@@ -1526,8 +1530,17 @@ function sh_partnewbie()
 	fi
 
 	#flock $sd sfdisk --delete --force $sd  > /dev/null 2>&1
-	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
-	| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
+#	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
+#	| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
+#	udevadm settle > /dev/null 2>&1
+
+	parted --script $sd -- \
+	mklabel gpt					\
+	mkpart primary fat32      1MiB 2MiB set 1 bios on name 1 BIOS  \
+	mkpart primary fat32      2MiB 3MiB set 2 esp  on name 2 EFI   \
+	mkpart primary linux-swap 3MiB 2GB                name 3 SWAP  \
+	mkpart primary ext4       2GB 100%                name 4 ROOT  \
+	align-check optimal 1
 	udevadm settle > /dev/null 2>&1
 	evaluate_retval
 	LDISK=1

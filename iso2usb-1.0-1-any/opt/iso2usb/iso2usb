@@ -1,5 +1,5 @@
 #!/bin/bash
-# USO2USB - Copy iso to pendrive
+# USO2USB - write iso to pendrive
 # Copyright (c) 2019 - 2019, Vilmar Catafesta <vcatafesta@gmail.com>
 # All rights reserved.
 #
@@ -31,24 +31,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #########################################################################
-version="1.0.0.20190614"
+version="1.0.0.20220304"
 
-yad_message_info()
+yad_message()
 {
     msg="$1"
-    txt="\n<b><big>$1</big></b>"
+    txt="<b><big>$1</big></b>"
     yad "${comargs[@]}" --image=gtk-dialog-info --text="$txt" --button="Done":1
 }
 
-yad_message_error()
-{
-    msg="$1"
-    txt="\n<b><big>$1</big></b>"
-    yad "${comargs[@]}" --image=gtk-dialog-error --text="$txt" --button="Done":1
-}
-
-function info()
-{
+function info(){
 	dialog				\
 	--beep				\
 	--title     "$app"	\
@@ -68,7 +60,7 @@ function sh_initvar()
 	    --text-align=center
 	    --buttons-layout=center
 	    --borders=10
-	    --image="/opt/iso2usb/pendrive.png"
+	    --image=pendrive.png
 	)
 
 	declare -x COMARGS=$( printf "%q " "${comargs[@]}" )
@@ -79,12 +71,12 @@ function sh_initvar()
 	case $LINGUA in
 		pt)
 			MSG=(
-				[0]="Erro: Selecione um ISO para copiar"
+				[0]="Selecione a ISO para copiar"
 				[1]="Sair $app"
 				[2]="N°"
 				[3]="Nome"
 				[4]="Tamanho em GB"
-				[5]="Erro: Selecione o seu USB drive"
+				[5]="Selecione o seu USB drive"
 				[6]="Atenção tamanho muito grande"
 				[7]="ATENÇÃO !!!"
 				[8]="Poderia ser um disco rígido externo. \nContinuar ?"
@@ -96,13 +88,12 @@ function sh_initvar()
 				);;
 		*)
 			MSG=(
-
-				[0]="Error: Select the ISO to be copied"
+				[0]="Select the ISO to be copied"
 				[1]="Exit $app"
 				[2]="Nr"
 				[3]="Name"
 				[4]="Size in GB"
-				[5]="Error: Select your USB drive"
+				[5]="Select your USB drive"
 				[6]="Beware if size is too large"
 				[7]="WARNING !!!"
 				[8]="It could be an external hard drive.\nContinue ?"
@@ -158,15 +149,7 @@ function sh_write()
 		l=$(($l+8000))
 		q=$(($l*100/$sectorsize))
 		echo -e "$q \n#""${MSG[10]}"" : $q %"
-#	done) | zenity --progress --width 650 --auto-close --title "${MSG[11]}" "$isofile"
-	done) |  yad --progress \
-            --title="$app"  \
-            --width="650"   \
-            --center        \
-            --text="<b><big>from: $isofile\n    To: $sd </big></b>"  \
-            --progress-text="Wait, Writing..."  \
-            --auto-close                        \
-            --auto-kill
+	done) | zenity --progress --width 650 --auto-close --title "${MSG[11]}" "$isofile"
 
 	if [ -f $xtemp ]; then
   		zenity --error --text="$(cat $xtemp)"
@@ -188,8 +171,8 @@ function sh_main()
 			"${comargs[@]}"
 			--text="<b><big><big>Drive Properties</big></big></b>\n"
 			--button="Refresh:3"
-			--button="gtk-close:1"
-			--button="Go Flash!:2"
+			--button="yad-close:1"
+			--button="Executar:2"
 			--form
 			--columns=1
 			--field="Device:":CB "$USBDSK"
@@ -206,12 +189,12 @@ function sh_main()
 			2)
 				export sd=$(echo "${result}" | cut -d"|" -f1|awk '{print $1}')
 				export isofile=$(echo "${result}" | cut -d"|" -f2)
-				if [[ $sd == "" ]]; then
-					yad_message_error "${MSG[5]}"
+				if [[ $isofile == "" ]]; then
+					yad_message "${MSG[0]}"
 					continue
 				fi
-				if [[ $isofile == "" ]]; then
-					yad_message_error "${MSG[0]}"
+				if [[ $sd == "" ]]; then
+					yad_message "${MSG[5]}"
 					continue
 				fi
 				sh_write
@@ -219,6 +202,8 @@ function sh_main()
 		esac
 	done
 }
-
+colddir=$PWD
+cd /opt/iso2usb/
 sh_initvar
 sh_main
+cd $colddir

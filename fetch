@@ -6,7 +6,7 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/03/11
+ # Altered: 2022/03/16
  #
  # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.36.20220311"
+	readonly _VERSION_="2.05.41.20220316"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -342,7 +342,7 @@ function sh_listpkgdisp()
 	public_pkg_deps=
 	public_size=()
 
-	for s in ${param[@]}; do
+#	for s in ${param[@]}; do
 #		[[ $(toupper "${s}") = "--NODEPS" ]] && { LDEPS=$false; continue; }
 #		[[ $(toupper "${s}") = "-Y"       ]] && { LAUTO=$true; continue; }
 #   	[[ $(toupper "${s}") = "-F"       ]] && { LFORCE=$true; continue; }
@@ -350,8 +350,9 @@ function sh_listpkgdisp()
 #    	[[ $(toupper "${s}") = "-ON"      ]] && { LLIST=$true; continue; }
 #		[[ $(toupper "${s}") = "--EXACT"  ]] && { LEXACT=$true; continue; }
 #		[[ $(toupper "${s}") = "--ALL"    ]] && { LALL=$true; continue; }
-		public_ListSearch="$public_ListSearch $(echo ${s})"
-	done
+#		public_ListSearch="$public_ListSearch $(echo ${s})"
+	public_ListSearch=$param
+#	done
 
 	if [[ "$SPLITPOS" == "" ]]; then
 		SPLITPOS='4'
@@ -414,7 +415,7 @@ function sh_listpkgdisp()
 
 		if (( verbose )); then
 			pkgNumber=0
-			for i in ${pkg_grep[*]}
+			for i in ${public_pkg[*]}
 			do
 		  		((pkgNumber++))
 				sh_write $i "$SPLITPOS" $pkgNumber
@@ -943,31 +944,36 @@ function sh_download()
 	local error_value=0
 	local nFilesDownloaded=0
 
-	if (( verbose )); then
-		log_msg "Downloading package..."
-	fi
-
 	LDEPS=$false; LEXACT=$true; sh_listpkgdisp "$VARCACHE_SEARCH/packages-split" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
 	if [[ $public_pkg != "" ]]; then
+		pushd $VARCACHE_ARCHIVES/ &>/dev/null
+
 		#internet?
 		sh_checknet; [[ $? = $false ]] || { return 1;}
-		pushd $VARCACHE_ARCHIVES/ &>/dev/null
+
+		if (( verbose )); then
+			log_msg "Downloading package..."
+		fi
+
 		for i in $public_pkg; do
 			local nTotalFiles=$ntotal_pkg_listed
 			local cspace=$(printf "%20s" ' ')
+			sh_splitpkg ${i}
+			local cfullname="${aPKGSPLIT[$PKG_FULLNAME]}"
 
-#    		[[ $LFORCE = $true ]] && sh_wgetfull $cfullname || test -e $VARCACHE_ARCHIVES/$cfullname || sh_wgetfull $cfullname
     		if (( $LFORCE )); then
-				sh_wgetfull
+				sh_wgetdesc ${i}
+				sh_wgetfull ${i}
 				[[ $? -eq 0 ]] && (( nFilesDownloaded++ ))
 			else
 			 	if test -e $VARCACHE_ARCHIVES/$cfullname; then
  					log_failure_msg2 "${orange}${i##*/} ${reset}Package is already downloaded. Use the -f option to force download."
 				else
-					sh_wgetfull
+					sh_wgetdesc ${i}
+					sh_wgetfull ${i}
 					[[ $? -eq 0 ]] && (( nFilesDownloaded++ ))
 				fi
 			fi
@@ -1041,8 +1047,11 @@ function sh_wgetresponse()
 
 	if (( verbose >= 2 )); then
 		log_info_msg "${cyan}Fetching package ${cRaw}/packages/${orange}${i}"
+		response=$(curl -w "%{http_code}\n" -k -O "${cRaw}/packages/$i")
+	else
+		response=$(curl -s -w "%{http_code}\n" -k -O "${cRaw}/packages/$i")
 	fi
-	response=$(curl -s -w "%{http_code}\n" -k -O "${cRaw}/packages/$i")
+
 	if [[ $response -eq 404 ]]; then
 		if (( verbose >= 2 )); then
 			evaluate_retval $NEG
@@ -1053,6 +1062,7 @@ function sh_wgetresponse()
 		fi
 		return 1
 	fi
+
 	if (( verbose >= 2 )); then
 		evaluate_retval
 	fi
@@ -2026,14 +2036,14 @@ function sh_doinstallpkg()
 
 function sh_initinstallpkg()
 {
-	local pkg
+	local pkg=
 	local param=$@
 	local package
-	local arr
-	local nfiles
+	local arr=
+	local nfiles=
 
 	if !(( $LALL )); then
-		test $# -lt 2 && die "Missing value for the required argument '$param'. ${yellow}Try ${0##*/} -Sl <package>" 1; _arg_unit="$2"
+		test $# -lt 1 && die "Missing value for the required argument '$param'. ${yellow}Try ${0##*/} -Sl <package>" 1; _arg_unit="$2"
 	fi
 
 	shopt -s nullglob       # enable suppress error message of a command
@@ -2051,7 +2061,6 @@ function sh_initinstallpkg()
 	arr=(${pkg[*]})
 	nfiles=${#arr[*]}
 
-#	if [[ $nfiles -gt 0 ]]; then # pacote?
 	if (( $nfiles )); then # pacote?
 		for i in $pkg; do
 			[[ $LLIST = $true ]] && log_success_msg2 "${blue}FOUND local package ${orange}$i"
@@ -2508,9 +2517,9 @@ function sh_alienpkg_exec()
 			export deps=$(cat $destdir/.PKGINFO | grep ^depend | awk -F'"' '{print $2}')
 
 			pushd $destdir	>/dev/null 2>&1
-			rm -f $destdir/.BUILDINFO >/dev/null 2>&1
-			rm -f $destdir/.MTREE     >/dev/null 2>&1
-			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
+#			rm -f $destdir/.BUILDINFO >/dev/null 2>&1
+#			rm -f $destdir/.MTREE     >/dev/null 2>&1
+#			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
 
 			((ncount++))
 			sh_createpkg $pkgtar $pkgtar -Y -F
@@ -2738,43 +2747,41 @@ function usage()
 {
 	cat <<EOF
 ${cyan}Most used commands:
-${red}  -h,  --help,           help           ${reset}- display this help and exit
-${red}  -Sy, --update,         update         ${reset}- update list packages in repository online. Need Internet
-${red}  -S,  --install,        install        ${reset}- install packages
-${red}  -Sa, --alienpkg,       alienpkg       ${reset}- import package from ArchLinux
-${red}  -Sl, --local,          local          ${reset}- install local package
-${red}  -Sg, --generate,       generate       ${reset}- generate info package from source
-${red}  -C   --create,         create         ${reset}- build package
-${red}  -m,  --meta,           meta           ${reset}- install meta packages
-${red}  -R,  --remove,         remove         ${reset}- remove packages
-${red}  -L,  --list,           list           ${reset}- list avaiable packages based on package names
-${red}  -La, --list-avaiable,  list-avaiable  ${reset}- list avaiable packages based on package names
-${red}  -Lc, --list-cache,     list-cache     ${reset}- list downloaded packages in cache
-${red}  -Li, --list-installed, list-installed ${reset}- list installed packages
-${red}  -Pi, --in-cache,       in-cache       ${reset}- list packages in-cache
-${red}  -Po, --out-cache,      out-cache      ${reset}- list packages out-cache
-${red}  -Qi, --show,           show           ${reset}- show package details
-${red}  -Sc, --clean,          clean          ${reset}- erase downloaded packages files
-${red}  -Ss, --search,         search         ${reset}- search for packages
-${red}  -Su, --upgrade,        upgrade        ${reset}- upgrade packages
-${red}  -Sw, --download,       download       ${reset}- only download the binary package into cache directory
-${red}  -Ti, --recreate-installed             ${reset}- recreate database packages installed
-${red}  -V,  --version                        ${reset}- output version information and exit
+${red}  -h,  help           ${reset}- display this help and exit
+${red}  -Sy, update         ${reset}- update list packages in repository online. Need Internet
+${red}  -S,  install        ${reset}- install packages
+${red}  -Ss, search         ${reset}- search for packages
+${red}  -Su, upgrade        ${reset}- upgrade packages
+${red}  -Sw, download       ${reset}- only download the binary package into cache directory
+${red}  -Sa, alienpkg       ${reset}- import package from ArchLinux
+${red}  -Sl, local          ${reset}- install local package
+${red}  -Sg, generate       ${reset}- generate info package from source
+${red}  -C   create         ${reset}- build package
+${red}  -m,  meta           ${reset}- install meta packages
+${red}  -R,  remove         ${reset}- remove packages
+${red}  -L,  list           ${reset}- list avaiable packages based on package names
+${red}  -La, list-avaiable  ${reset}- list avaiable packages based on package names
+${red}  -Lc, list-cache     ${reset}- list downloaded packages in cache
+${red}  -Li, list-installed ${reset}- list installed packages
+${red}  -Pi, in-cache       ${reset}- list packages in-cache
+${red}  -Po, out-cache      ${reset}- list packages out-cache
+${red}  -Qi, show           ${reset}- show package details
+${red}  -Sc, clean          ${reset}- erase downloaded packages files
+${red}  -Ti, recreate       ${reset}- recreate database packages installed
+${red}  -V,  version        ${reset}- output version information and exit
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy${reset} self ${yellow}=> Update self fetch via internet
   ${reset}fetch ${pink}-Sy${reset}      ${yellow}=> Update database
   ${reset}fetch ${pink}-S ${green}<${reset}package${green}> [${reset}...] [-y] [-f] [--nodeps]
-  fetch -R <package> [...] [-y] [-f] [ALL]
-  fetch -Su [<package>] [...] [-y] [-f] [ALL]
-  fetch -Ss <package> [...] [-y] [-f] [EXACT]
-  fetch -Li [<package>] [<...>] [ALL] [EXACT]
-  fetch -Sw [<package>] [...] [ALL] [-y] [-f]
+  fetch -R <package> [...] [--all][--auto] [--force]
+  fetch -Su [<package>] [...] [--all] [--auto] [--force]
+  fetch -Ss <package> [...] [--auto] [--force] [--exact]
+  fetch -Li [<package>] [<...>] [--all] [--exact]
+  fetch -Sw [<package>] [...] [--all] [--auto] [--force]
   fetch -Qi [<package>]
   fetch -c [packname-version-build]
-  fetch --meta [xorg] [-y] [-f]
-  fetch -a <package> [...] [-y] [-f] [-ctime=<n>] [-keep]
-  fetch -a -ctime=<n> [-keep]
-  fetch -a --default
+  fetch --meta [xorg] [--auto] [--force]
+  fetch -Sa <package> [...] [--all] [--auto] [--force] [--ctime=<n>] [--keep] [--default]
 EOF
 }
 
@@ -2796,7 +2803,7 @@ function sh_parseparam()
 	LSELF=$false
 	LKEEP=$false
 	LFIND=$false
-	LSEARCHONLY=$false
+	LSEARCHONLY=$true
 
 	for s in ${param[@]}
    do
@@ -2842,28 +2849,28 @@ function init()
   	while test $# -gt 0
 	do
 		case "${1}" in
-			-Si|-S|--install|install)					shift;sh_install "$@";return;;
-			-Sl|--local|local)  							shift;sh_initinstallpkg "$@";exit;;
-			-Sa|-a|--alienpkg|alienpkg)	  		   shift;sh_alienpkg_main "$@";return;;
-			-Sc|--clean|clean)							sh_clean;exit 0;;
-			-Sg|-g|--generate|generate)				sh_generatepkg "$@";exit;;
-			-Sc|--clean|clean)  							sh_clean "$@";exit;;
-			-Ss|--search|search)	     					shift;LSEARCHONLY=$true;sh_search "$@";exit;;
-			-Sy|--update|update)							shift;sh_update "${param}";exit;;
-			-c|-C|--create|create)					   sh_createpkg "${param}";exit;;
-			-m|-M|--meta|meta)	                  shift;sh_meta "${param}";exit;;
-			-R|--remove|remove) 							shift;sh_remove "$@";exit;;
-			-Sw|--download|download) 					shift;sh_download "$@";exit;;
-			-L|--list|list)    	 						shift;sh_list "$@";exit;;
-			-La|--list-avaiable|list-avaiable) 		shift;sh_list "$@";exit;;
-			-Lc|--list-cache|list-cache) 	        	shift;sh_FilesInCache "${param}";exit;;
-			-Li|--list-installed|list-installed)	shift;sh_listinstalled "${@}";exit;;
-			-Po|--out-cache|out-cache)	            shift;sh_pkgoutcache "${param}";exit;;
-			-Qi|--show|show) 								shift;sh_show "$@";exit;;
-			-Su|--upgrade|upgrade)						shift;sh_upgrade "$@";exit;;
-			-Ti|--recreate-installed)					shift;sh_recreatefilepackagesinstalled;exit;;
-      	-V*|--version)									logo;exit 0;;
-      	-u|--unit)										test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1; _arg_unit="$2";shift;;
+			-Si|-S|install)								shift;LSEARCHONLY=$false;sh_install "$@";return;;
+			-Sl|local)  									shift;sh_initinstallpkg "$@";exit;;
+			-Sa|alienpkg)	  		   					shift;sh_alienpkg_main "$@";return;;
+			-Sc|clean)										sh_clean;exit 0;;
+			-Sg|-g|generate)								sh_generatepkg "$@";exit;;
+			-Sc|clean)  									sh_clean "$@";exit;;
+			-Ss|search)	     								shift;sh_search "$@";exit;;
+			-Sy|update)										shift;sh_update "${param}";exit;;
+			-c|-C|create)					   			sh_createpkg "${param}";exit;;
+			-m|-M|meta)	     		            		shift;sh_meta "${param}";exit;;
+			-R|remove) 										shift;sh_remove "$@";exit;;
+			-Sw|download) 									shift;sh_download "$@";exit;;
+			-L|list)    	 								shift;sh_list "$@";exit;;
+			-La|avaiable) 									shift;sh_list "$@";exit;;
+			-Lc|list-cache) 	        					shift;sh_FilesInCache "${param}";exit;;
+			-Li|list-installed)							shift;sh_listinstalled "${@}";exit;;
+			-Po|out-cache)	            				shift;sh_pkgoutcache "${param}";exit;;
+			-Qi|show) 										shift;sh_show "$@";exit;;
+			-Su|upgrade)									shift;sh_upgrade "$@";exit;;
+			-Ti|recreate)									shift;sh_recreatefilepackagesinstalled;exit;;
+      	-V*|--version|version)						logo;exit 0;;
+      	-u|-unit)										test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1; _arg_unit="$2";shift;;
 			--unit=*)										_arg_unit="${_key##--unit=}";;
 			-u*)												_arg_unit="${_key##-u}";;
       	-f*|--force)									LFORCE=1;;

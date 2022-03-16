@@ -550,6 +550,53 @@ function sh_checkdir()
 	return $?
 }
 
+function sh_updaterepo()
+{
+	if (( $LSELF )); then
+		sh_selfupdate "$@"
+		return $?
+	fi
+	repo="repo"
+	dw=("folders"
+		 "folders_metapackages"
+		 "metapackages"
+		 "packages-split"
+		 )
+
+	#internet?
+	sh_checknet; [[ $? = $false ]] || { return 1;}
+
+	pushd $VARCACHE_SEARCH/ &>/dev/null
+	sh_backup
+
+	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
+
+	log_info_msg "Cleaning up $VARCACHE_SEARCH/"
+#	for i in "${dw[@]}"; do
+#		rm -f $VARCACHE_SEARCH/${i}
+#	done
+	evaluate_retval
+
+	log_info_msg "Updating file packages from ${SITE}"
+	for i in "${dw[@]}"; do
+		curl -C - --silent --insecure --url "${SITE}/repo/${i}" > "${VARCACHE_SEARCH}/${i}"
+	done
+	evaluate_retval
+
+	sh_recreatefilepackagesinstalled
+	sh_cleaning
+	unset FOLDER_TEMP
+
+	local nfilesInReposit=$(cat $VARCACHE_SEARCH/packages-split | wc -l)
+	local nfilesInstalled=$(cat $VARCACHE_SEARCH/packages-installed-split | wc -l)
+	log_msg "${cyan}All list packages updated!${reset}"
+	log_msg "${blue}($(strzero $nfilesInReposit 5)) packages in repository${reset}"
+	log_msg "${green}($(strzero $nfilesInstalled 5)) packages installed${reset}"
+	echo
+	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
+	popd &>/dev/null
+}
+
 function sh_update()
 {
 	if (( $LSELF )); then
@@ -2856,7 +2903,8 @@ function init()
 			-Sg|-g|generate)								sh_generatepkg "$@";exit;;
 			-Sc|clean)  									sh_clean "$@";exit;;
 			-Ss|search)	     								shift;sh_search "$@";exit;;
-			-Sy|update)										shift;sh_update "${param}";exit;;
+			-Sy|update)										shift;sh_updaterepo "${param}";exit;;
+			-Syy|refresh)									shift;sh_update "${param}";exit;;
 			-c|-C|create)					   			sh_createpkg "${param}";exit;;
 			-m|-M|meta)	     		            		shift;sh_meta "${param}";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;

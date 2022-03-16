@@ -1,5 +1,6 @@
 #!/bin/bash
 # Versão 1
+
 if  grep ^$1 /etc/passwd  > /dev/null
 then
     echo Usuario \'$1\' já existe

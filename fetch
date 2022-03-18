@@ -6,9 +6,9 @@
  # MazonOS GNU/Linux - http://mazonos.com
  #
  # Created: 2019/04/05
- # Altered: 2022/03/16
+ # Altered: 2022/03/17
  #
- # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
+ # Copyright (c) 2019 - 2022, Vilmar Catafesta <vcatafesta@gmail.com>
  # All rights reserved.
  #
  # contains portion of software https://bananapkg.github.io/
@@ -41,7 +41,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.05.41.20220316"
+	readonly _VERSION_="2.05.55.20220317"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
 
 	# Import lib
@@ -58,7 +58,7 @@ function configure()
 	ALTA=${MENSAGEM}
 	cmdopts=()
 	PRG="${PKG_EXT:=chi.zst}"
-	SITE="${PKG_SITE:=http://10.0.0.66}"
+	SITE="${PKG_SITE:=http://chilios.com.br}"
 	GITSITE="${GITSITE:=0}"
 	RAW="${PKG_RAW:=http://10.0.0.66}"
 	AUTO_YES="${AUTO_YES:=1}"
@@ -335,7 +335,7 @@ function sh_listpkgdisp()
 	public_ListSearch=
 	public_pkg_not_found=()
 
-	[[ -e ${file_list_installed} ]] || > /${file_list_installed}
+	[[ -e ${file_list_installed} ]] || printf '' > "${file_list_installed}"
 	public_ntotal_pkg_installed=$(grep ^ ${file_list_installed} | wc -l)
 	public_ntotal_pkg_listed=$public_ntotal_pkg_installed
 	public_pkg=
@@ -516,7 +516,7 @@ function sh_clean()
 		rm -f $VARCACHE_ARCHIVES/*
 		evaluate_retval
 		lRetval=$true
-		> $VARCACHE_SEARCH/packages-in-cache
+		printf '' > "$VARCACHE_SEARCH/packages-in-cache"
 		log_success_msg2 "${yellow}($nfiles) ${cyan}files deleted"
 	fi
 	sh_cdroot
@@ -528,9 +528,6 @@ function sh_checkdir()
 	if (( verbose >= 2 )); then
 		log_msg "Checking job directories"
 	fi
-
-	[[ -e $VARCACHE_SEARCH/packages-split ]]           || > $VARCACHE_SEARCH/packages-split
-	[[ -e $VARCACHE_SEARCH/packages-installed-split ]] || > $VARCACHE_SEARCH/packages-installed-split
 
 	if [ $# -lt 1 ]; then
 		log_info_msg "$VARCACHE_ARCHIVES" ; [[ -d $VARCACHE_ARCHIVES  ]] && evaluate_retval || { mkdir -p $VARCACHE_ARCHIVES  >/dev/null 2>&1; evaluate_retval; }
@@ -547,6 +544,9 @@ function sh_checkdir()
 		[[ -d $VARLIB_DESC        ]] || mkdir -p $VARLIB_DESC        >/dev/null 2>&1
 		[[ -d $VARLIB_REMO        ]] || mkdir -p $VARLIB_REMO        >/dev/null 2>&1
 	fi
+	[[ -e $VARCACHE_SEARCH/packages-split           ]] || printf '' > "$VARCACHE_SEARCH/packages-split"
+	[[ -e $VARCACHE_SEARCH/packages-installed-split ]] || printf '' > "$VARCACHE_SEARCH/packages-installed-split"
+
 	return $?
 }
 
@@ -561,7 +561,6 @@ function sh_updaterepo()
 		 		 "metapackages"
 		 		 "packages-split"
 		 		)
-
 	#internet?
 	sh_checknet; [[ $? = $false ]] || { return 1;}
 
@@ -578,7 +577,7 @@ function sh_updaterepo()
 	curl --silent --insecure -O ${SITE}/repo/${dw[0]} -O ${SITE}/repo/${dw[1]} -O ${SITE}/repo/${dw[2]} -O ${SITE}/repo/${dw[3]}
 	evaluate_retval
 
-#	sh_recreatefilepackagesinstalled
+	sh_recreatefilepackagesinstalled
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -606,10 +605,10 @@ function sh_update()
 	sh_backup
 
 	log_info_msg "Cleaning up $VARCACHE_SEARCH/"
-	> $VARCACHE_SEARCH/folders
-	> $VARCACHE_SEARCH/packages-split
-	> $VARCACHE_SEARCH/folders_metapackages
-	> $VARCACHE_SEARCH/metapackages
+	printf '' > "$VARCACHE_SEARCH/folders"
+	printf '' > "$VARCACHE_SEARCH/packages-split"
+	printf '' > "$VARCACHE_SEARCH/folders_metapackages"
+	printf '' > "$VARCACHE_SEARCH/metapackages"
 	evaluate_retval
 
 	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
@@ -713,7 +712,7 @@ function sh_FilesInCache()
 	aCache=($(echo *.${PRG}))
 	[ ${aCache[0]} = "*.${PRG}" ] && aCache=()
 	[[ -e $VARCACHE_SEARCH/packages-in-cache ]] || rm -f $VARCACHE_SEARCH/packages-in-cache
-	> $VARCACHE_SEARCH/packages-in-cache
+	printf '' > "$VARCACHE_SEARCH/packages-in-cache"
 	for item in ${aCache[*]}; do
     	echo $item >> $VARCACHE_SEARCH/packages-in-cache
 	done
@@ -1477,18 +1476,35 @@ function sh_listmeta()
 	log_wait_msg "${blue}Reading meta package lists in the repository..."
 	param=$1
 
-	if [ "$param" == "" ]; then
-		param=".*."
-	fi
+	#if (( $LALL )); then
+#		metapkg=$(cat $VARCACHE_SEARCH/folders_metapackages)
+#	else
+#		metapkg=$(grep $param $VARCACHE_SEARCH/folders_metapackages)
+#	fi
 
-	if [ "$param" == "all" ]; then
-		metapkg=$(cat $VARCACHE_SEARCH/folders_metapackages)
+
+	for s in ${param[@]}; do
+		cListSearch="$cListSearch $(echo ${s})"
+	done
+
+	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
+		if (( $LALL )); then
+			metapkg=$(cat $VARCACHE_SEARCH/folders_metapackages)
+		else
+			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
+			exit 1
+		fi
 	else
-		metapkg=$(grep $param $VARCACHE_SEARCH/folders_metapackages)
+		for x in ${cListSearch}; do
+			if (( $LEXACT )); then
+				metapkg="$metapkg $(grep ^$x.meta$ $VARCACHE_SEARCH/metapackages)"
+			else
+				metapkg="$metapkg $(grep $x $VARCACHE_SEARCH/folders_metapackages)"
+			fi
+		done
 	fi
 
 	[[ $(toupper "${2}") = "OFF" ]] && LLIST=$false || LLIST=$true
-
 	log_success_msg2 "${blue}Listing... Done"
 
 	if [[ $metapkg != "" ]]; then
@@ -1509,10 +1525,13 @@ function sh_listmeta()
 function sh_meta()
 {
 	local param=$@
-#	sh_checkparametros ${param}
+	local cmetafile
+	local i
+	local pkgInMeta
+
 	sh_listmeta $param
 
-	if [[ $metapkg != "" ]]; then
+	if [[ -n $metapkg ]]; then
 		if !(( $LAUTO )); then
 			echo
 			read -p "Install meta package(s)? [Y/n]" LDOWNLOAD
@@ -1523,20 +1542,19 @@ function sh_meta()
 		fi
 		cd $VARCACHE_ARCHIVES/
 
-		for x in $metapkg; do
-			local cmetafile=$x
+		for cmetafile in $metapkg; do
 			local cmetabase=$(echo $cmetafile | cut -d/ -f1)
-			local cmetapacote=$(echo $cmetafile | cut -d/ -f2)
+			local cmetapackage=$(echo $cmetafile | cut -d/ -f2)
 
 			if !(( $GITSITE )); then
 				#site normal
-            curl --silent -k -O "${SITE}/packages/$x"
+            curl --silent -k -O "${SITE}/packages/$cmetafile"
 			else
 				#repositorio github
-				curl --silent -k -O "${RAW}/packages/$x"
+				curl --silent -k -O "${RAW}/packages/$cmetafile"
 			fi
 
-			pkgInMeta=$(cat $VARCACHE_ARCHIVES/$cmetapacote)
+			pkgInMeta=$(cat $VARCACHE_ARCHIVES/$cmetapackage)
 
 			for i in $pkgInMeta; do
 				local cfile=$i
@@ -1618,7 +1636,7 @@ function sh_recreatefilepackagesinstalled()
 		log_wait_msg "Reading lists of installed packages"
 		log_wait_msg "Checking packages installed"
 	fi
-	> $VARCACHE_SEARCH/packages-installed-split &> /dev/null
+	printf '' > "$VARCACHE_SEARCH/packages-installed-split" &> /dev/null
 
 	pushd $VARLIB_DESC/ &>/dev/null
 	aCachedesc=($(echo *.desc))
@@ -1639,7 +1657,7 @@ function sh_recreatefilepackagesinstalled()
 			cline="${aPKGARRAY[0]}$SEP${aPKGARRAY[1]}$SEP${aPKGARRAY[2]}$SEP${aPKGARRAY[3]}$SEP${aPKGARRAY[4]}$SEP${aPKGARRAY[5]}$SEP${aPKGARRAY[6]}"
 			echo "${cline}" >> $VARCACHE_SEARCH/packages-installed-split
 			if ! [[ -e $VARCACHE_INSTALLED/${cfileinstalled} ]]; then
-				> $VARCACHE_INSTALLED/${cfileinstalled}
+				printf '' > "$VARCACHE_INSTALLED/${cfileinstalled}"
 				echo "$USER|$(date)|yes" >> $VARCACHE_INSTALLED/${cfileinstalled}
 			fi
 			mv $item $cfileinstalled.desc  &> /dev/null    #consertar pacotes antigos
@@ -1691,7 +1709,7 @@ function sh_listforinstall()
 	local cListSearch
 	local arr
 
-	[[ -e $VARCACHE_SEARCH/packages-installed-split ]] || > /$VARCACHE_SEARCH/packages-installed-split
+	[[ -e $VARCACHE_SEARCH/packages-installed-split ]] || printf '' > "$VARCACHE_SEARCH/packages-installed-split"
 	public_ntotal_pkg_installed=$(grep ^ $VARCACHE_SEARCH/packages-installed-split | wc -l)
 	public_ntotal_pkg_listed=$public_ntotal_pkg_installed
 	public_pkg=
@@ -2559,9 +2577,9 @@ function sh_alienpkg_exec()
 			export deps=$(cat $destdir/.PKGINFO | grep ^depend | awk -F'"' '{print $2}')
 
 			pushd $destdir	>/dev/null 2>&1
-#			rm -f $destdir/.BUILDINFO >/dev/null 2>&1
-#			rm -f $destdir/.MTREE     >/dev/null 2>&1
-#			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
+			rm -f $destdir/.BUILDINFO >/dev/null 2>&1
+			rm -f $destdir/.MTREE     >/dev/null 2>&1
+			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
 
 			((ncount++))
 			sh_createpkg $pkgtar $pkgtar -Y -F
@@ -2798,8 +2816,8 @@ ${red}  -Sw, download       ${reset}- only download the binary package into cach
 ${red}  -Sa, alienpkg       ${reset}- import package from ArchLinux
 ${red}  -Sl, local          ${reset}- install local package
 ${red}  -Sg, generate       ${reset}- generate info package from source
-${red}  -C   create         ${reset}- build package
-${red}  -m,  meta           ${reset}- install meta packages
+${red}  -C,  create         ${reset}- build package
+${red}  -Sm, meta           ${reset}- install meta packages
 ${red}  -R,  remove         ${reset}- remove packages
 ${red}  -L,  list           ${reset}- list avaiable packages based on package names
 ${red}  -La, list-avaiable  ${reset}- list avaiable packages based on package names
@@ -2822,7 +2840,7 @@ ${cyan}ex:
   fetch -Sw [<package>] [...] [--all] [--auto] [--force]
   fetch -Qi [<package>]
   fetch -c [packname-version-build]
-  fetch --meta [xorg] [--auto] [--force]
+  fetch -Sm [xorg] [--auto] [--force]
   fetch -Sa <package> [...] [--all] [--auto] [--force] [--ctime=<n>] [--keep] [--default]
 EOF
 }
@@ -2901,7 +2919,7 @@ function init()
 			-Sy|update)										shift;sh_updaterepo "${param}";exit;;
 			-Syy|refresh)									shift;sh_update "${param}";exit;;
 			-c|-C|create)					   			sh_createpkg "${param}";exit;;
-			-m|-M|meta)	     		            		shift;sh_meta "${param}";exit;;
+			-Sm|--meta|meta) 		            		shift;sh_meta "${@}";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;

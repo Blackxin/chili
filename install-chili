@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -r version="v2.1.2-20201001"
+declare -r version="v2.1.3-20220316"
 ################################################################
 #       install dialog Chili OS - $version                     #
 #								                                       #
@@ -2595,7 +2595,8 @@ function sh_liveinstall()
 
 function setkeymap()
 {
-	items=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
+#	items=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
+	items=$(localectl list-keymaps | sort -V)
 	options=()
 
 	for item in ${items}; do

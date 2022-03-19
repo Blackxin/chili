@@ -576,7 +576,6 @@ function sh_updaterepo()
 	curl --silent --insecure -O ${SITE}/repo/${dw[0]} -O ${SITE}/repo/${dw[1]} -O ${SITE}/repo/${dw[2]} -O ${SITE}/repo/${dw[3]}
 	evaluate_retval
 
-	sh_recreatefilepackagesinstalled
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -2421,10 +2420,9 @@ function sh_alienpkg_initvars()
 	unset size
 	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 	PKGS=$@
-	BUILDDIR="${PKGCORE:-${CACHEDIR}/archives}"
-	info $BUILDDIR
-	[[ -z "${BUILDDIR}" ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
-	[[ -d "${BUILDDIR}" ]] || mkdir -p "${BUILDDIR}" &> /dev/null
+	BUILDDIR="${PKGCORE:=${CACHEDIR}/archives}"
+	[[ -n ${BUILDDIR} ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
+	[[ -d ${BUILDDIR} ]] || mkdir -p "${BUILDDIR}" &> /dev/null
 }
 
 function sh_alienpkg_exec()
@@ -2802,19 +2800,19 @@ ${red}  -Sc, clean          ${reset}- erase downloaded packages files
 ${red}  -Ti, recreate       ${reset}- recreate database packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
 ${cyan}ex:
-  ${reset}fetch ${pink}-Sy${reset} self ${yellow}=> Update self fetch via internet
-  ${reset}fetch ${pink}-Sy${reset}      ${yellow}=> Update database
-  ${reset}fetch ${pink}-Syy${reset}     ${yellow}=> Force update database
-  ${reset}fetch ${pink}-S ${reset}<package> [...] [--all] [--force] [--nodeps]
-  ${reset}fetch ${pink}-R ${reset}<package> [...] [--all][--auto] [--force]
-  ${reset}fetch ${pink}-Su ${reset}[<package>] [...] [--all] [--auto] [--force]
-  ${reset}fetch ${pink}-Ss ${reset}<package> [...] [--auto] [--force] [--exact] [--nodeps]
+  ${reset}fetch ${pink}-Sy ${reset} self ${yellow}=> Update self fetch via internet
+  ${reset}fetch ${pink}-Sy ${reset}      ${yellow}=> Update database
+  ${reset}fetch ${pink}-Syy${reset}      ${yellow}=> Force update database
+  ${reset}fetch ${pink}-S  ${reset}<package> [<...>] [--all] [--noconfirm] [--force] [--nodeps]
+  ${reset}fetch ${pink}-R  ${reset}<package> [<...>] [--all] [--noconfirm] [--force]
+  ${reset}fetch ${pink}-Su ${reset}[<package>] [<...>] [--all] [--nonconfirm] [--force]
+  ${reset}fetch ${pink}-Ss ${reset}<package> [<...>] [--noconfirm] [--force] [--exact] [--nodeps]
   ${reset}fetch ${pink}-Li ${reset}[<package>] [<...>] [--all] [--exact]
-  ${reset}fetch ${pink}-Sw ${reset}[<package>] [...] [--all] [--auto] [--force]
-  ${reset}fetch ${pink}-Qi ${reset}[<package> [...]]
-  ${reset}fetch ${pink}-C ${reset}[<packname-version-build>]
-  ${reset}fetch ${pink}-Sm ${reset}<xorg> [--auto] [--force]
-  ${reset}fetch ${pink}-Sa ${reset}<package> [...] [--all] [--auto] [--force] [--ctime=<n>] [--keep] [--default]
+  ${reset}fetch ${pink}-Sw ${reset}[<package>] [<...>] [--all] [--noconfirm] [--force]
+  ${reset}fetch ${pink}-Qi ${reset}[<package> [<...>]]
+  ${reset}fetch ${pink}-C  ${reset}[<packname-version-build>]
+  ${reset}fetch ${pink}-Sm ${reset}<xorg> [--noconfirm] [--force]
+  ${reset}fetch ${pink}-Sa ${reset}<package> [<...>] [--all] [--noconfirm] [--force] [--ctime=<n>] [--keep] [--default]
 EOF
 }
 
@@ -2840,40 +2838,31 @@ function sh_parseparam()
 
 	for s in ${param[@]}
    do
-      [[ $(toupper "${s:0:7}") = "-CTIME="  ]] && { LFIND=$true; mtime="${s:7}"; continue;}
-      [[ $(toupper "${s:0:8}") = "--CTIME=" ]] && { LFIND=$true; mtime="${s:8}"; continue;}
-      [[ $(toupper "${s}") = "-DEFAULT"     ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
-      [[ $(toupper "${s}") = "--DEFAULT"    ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
-      [[ $(toupper "${s}") = "-KEEP"        ]] && { LKEEP=$true; continue; }
-      [[ $(toupper "${s}") = "--KEEP"       ]] && { LKEEP=$true; continue; }
-      [[ $(toupper "${s}") = "SELF"         ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "-SELF"        ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "--SELF"       ]] && { LSELF=$true; continue; }
-      [[ $(toupper "${s}") = "-NODEPS"      ]] && { LDEPS=$false; continue; }
-      [[ $(toupper "${s}") = "--NODEPS"     ]] && { LDEPS=$false; continue; }
-      [[ $(toupper "${s}") = "-Y"           ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "-AUTO"        ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "--AUTO"       ]] && { LAUTO=$true; continue; }
-      [[ $(toupper "${s}") = "-F"           ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "-FORCE"       ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "--FORCE"      ]] && { LFORCE=$true; continue; }
-      [[ $(toupper "${s}") = "-VV"       ]] && { verbose=2; continue; }
-      [[	$(toupper "${s}") = "-VVV"      ]] && { verbose=3; continue; }
-      [[	$(toupper "${s}") = "-Q"        ]] && { verbose=0; continue; }
-      [[ $(toupper "${s}") = "-QUIET"    ]] && { verbose=0; continue; }
-      [[ $(toupper "${s}") = "--QUIET"   ]] && { verbose=0; continue; }
-      [[ $(toupper "${s}") = "OFF"       ]] && { LLIST=$false; continue; }
-      [[ $(toupper "${s}") = "ON"        ]] && { LLIST=$true; continue; }
-      [[ $(toupper "${s}") = "-EXACT"    ]] && { LEXACT=$true; continue; }
-      [[ $(toupper "${s}") = "--EXACT"   ]] && { LEXACT=$true; continue; }
-      [[ $(toupper "${s}") = "ALL"       ]] && { LALL=$true; continue; }
-      [[ $(toupper "${s}") = "-ALL"      ]] && { LALL=$true; continue; }
-      [[ $(toupper "${s}") = "--ALL"     ]] && { LALL=$true; continue; }
-      [[ $(toupper "${s}") = "-NOCOLOR"  ]] && { unsetvarcolors;USE_COLOR='n';continue;}
-      [[ $(toupper "${s}") = "--NOCOLOR" ]] && { unsetvarcolors;USE_COLOR='n';continue;}
+      [[ $(tolower "${s:0:8}") = "--ctime=" ]] && { LFIND=$true; mtime="${s:8}"; continue;}
+      [[ $(tolower "${s}") = "--default"    ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
+      [[ $(tolower "${s}") = "--keep"       ]] && { LKEEP=$true; continue; }
+      [[ $(tolower "${s}") = "self"         ]] && { LSELF=$true; continue; }
+      [[ $(tolower "${s}") = "--self"       ]] && { LSELF=$true; continue; }
+      [[ $(tolower "${s}") = "--nodeps"     ]] && { LDEPS=$false; continue; }
+      [[ $(tolower "${s}") = "-y"           ]] && { LAUTO=$true; continue; }
+      [[ $(tolower "${s}") = "--auto"       ]] && { LAUTO=$true; continue; }
+      [[ $(tolower "${s}") = "--noconfirm"  ]] && { LAUTO=$true; continue; }
+      [[ $(tolower "${s}") = "-f"           ]] && { LFORCE=$true; continue; }
+      [[ $(tolower "${s}") = "--force"      ]] && { LFORCE=$true; continue; }
+      [[ $(tolower "${s}") = "-vv"          ]] && { verbose=2; continue; }
+      [[	$(tolower "${s}") = "-vvv"         ]] && { verbose=3; continue; }
+      [[	$(tolower "${s}") = "-q"           ]] && { verbose=0; continue; }
+      [[ $(tolower "${s}") = "--quiet"      ]] && { verbose=0; continue; }
+      [[ $(tolower "${s}") = "off"          ]] && { LLIST=$false; continue; }
+      [[ $(tolower "${s}") = "on"           ]] && { LLIST=$true; continue; }
+      [[ $(tolower "${s}") = "--exact"      ]] && { LEXACT=$true; continue; }
+      [[ $(tolower "${s}") = "all"          ]] && { LALL=$true; continue; }
+      [[ $(tolower "${s}") = "--all"        ]] && { LALL=$true; continue; }
+      [[ $(tolower "${s}") = "--nocolor"    ]] && { unsetvarcolors;USE_COLOR='n';continue;}
 		newparam="$newparam $(echo ${s})"
    done
 #  debug "$newparam"
+	log_prefix
 	init $newparam
 }
 

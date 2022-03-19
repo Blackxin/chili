@@ -64,65 +64,75 @@ verbose=1
 declare -l BAIXA=${MENSAGEM}
 declare -u ALTA=${MENSAGEM}
 
-if tput setaf 1 &> /dev/null; then
-	tput sgr0; # reset colors
-	bold=$(tput bold);
-	reset=$(tput sgr0);
-	rst=$(tput sgr0);
-	rs=$(tput sgr0);
-	blue=$(tput setaf 33);
-	cyan=$(tput setaf 37);
-#	green=$(tput setaf 64);
-	green=$(tput setaf 2);
-	orange=$(tput setaf 166);
-	purple=$(tput setaf 125);
-	red=$(tput setaf 124);
-	violet=$(tput setaf 61);
-	white=$(tput setaf 15);
-	yellow=$(tput setaf 136);
-	yellow=$(tput setaf 129);
-	black=$(tput setaf 0);
-else
-	bold='';
-	reset="\e[0m";
-	rst="\e[0m";
-	rs="\e[0m";
-	blue="\e[1;34m";
-	cyan="\e[1;36m";
-	green="\e[1;32m";
-	orange="\e[1;33m";
-	purple="\e[1;35m";
-	red="\e[1;31m";
-	violet="\e[1;35m";
-	white="\e[1;37m";
-	yellow="\e[1;33m";
-	pink="\033[35;1m";
-	black="\e[1;30m";
-fi
+function setvarcolors(){
+	if tput setaf 1 &> /dev/null; then
+		tput sgr0; # reset colors
+		bold=$(tput bold);
+		reset=$(tput sgr0);
+		rst=$(tput sgr0);
+		rs=$(tput sgr0);
+		blue=$(tput setaf 33);
+		cyan=$(tput setaf 37);
+#		green=$(tput setaf 64);
+		green=$(tput setaf 2);
+		orange=$(tput setaf 166);
+		purple=$(tput setaf 125);
+		red=$(tput setaf 124);
+		violet=$(tput setaf 61);
+		white=$(tput setaf 15);
+		yellow=$(tput setaf 136);
+		pink=$(tput setaf 129);
+		black=$(tput setaf 0);
+	else
+		bold='';
+		reset="\e[0m";
+		rst="\e[0m";
+		rs="\e[0m";
+		reset="\e[0m";
+		blue="\e[1;34m";
+		cyan="\e[1;36m";
+		green="\e[1;32m";
+		orange="\e[1;33m";
+		purple="\e[1;35m";
+		red="\e[1;31m";
+		violet="\e[1;35m";
+		white="\e[1;37m";
+		yellow="\e[1;33m";
+		pink="\033[35;1m";
+		black="\e[1;30m";
+	fi
+}
+
+
+function log_prefix()
+{
+    NORMAL="${reset}"            # Standard console grey
+    SUCCESS="${green}"           # Success is green
+    WARNING="${yellow}"          # Warnings are yellow
+    FAILURE="${red}"             # Failures are red
+    INFO="${cyan}"               # Information is light cyan
+    BRACKET="${blue}"            # Brackets are blue
+    BMPREFIX="     "
+    DOTPREFIX="  ${blue}::${reset} "
+    SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
+    FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
+    WARNING_PREFIX="${WARNING}  W  ${NORMAL}"
+    SKIP_PREFIX="${INFO}  S  ${NORMAL}"
+    SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
+    FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
+    WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
+    SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
+    WAIT_PREFIX="${WARNING}  R  ${NORMAL}"
+    WAIT_SUFFIX="${BRACKET}[${WARNING} WAIT ${BRACKET}]${NORMAL}"
+    FAILURE_PREFIX="${FAILURE}  X  ${NORMAL}"
+}
 
 #hex code
 barra=$'\x5c'
 check=$'\0xfb'
 reg=$'\0x2a'
-NORMAL="\\033[0;39m"         # Standard console grey
-SUCCESS="\\033[1;32m"        # Success is green
-WARNING="\\033[1;33m"        # Warnings are yellow
-FAILURE="\\033[1;31m"        # Failures are red
-INFO="\\033[1;36m"           # Information is light cyan
-BRACKET="\\033[1;34m"        # Brackets are blue
-BMPREFIX="     "
-DOTPREFIX="  ${blue}::${reset} "
-SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
-FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
-WARNING_PREFIX="${WARNING}  W  ${NORMAL}"
-SKIP_PREFIX="${INFO}  S  ${NORMAL}"
-SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
-FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
-WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
-SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
-WAIT_PREFIX="${WARNING}  R  ${NORMAL}"
-WAIT_SUFFIX="${BRACKET}[${WARNING} WAIT ${BRACKET}]${NORMAL}"
-FAILURE_PREFIX="${FAILURE}  X  ${NORMAL}"
+setvarcolors
+log_prefix
 BOOTLOG=/tmp/fetchlog-$USER
 KILLDELAY=3
 SCRIPT_STAT="0"
@@ -578,45 +588,6 @@ function inkey()
 function _cat()
 {
 	echo "$(<$1)"
-}
-
-function setvarcolors(){
-	if tput setaf 1 &> /dev/null; then
-		tput sgr0; # reset colors
-		bold=$(tput bold);
-		reset=$(tput sgr0);
-		rst=$(tput sgr0);
-		rs=$(tput sgr0);
-		blue=$(tput setaf 33);
-		cyan=$(tput setaf 37);
-#		green=$(tput setaf 64);
-		green=$(tput setaf 2);
-		orange=$(tput setaf 166);
-		purple=$(tput setaf 125);
-		red=$(tput setaf 124);
-		violet=$(tput setaf 61);
-		white=$(tput setaf 15);
-		yellow=$(tput setaf 136);
-		pink=$(tput setaf 129);
-		black=$(tput setaf 0);
-	else
-		bold='';
-		reset="\e[0m";
-		rst="\e[0m";
-		rs="\e[0m";
-		reset="\e[0m";
-		blue="\e[1;34m";
-		cyan="\e[1;36m";
-		green="\e[1;32m";
-		orange="\e[1;33m";
-		purple="\e[1;35m";
-		red="\e[1;31m";
-		violet="\e[1;35m";
-		white="\e[1;37m";
-		yellow="\e[1;33m";
-		pink="\033[35;1m";
-		black="\e[1;30m";
-	fi
 }
 
 function unsetvarcolors(){

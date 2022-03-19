@@ -1,0 +1,36 @@
+(B[m(B[m     Testing internet     [0G  *  [149G[  OK  ]
+     Cleaning up /var/cache/fetch/search/     [0G  *  [149G[  OK  ]
+     Updating file packages from http://localhost/repo/     [0G  *  [149G[  OK  ]
+  :: Cleaning temporary files...
+  :: All list packages updated!
+  :: (02860) packages in repository
+  :: (00150) packages installed
+
+  :: Use: # fetch --help for helping
+(B[m(B[m     Testing internet     [0G[1;32m  *  [0;39m[149G[1;34m[[1;32m  OK  [1;34m][0;39m
+     Cleaning up /var/cache/fetch/search/     [0G[1;32m  *  [0;39m[149G[1;34m[[1;32m  OK  [1;34m][0;39m
+     Updating file packages from http://localhost/repo/     [0G[1;32m  *  [0;39m[149G[1;34m[[1;32m  OK  [1;34m][0;39m
+  [38;5;33m::(B[m Cleaning temporary files...
+  [38;5;33m::(B[m All list packages updated!
+  [38;5;33m::(B[m (02860) packages in repository
+  [38;5;33m::(B[m (00150) packages installed
+
+  [38;5;33m::(B[m Use: # fetch --help for helping
+(B[m(B[m     Testing internet     [0G  *  [149G[  OK  ]
+     Cleaning up /var/cache/fetch/search/     [0G  *  [149G[  OK  ]
+     Updating file packages from http://localhost/repo/     [0G  *  [149G[  OK  ]
+  :: Cleaning temporary files...
+  :: All list packages updated!
+  :: (02860) packages in repository
+  :: (00150) packages installed
+
+  :: Use: # fetch --help for helping
+(B[m(B[m     Testing internet     [0G  *  [149G[  OK  ]
+     Cleaning up /var/cache/fetch/search/     [0G  *  [149G[  OK  ]
+     Updating file packages from http://localhost/repo/     [0G  *  [149G[  OK  ]
+  :: Cleaning temporary files...
+  :: All list packages updated!
+  :: (02860) packages in repository
+  :: (00150) packages installed
+
+  :: Use: # fetch --help for helping

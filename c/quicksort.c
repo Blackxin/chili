@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
-#define arraylenght(ARRAY) (sizeof(ARRAY)/sizeof(int*))
-#define COUNTOF(x) (sizeof(x)/sizeof(*x))
+#define sizeof_array(ARRAY) 	(sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define arraylenght(ARRAY) 	(sizeof(ARRAY)/sizeof(int*))
+#define COUNTOF(x) 				(sizeof(x)/sizeof(*x))
 
-int LenArray( char *a[])
+int LenArray(char *a[])
 {
    int nlen = 0;
    while( a[nlen] ){
@@ -42,7 +42,7 @@ int partition(int a[], int p, int r)
 	return (j + 1);
 }
 
-void quickSort(int a[], int p, int r)
+void quickSort(int *a, int p, int r)
 {
 	if (p < r) {
 		int q = partition(a, p, r);
@@ -53,13 +53,14 @@ void quickSort(int a[], int p, int r)
 
 int main()
 {
-	int a[] = { 1, 9, 3, 5, 6, 7, 8, 2, 4, 0};
+	int a[]  = { 1, 9, 3, 5, 6, 7, 8, 2, 4, 0};
+	int nlen = sizeof(a)/sizeof(a[0]);
+
 	printf("Original:\n");
 	printarray(a);
-	quickSort(a, 0, 9);
+	quickSort(a, 0, nlen);
 	printf("Reordenado:\n");
 	printarray(a);
+
 	return 0;
-
 }
-

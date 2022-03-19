@@ -10,7 +10,7 @@ trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 LFSVERSION="full-1.0"
 
 LOCALDIR=$PWD
-TEMPDIR=/chili/lfsisofull
+TEMPDIR=$LOCALDIR/lfsisofull
 ISOLINUXDIR=$LOCALDIR/livecd/isolinux
 DISTRONAME="CHILIOS"
 LABEL="ChiliOS"
@@ -20,21 +20,21 @@ DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
 #OUTPUT=chilios-$LFSVERSION-livecd-$DIAHORA.iso
 OUTPUT=live.iso
 
-isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32"
+isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img"
 
 log_wait_msg "Criando diretorio temporario..."
 #rm -fr $TEMPDIR
-mkdir -p $TEMPDIR/{filesystem,isolinux,boot,boot/grub,efi/boot}
+#mkdir -p $TEMPDIR/{filesystem,isolinux,boot,boot/grub,efi/boot}
 
 log_wait_msg "Copiando alguns necessarios arquivos..."
-for file in $isolinux_files; do
-	cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
-done
-cp /boot/grub/efiboot.img $TEMPDIR/isolinux
-cp /boot/grub/bootx64.efi $TEMPDIR/efi/boot
+#for file in $isolinux_files; do
+#	cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
+#done
+#cp /boot/grub/efiboot.img $TEMPDIR/isolinux
+#cp /boot/grub/bootx64.efi $TEMPDIR/efi/boot
 
 echo "$DISTRONAME" > $TEMPDIR/isolinux/venomlive
-[ -d livecd/virootfs ] && cp -aR livecd/virootfs $TEMPDIR
+#[ -d livecd/virootfs ] && cp -aR livecd/virootfs $TEMPDIR
 
 KERNEL=/boot/vmlinuz-$(uname -r)
 INITRD=/boot/initrd-$(uname -r).img
@@ -51,16 +51,17 @@ log_wait_msg "Copiando initrd $INITRD to $DESTINITRD..."
 #cp -f $INITRD $LFS/boot/
 #rm -f $LFS/boot/initrd
 
-#pushd $LFS/boot
+pushd $LFS/boot
 #ln -sf vmlinuz-$(uname -r) vmlinuz
 #ln -sf initrd-$(uname -r).img initrd
-#popd
+popd
 
 log_wait_msg "Criando filesystem squashfs..."
-#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs    \
-#    -ef exclude_dir                             \
-#    -b 1048576 -comp xz -Xdict-size 100%        \
-
+rm -f $TEMPDIR/filesystem/root.sfs
+#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% \
+#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1
+#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lzma
+mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lz4 -Xhc
 log_wait_msg "Excluindo .iso antigo..."
 rm -f $OUTPUT
 

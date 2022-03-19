@@ -1,3 +1,5 @@
+#!/bin/bash
+
 List="one two three"
 
 for a in $List     # Splits the variable in parts at whitespace.

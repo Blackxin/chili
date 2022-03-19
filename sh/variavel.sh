@@ -1,3 +1,5 @@
+#!/bin/bash
+
 lDisk=0
 
 if [ $lDisk -eq 0 ]

@@ -1,7 +1,0 @@
-label: dos
-label-id: 0x17b9088e
-device: /dev/sda
-unit: sectors
-sector-size: 512
-
-/dev/sda1 : start=    17100800, size=   608043008, type=83

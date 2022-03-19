@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
  # fetch - search, install, create, remove, upgrade packages compatible with:
  # ChiliOS GNU/Linux - https://github.com/vcatafesta/ChiliOS
@@ -52,17 +52,17 @@ function configure()
 	source "${SYSCONFDIR}"/fetch.conf
 
 	# default
-	export APP="fetch"
 	SEP=','
 	BAIXA=${MENSAGEM}
 	ALTA=${MENSAGEM}
 	cmdopts=()
 	PRG="${PKG_EXT:=chi.zst}"
-	SITE="${PKG_SITE:=http://chilios.com.br}"
+	SITE="${PKG_SITE:=https://chilios.com.br}"
 	GITSITE="${GITSITE:=0}"
-	RAW="${PKG_RAW:=http://10.0.0.66}"
+	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
 	AUTO_YES="${AUTO_YES:=1}"
-	VARCACHE="/var/cache/${APP}"
+	APP="fetch"
+	VARCACHE="/var/cache/fetch"
 	VARCACHE_ARCHIVES="/var/cache/${APP}/archives"
 	VARCACHE_INSTALLED="/var/cache/${APP}/installed"
 	VARCACHE_SEARCH="/var/cache/${APP}/search"
@@ -130,7 +130,7 @@ LFS_VARCACHE='fetch'
 GITDIR='/github/ChiliOS'
 PKGCORE="$GITDIR/packages/core"
 PKGDIR="$PKGCORE"
-CACHEDIR='/var/cache/fetch/'
+CACHEDIR='/var/cache/fetch'
 ALIEN_CACHE_DIR='/var/cache/pacman/pkg'
 IGNOREPKG=('glibc' 'file')
 
@@ -499,7 +499,6 @@ function sh_clean()
 	local lRetval=$false
 	local nfiles=0
 
-#	sh_checkparametros ${param}
 	if !(( $LAUTO )); then
 		printf "Pacotes a serem mantidos:\n"
       printf "      Todos os pacotes instalados localmente\n"
@@ -512,11 +511,11 @@ function sh_clean()
 	if (( $LAUTO )); then
 		log_info_msg "Deleting downloaded package files"
 		[[ -d $VARCACHE_ARCHIVES ]] || mkdir -p $VARCACHE_ARCHIVES
-		nfiles=$(ls -la $VARCACHE_ARCHIVES/|grep -e "^-"|wc -l)
+		nfiles=$(find $VARCACHE_ARCHIVES -iname "*" -type f  | wc -l)
 		rm -f $VARCACHE_ARCHIVES/*
 		evaluate_retval
 		lRetval=$true
-		printf '' > "$VARCACHE_SEARCH/packages-in-cache"
+		printf '' >| "$VARCACHE_SEARCH/packages-in-cache"
 		log_success_msg2 "${yellow}($nfiles) ${cyan}files deleted"
 	fi
 	sh_cdroot
@@ -2422,8 +2421,10 @@ function sh_alienpkg_initvars()
 	unset size
 	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 	PKGS=$@
-#	EXT="${EXT:-.pkg.tar.xz}"
-	BUILDDIR="${PKGCORE:-/lfs/arch}"
+	BUILDDIR="${PKGCORE:-${CACHEDIR}/archives}"
+	info $BUILDDIR
+	[[ -z "${BUILDDIR}" ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
+	[[ -d "${BUILDDIR}" ]] || mkdir -p "${BUILDDIR}" &> /dev/null
 }
 
 function sh_alienpkg_exec()
@@ -2449,22 +2450,7 @@ function sh_alienpkg_exec()
 #	fi
 
   	for s in ${param[@]}; do
-#	 	if [[ "${s}" == "" ]] || [[ $(toupper "${s}") = "ALL" ]] || [[ $(toupper "${s}") = "ALL OFF" ]]; then
-#			LALL=$true
-#    	elif [[ $(toupper "${s}") = "-Y" ]]; then
-#        	LAUTO=$true
-#		elif [[ $(toupper "${s}") = "-F" ]]; then
-#			LFORCE=$true
-#		elif [[ $(toupper "${s}") = "OFF" ]]; then
-#			LLIST=$false
-#		elif [[ $(toupper "${s:0:7}") = "-CTIME=" ]]; then
-#			LFIND=$true
-#			mtime=${s:7}
-#		elif [[ $(toupper "${s}") = "-KEEP" ]]; then
-#			LKEEP=$true
-#		else
-			string="$string ${s}"
-#		fi
+		string="$string ${s}"
 	done
 
 	if (( $LALL )); then
@@ -2601,9 +2587,7 @@ function sh_alienpkg_exec()
 		log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
 	fi
 	popd >/dev/null 2>&1
-	unset size
-	unset ncount
-	unset ntotalpkg
+	unset size ncount ntotalpkg
 }
 
 function sh_alienpkg_logo()
@@ -2627,7 +2611,7 @@ function sh_aliencheck()
 	do
 		firstletter=${pkg::1}
 		FilteredPackage=$(echo $pkg | sed 's/\(.*\)-/\1*/'|cut -d* -f1).chi.zst
-		destpkg="/github/ChiliOS/packages/${firstletter}/${FilteredPackage}"
+		destpkg="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
 		if [[ -e ${destpkg} ]]; then
 			echo "file exist: ${destpkg}"
 		fi
@@ -2636,18 +2620,6 @@ function sh_aliencheck()
 
 function sh_alienpkg_main()
 {
-#	if [ $# -lt 1 ]; then
-#		sh_alienpkg_logo
-#		echo
-#		echo "uso: ${0##*/} -Sa <alien-package-version>"
-#		echo "     ${0##*/} alienpkg <alien-package-version>"
-#		echo "     ${0##*/} --alienpkg <alien-package-version>"
-#		echo "     ${0##*/} -Sa --ctime=1"
-#		echo "     ${0##*/} -Sa all"
-#		echo "     ${0##*/} -Sa all -keep"
-#	   exit 1
-#	fi
-
 	sh_alienpkg_initvars $*
 	sh_alienpkg_exec $*
 }
@@ -2832,16 +2804,17 @@ ${red}  -V,  version        ${reset}- output version information and exit
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy${reset} self ${yellow}=> Update self fetch via internet
   ${reset}fetch ${pink}-Sy${reset}      ${yellow}=> Update database
-  ${reset}fetch ${pink}-S ${green}<${reset}package${green}> [${reset}...] [-y] [-f] [--nodeps]
-  fetch -R <package> [...] [--all][--auto] [--force]
-  fetch -Su [<package>] [...] [--all] [--auto] [--force]
-  fetch -Ss <package> [...] [--auto] [--force] [--exact]
-  fetch -Li [<package>] [<...>] [--all] [--exact]
-  fetch -Sw [<package>] [...] [--all] [--auto] [--force]
-  fetch -Qi [<package>]
-  fetch -c [packname-version-build]
-  fetch -Sm [xorg] [--auto] [--force]
-  fetch -Sa <package> [...] [--all] [--auto] [--force] [--ctime=<n>] [--keep] [--default]
+  ${reset}fetch ${pink}-Syy${reset}     ${yellow}=> Force update database
+  ${reset}fetch ${pink}-S ${reset}<package> [...] [--all] [--force] [--nodeps]
+  ${reset}fetch ${pink}-R ${reset}<package> [...] [--all][--auto] [--force]
+  ${reset}fetch ${pink}-Su ${reset}[<package>] [...] [--all] [--auto] [--force]
+  ${reset}fetch ${pink}-Ss ${reset}<package> [...] [--auto] [--force] [--exact] [--nodeps]
+  ${reset}fetch ${pink}-Li ${reset}[<package>] [<...>] [--all] [--exact]
+  ${reset}fetch ${pink}-Sw ${reset}[<package>] [...] [--all] [--auto] [--force]
+  ${reset}fetch ${pink}-Qi ${reset}[<package> [...]]
+  ${reset}fetch ${pink}-C ${reset}[<packname-version-build>]
+  ${reset}fetch ${pink}-Sm ${reset}<xorg> [--auto] [--force]
+  ${reset}fetch ${pink}-Sa ${reset}<package> [...] [--all] [--auto] [--force] [--ctime=<n>] [--keep] [--default]
 EOF
 }
 

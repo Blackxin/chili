@@ -1313,6 +1313,9 @@ function sh_splitpkg()
 		pkg_build="${BASH_REMATCH[4]}"
 		pkg_arch="${BASH_REMATCH[5]}"
 		pkg_base_version="${pkg_base}-${pkg_version_build}"
+
+#debug "$pkg_base \n $pkg_version_build \n $pkg_version \n $pkg_build \n $pkg_arch \n $pkg_base_version \n"
+
 : '
   debug " file            : $file\n" \
         "pkg_folder_dir  : $pkg_folder_dir\n" \

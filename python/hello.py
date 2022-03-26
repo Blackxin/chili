@@ -1,11 +1,6 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
+from flask import Flask
+app = Flask(__name__)
 
-minha_variavel="Olá"
-ok=True
-
-def teste():
-	print(minha_variavel)
-	return not ok
-
-print(teste())
+@app.route("/")
+def hello():
+    return "Hello World!"

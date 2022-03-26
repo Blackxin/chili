@@ -3,10 +3,10 @@
 #      Vilmar Catafesta 			<vcatafesta@gmail.com>      	 #
 #      license: 						MIT		                      #
 #      created: 						2020/09/20   	                #
-#      altered:                  2020/09/27	                   #
+#      altered:                  2022/03/23	                   #
 #################################################################
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v1.0.11-20222402"
+declare -r _VERSION_="v1.0.11-20220323"
 readonly DEPENDENCIES=(which lsblk cut dialog pv grep sed cat awk tput dd)
 #. /lib/lsb/init-functions
 

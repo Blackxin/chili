@@ -6,7 +6,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/03/20
+# 	Altered: 2022/03/23
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -34,8 +34,8 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.06.20.20220320"
-	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat)
+	readonly _VERSION_="2.06.23.20220323"
+	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
 	export TEXTDOMAIN='fetch-scripts'
@@ -81,6 +81,8 @@ function configure()
 	export VARLIB_REMO="/var/cache/${APP}/remove"
 	#PKG_RE='^([a-z-]+)(-)([0-9\\.]+)(-)([0-9])(-)(.*)(.chi.zst)$'
 	#PKG_RE='([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)-(([0-9]+(\.[0-9]+)*)(-([0-9]+))?)-([^.]+).*'
+	DATE_RE='(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})'   #2022-03-16 14:22
+
 	if [[ "$PKG_EXT" = "chi.zst" ]]; then
 		PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 	#SOEN
 		GREP_RE='.chi\.zst\"'
@@ -597,6 +599,12 @@ function sh_update()
 	#internet?
 	sh_checknet; [[ $? = $false ]] || { return 1;}
 
+	local response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/")
+	if [[ $response -eq 404 ]]; then
+		log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/"
+		exit 1
+	fi
+
 	pushd $VARCACHE_SEARCH/ &>/dev/null
 	sh_backup
 
@@ -605,78 +613,75 @@ function sh_update()
 	printf '' >| "$VARCACHE_SEARCH/packages-split"
 	printf '' >| "$VARCACHE_SEARCH/folders_metapackages"
 	printf '' >| "$VARCACHE_SEARCH/metapackages"
-	local HTTP_SERVER="$(string_alltrim $(curl -s -k --insecure --head --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
+	local HTTP_SERVER="$(string_alltrim $(curl --compressed -s -k --insecure --head -w '%{http_code}\n' --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
 
-#debug "${HTTP_SERVER}"
-#debug "$(string_len "${HTTP_SERVER}")"
+	#debug "${HTTP_SERVER}"
+	#debug "$(string_len "${HTTP_SERVER}")"
 	log_msg "${pink}Updating folders from ${SITE}${reset}"
 	case ${HTTP_SERVER} in
 		Apache|nginx)
-			#curl --insecure --silent --url "${SITE}/packages/"|grep "/</a" |grep '[a-z]'|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
-			#curl --insecure --silent --url "${SITE}/packages/"|sed 's/<[^>]*>//g'|cut -d/ -f1|sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/Index of//g' > ${VARCACHE_SEARCH}/folders
-			#curl --insecure --silent --url "${SITE}/packages/"|grep href|sed 's/[*<>]//g'|sed 's/[*=/"]/:/g'|cut -d: -sf3 > ${VARCACHE_SEARCH}/folders
-			curl --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' > ${VARCACHE_SEARCH}/folders
+			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' | tee ${VARCACHE_SEARCH}/folders)
 			;;
 		LiteSpeed)
-			curl --insecure --silent --url "${SITE}/packages/"|grep -o 'packages/[a-z]'|sed 's/packages\///g' > ${VARCACHE_SEARCH}/folders
+			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o 'packages\/[a-z]+'|sed 's/packages\///g' | tee ${VARCACHE_SEARCH}/folders)
 			;;
 		GitHub.com)
-			curl --insecure --silent --url "${SITE}/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' > ${VARCACHE_SEARCH}/folders
+			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' | tee ${VARCACHE_SEARCH}/folders)
 			;;
 	esac
 
+	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
 #	FoldersInRepo='arch base dev extra games lib meta net sec theme x xapp'
 #	echo "${FoldersInRepo[@]}" > ${VARCACHE_SEARCH}/folders
-	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
-	FoldersInRepo=$(cat $VARCACHE_SEARCH/folders)
+#	FoldersInRepo=$(cat $VARCACHE_SEARCH/folders)
 	#spinner & SPINNERPID=$!
 	local Folders
 
 	for Folders in ${FoldersInRepo}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
+		response=$(curl --compressed --insecure -s -w "%{http_code}\n" -k --url "${SITE}/packages/${Folders}/" --output $FOLDER_TEMP)
 		case ${HTTP_SERVER} in
 			Apache|nginx)
-				#site normal
-	#			PackagesInFolders=$(curl -k --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | grep ".${PRG}$" | awk '{print $1}')
-	#		   PackagesInFolders=($(grep -E -o '>[^"]*.'${PKG_EXT} $FOLDER_TEMP| sed 's/>//g'| sort -u))
-	#		   PackagesInFolders=($(grep -oP '>\K.*\.chi.zst(?=<)' $FOLDER_TEMP))
-	#		   PackagesInFolders=($(sed 's/<[^>]*>//g;s/ .*//;/.desc/d' $FOLDER_TEMP))
-				response=$(curl -s -w "%{http_code}\n" -k --url "${SITE}/packages/${Folders}/" --output $FOLDER_TEMP)
-			   PackagesInFolders=($(grep -E -o '>'$PKG_RE'<' $FOLDER_TEMP | sed 's/>//g; s/<//g'))
-	#			MetaPkgInFolders=$(curl -k --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | grep ".meta$" | awk '{print $1}')
-				MetaPkgInFolders=($(grep '.meta\"' $FOLDER_TEMP | cut -d'"' -f2 ))
-				SizePkgInFolders=($(grep $GREP_RE $FOLDER_TEMP | awk '{print $5}' ))
+				if [[ $Folders != "meta" ]]; then
+				   PackagesInFolders=($(grep -E -o '>'$PKG_RE'<' $FOLDER_TEMP | sed 's/>//g; s/<//g'))
+				else
+					MetaPkgInFolders=($(grep -E '.meta\"' $FOLDER_TEMP | cut -d'"' -f2 ))
+				fi
+				SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $5}' ))
 				;;
-			LiteSpeed)
-				PackagesInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".${PRG}$"| awk '{print $NF}')
-				MetaPkgInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/" |sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".meta$" | awk '{print $NF}')
-				;;
-			GitHub.com)
-				#repositorio github
-				PackagesInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".${PRG}$"| awk '{print $NF}')
-				MetaPkgInFolders=$(curl --insecure --silent --url "${SITE}/packages/${Folders}/" |sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".meta$" | awk '{print $NF}')
+			LiteSpeed|GitHub.com)
+				if [[ $Folders != "meta" ]]; then
+#					PackagesInFolders=$(curl --compressed --insecure --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".${PRG}$"| awk '{print $NF}')
+					PackagesInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".${PRG}$"| awk '{print $NF}')
+				else
+#					MetaPkgInFolders=$(curl --compressed --insecure --silent --url "${SITE}/packages/${Folders}/" |sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".meta$" | awk '{print $NF}')
+					MetaPkgInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".meta$" | awk '{print $NF}')
+					SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $9}'))
+				fi
 				;;
 		esac
 
 		local count=0
-		for pkgInFolder in ${PackagesInFolders[@]}; do
-			sh_splitpkg ${pkgInFolder}
-			pkg_size=${SizePkgInFolders[$count]}
-			echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $VARCACHE_SEARCH/packages-split
-			((count++))
-		done
-		for MetaInFolder in ${MetaPkgInFolders[@]}; do
-			echo "${Folders}/${MetaInFolder}" >> folders_metapackages
-			echo "${MetaInFolder}"            >> metapackages
-			((count++))
-		done
-
+		if [[ $Folders != "meta" ]]; then
+			for pkgInFolder in ${PackagesInFolders[@]}; do
+				sh_splitpkg ${pkgInFolder}
+				pkg_size=${SizePkgInFolders[$count]}
+				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $VARCACHE_SEARCH/packages-split
+				((count++))
+			done
+		else
+			for MetaInFolder in ${MetaPkgInFolders[@]}; do
+				echo "${Folders}/${MetaInFolder}" >> folders_metapackages
+				echo "${MetaInFolder}"            >> metapackages
+				((count++))
+			done
+		fi
 		cstrvalue=$(strzero ${count} 5)
 		log_success_msg2 "  Updating... (${blue}${cstrvalue}${reset}) packages in ${Folders}"
 	done
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
-	sh_recreatefilepackagesinstalled
+#	sh_recreatefilepackagesinstalled
 	sh_cleaning
 	unset FOLDER_TEMP
 

@@ -656,8 +656,8 @@ function sh_update()
 				else
 #					MetaPkgInFolders=$(curl --compressed --insecure --silent --url "${SITE}/packages/${Folders}/" |sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".meta$" | awk '{print $NF}')
 					MetaPkgInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".meta$" | awk '{print $NF}')
-					SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $9}'))
 				fi
+				SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $9}' | cut -d'"' -f2))
 				;;
 		esac
 
@@ -2419,6 +2419,7 @@ function sh_alienpkg_exec()
 	else
   		for str in ${string[@]}; do
 			if !(( $LFIND )); then
+#				files=$(find $ALIEN_CACHE_DIR/$str*.{zst,xz} -type f )
 				files=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz} | grep $str)
 				pkg="$pkg $(echo $files | grep $str)"
 			else

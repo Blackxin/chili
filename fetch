@@ -6,7 +6,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/03/23
+# 	Altered: 2022/03/26
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -34,7 +34,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.06.23.20220323"
+	readonly _VERSION_="2.06.43.20220326"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -566,6 +566,12 @@ function sh_updaterepo()
 	#internet?
 	sh_checknet; [[ $? = $false ]] || { return 1;}
 
+	local response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/repo/")
+	if [[ $response -eq 404 ]]; then
+		log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/repo/"
+		exit 1
+	fi
+
 	pushd $VARCACHE_SEARCH/ &>/dev/null
 	sh_backup
 
@@ -681,7 +687,7 @@ function sh_update()
 	done
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
-#	sh_recreatefilepackagesinstalled
+	sh_recreatefilepackagesinstalled
 	sh_cleaning
 	unset FOLDER_TEMP
 

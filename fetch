@@ -6,7 +6,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/03/26
+# 	Altered: 2022/03/28
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -34,7 +34,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.06.43.20220326"
+	readonly _VERSION_="2.06.49.20220328"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -122,11 +122,11 @@ AUTO_YES='1'
 MAINTAINER='Vilmar Catafesta <vcatafesta@gmail.com>'
 GPG_SIGN='0'
 CREATE_SHA256='0'
-DESC_BUILD='2'
+DESC_BUILD='1'
 REWRITE_SIG='1'
-URL='http://www.linuxfromscratch.org/lfs/view/systemd/'
+URL='https://www.linuxfromscratch.org/lfs/view/stable/'
 LICENSE='GPL2'
-LFS_VERSION='11.0'
+LFS_VERSION='11.1'
 LFS_INIT='SYSTEMD'
 ARCH='x86_64'
 DISTRO='chili'
@@ -1598,10 +1598,12 @@ function sh_recreatefilepackagesinstalled()
 		log_wait_msg "Reading lists of installed packages"
 		log_wait_msg "Checking installed packages"
 	fi
-	printf '' > "$VARCACHE_SEARCH/packages-installed-split" &> /dev/null
+	printf '' >| "$VARCACHE_SEARCH/packages-installed-split" &> /dev/null
 
-	pushd $VARLIB_DESC/ &>/dev/null
-	aCachedesc=($(echo *.desc))
+#	pushd $VARLIB_DESC/ &>/dev/null
+	pushd $VARLIB_LIST/ &>/dev/null
+#	aCachedesc=($(echo *.desc))
+	aCachedesc=($(echo *.list))
 	local nfilesinstalled=${#aCachedesc[*]}
 
 	if (( nfilesinstalled )); then
@@ -1609,7 +1611,8 @@ function sh_recreatefilepackagesinstalled()
 			sh_cabec $nfilesinstalled
 		fi
 		for item in ${aCachedesc[*]}; do
-			cfileinstalled=$(echo ${item%.desc*})
+#			cfileinstalled=$(echo ${item%.desc*})
+			cfileinstalled=$(echo ${item%.list*})
 			cfileinstalled=$(echo ${cfileinstalled%.${PRG}*})
 			(( pkgNumber++ ))
 			if (( verbose >= 2 )); then
@@ -1622,7 +1625,8 @@ function sh_recreatefilepackagesinstalled()
 				printf '' > "$VARCACHE_INSTALLED/${cfileinstalled}"
 				echo "$USER|$(date)|yes" >> $VARCACHE_INSTALLED/${cfileinstalled}
 			fi
-			mv $item $cfileinstalled.desc  &> /dev/null    #consertar pacotes antigos
+#			mv $item $cfileinstalled.desc  &> /dev/null    #consertar pacotes antigos
+			mv $item $cfileinstalled.list  &> /dev/null    #consertar pacotes antigos
 		done
 	fi
 	cat $VARCACHE_SEARCH/packages-installed-split|sort|uniq >/tmp/packages-installed-split
@@ -1870,7 +1874,7 @@ function _CREATE_LIST()
 {
 	local packname="$1"
 
-	if ! tar --force-local --list --file "$packname" > "${VARLIB_LIST}/${name_version_build}.list"; then
+	if ! tar	--use-compress-program=zstd --force-local --list --file "$packname" > "${VARLIB_LIST}/${name_version_build}.list"; then
 		log_failure_msg2 "ERROR! Can not create ${VARLIB_LIST}/${name_version_build}.list"
 		return 1
 	fi
@@ -1959,9 +1963,8 @@ function sh_generatepkg()
 
 	if [[ ${#param} -eq 0 ]]; then # run standalone
 		LAUTO=$true
-#		LFORCE=$true
 		LLIST=$false
-		pkg="${PWD##*/}"
+		pkg="${PWD##*/}.${PRG}"
 	else
 		for s in ${param[@]}; do
 			if [[ $(toupper "${s}") = "-Y" ]]; then
@@ -2418,18 +2421,21 @@ function sh_alienpkg_exec()
 
 	if (( $LALL )); then
 		if !(( $LFIND )); then
-			pkg=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz})
+#			pkg=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz})
+			pkg=$(find $ALIEN_CACHE_DIR/ -regex ".+\.zst$" -type f)
+		   pkg="$pkg $(find $ALIEN_CACHE_DIR/ -regex ".+\.xz$" -type f)"
 		else
-			pkg=$(find $ALIEN_CACHE_DIR/ -type f -ctime $mtime)
+			pkg=$(find $ALIEN_CACHE_DIR/ -regex ".+\.zst$" -type f -mtime $mtime)
+		   pkg="$pkg $(find $ALIEN_CACHE_DIR/ -regex ".+\.xz$" -type f -mtime $mtime)"
 		fi
 	else
   		for str in ${string[@]}; do
 			if !(( $LFIND )); then
-#				files=$(find $ALIEN_CACHE_DIR/$str*.{zst,xz} -type f )
 				files=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz} | grep $str)
 				pkg="$pkg $(echo $files | grep $str)"
 			else
-				files=$(find $ALIEN_CACHE_DIR/*.{zst,xz} -type f -ctime $mtime | grep $str)
+				files=$(find $ALIEN_CACHE_DIR/ -regex ".+\.zst$" -type f -mtime $mtime | grep $str)
+				files="$files $(find $ALIEN_CACHE_DIR/ -regex ".+\.xz$" -type f -mtime $mtime | grep $str)"
 				pkg="$pkg $(echo $files | grep $str)"
 			fi
 		done
@@ -2481,7 +2487,7 @@ function sh_alienpkg_exec()
 
 			((ncount++))
 			log_info_msg "$(fmt) Unpacking package $package at $destdir"
-			tar --force-local --extract --file $package -C $destdir >/dev/null 2>&1
+			tar --use-compress-program=zstd --force-local --extract --file $package -C $destdir >/dev/null 2>&1
 			evaluate_retval
 
 			case $packagedir in
@@ -2783,7 +2789,7 @@ ${cyan}ex:
   ${reset}fetch ${pink}-Qi ${reset}[<package> [<...>]]
   ${reset}fetch ${pink}-C  ${reset}[<packname-version-build>]
   ${reset}fetch ${pink}-Sm ${reset}<xorg> [--noconfirm] [--force]
-  ${reset}fetch ${pink}-Sa ${reset}<package> [<...>] [--all] [--noconfirm] [--force] [--ctime=<n>] [--keep] [--default]
+  ${reset}fetch ${pink}-Sa ${reset}<package> [<...>] [--all] [--noconfirm] [--force] [--mtime=<n>] [--keep] [--default]
 EOF
 }
 
@@ -2810,7 +2816,7 @@ function sh_parseparam()
 
 	for s in ${param[@]}
    do
-      [[ $(tolower "${s:0:8}") = "--ctime=" ]] && { LFIND=$true; mtime="${s:8}"; continue;}
+      [[ $(tolower "${s:0:8}") = "--mtime=" ]] && { LFIND=$true; mtime="${s:8}"; continue;}
       [[ $(tolower "${s}") = "--default"    ]] && { LFIND=$true; LKEEP=$true; LALL=$true; continue; }
       [[ $(tolower "${s}") = "--keep"       ]] && { LKEEP=$true; continue; }
       [[ $(tolower "${s}") = "self"         ]] && { LSELF=$true; continue; }

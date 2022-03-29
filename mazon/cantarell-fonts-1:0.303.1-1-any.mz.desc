@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='cantarell-fonts'
+version='1:0.303.1-1'
+build='1'
+license='custom:SIL'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='any'
+distro='chili'
+desc='Humanist sans serif font'
+size='194209'
+url='https://gitlab.gnome.org/GNOME/cantarell-fonts'
+dep=('')

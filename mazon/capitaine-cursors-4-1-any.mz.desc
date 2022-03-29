@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='capitaine-cursors'
+version='4-1'
+build='1'
+license='LGPL3'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='any'
+distro='chili'
+desc='An x-cursor theme inspired by macOS and based on KDE Breeze'
+size='42713208'
+url='https://github.com/keeferrourke/capitaine-cursors'
+dep=('')

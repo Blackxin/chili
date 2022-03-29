@@ -1,0 +1,22 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='fakeroot'
+version='1.28-1'
+build='1'
+license='GPL'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='mazon'
+desc='Tool for simulating superuser privileges'
+size='137480'
+url='https://tracker.debian.org/pkg/fakeroot'
+dep=('')
+depend='glibc'
+depend='filesystem'
+depend='sed'
+depend='util-linux'
+depend='sh'

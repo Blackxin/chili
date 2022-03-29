@@ -1,0 +1,18 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='nano'
+version='6.2-1'
+build='1'
+license='GPL2'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='mazon'
+desc='GNU nano was designed to be a free replacement for the Pico text editor, part of the Pine email suite from The University of Washington. It 
+aimed to emulate Pico as closely as is reasonable and then include extra functionality.'
+size=''
+url='https://www.nano-editor.org/'
+dep=('')

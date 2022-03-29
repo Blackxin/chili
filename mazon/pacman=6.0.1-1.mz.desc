@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='pacman'
+version='6.0.1-1'
+build='1'
+license='GPL2'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='mazon'
+desc='pacman'
+size=''
+url='http://www.linuxfromscratch.org/lfs/view/systemd/'
+dep=('')

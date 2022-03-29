@@ -1,0 +1,20 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='tar'
+version='1.34-1'
+build='1'
+license='GPL2'
+lfs_version='11.1'
+lfs_init='INITD'
+arch='x86_64'
+distro='mazon'
+desc='tar-1.34-1'
+size=''
+url='https://www.linuxfromscratch.org/lfs/view/stable/'
+dep=('')
+depend='acl'
+depend='attr'
+depend='glibc'

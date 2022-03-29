@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='util-linux'
+version='2.38-1'
+build='1'
+license='GPL2'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='mazon'
+desc='The Util-linux package contains miscellaneous utility programs. Among them are utilities for handling file systems, consoles, partitions, and messages.'
+size=''
+url='https://github.com/util-linux/util-linux'
+dep=('')

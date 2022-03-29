@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='ttf-inconsolata'
+version='1:3.000-3'
+build='3'
+license='custom:OFL'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='any'
+distro='chili'
+desc='Monospace font for pretty code listings and for the terminal'
+size='8155607'
+url='https://www.google.com/fonts/specimen/Inconsolata'
+dep=('')

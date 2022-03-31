@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -r version="v2.1.3-20220316"
+declare -r version="v2.2.0-20220330"
 ################################################################
 #       install dialog Chili OS - $version                     #
 #								                                       #
@@ -46,10 +46,11 @@ true=0
 TRUE=0
 OK=0
 ok=0
+
+false=1
 NOK=1
 nok=1
 FALSE=1
-false=1
 falso=1
 CANCEL=1
 ESC=255
@@ -151,7 +152,7 @@ cfstab=$dir_install"/etc/fstab"
 # flag para disco/particao/formatacao/montagem
 : ${LDISK=0}
 : ${LPARTITION=0}
-: ${LFORMAT=0}
+: ${LFORMAT=1}
 : ${LMOUNT=0}
 : ${TARSUCCESS=$false}
 : ${STANDALONE=$false}
@@ -168,6 +169,13 @@ cfstab=$dir_install"/etc/fstab"
 : ${cuser=""}
 : ${cpass=""}
 : ${cgroups="wheel,audio,video"}
+
+# choosedisk
+: ${devices=()}
+: ${disks=()}
+: ${size=()}
+: ${model=()}
+: ${tran=()}
 
 wiki=$(cat << _WIKI
 Wiki
@@ -230,6 +238,39 @@ _WIKI
 )
 
 # lib functions script
+
+function sh_disk()
+{
+#  disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
+#         $(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
+   disks=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+}
+
+function sh_disk_device()
+{
+#  devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
+#         $(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
+   devices=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+}
+
+function sh_disk_size()
+{
+#  size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
+#        $(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
+   size=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+}
+
+function sh_disk_model()
+{
+#  model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+   model=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+}
+
+function sh_disk_tran()   #tipo de dispositivo de transporte
+{
+   tran=($(lsblk -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+}
+
 function police()
 {
     echo "................_@@@__"
@@ -459,9 +500,19 @@ function alerta()
 function info()
 {
 	dialog 			 					\
-            --beep                      \
+         --beep                  \
 			--title 	"$cmsg002"		\
-			--backtitle	"$ccabec"		\
+			--backtitle	"$ccabec"	\
+			--msgbox 	"$*" 			\
+			10 60
+}
+
+function debug()
+{
+	dialog 			 					\
+         --beep                  \
+			--title 	"$cmsg002"		\
+			--backtitle	"$ccabec"	\
 			--msgbox 	"$*" 			\
 			10 60
 }
@@ -1261,7 +1312,7 @@ function sh_check_install()
 			return 1
 		fi
 	fi
-	if [ $LFORMAT -eq 0 ]; then
+	if [ $LFORMAT -eq $false ]; then
 		sh_format
 		if [ $? = $false ]; then
 			LPARTITION=0
@@ -1530,9 +1581,9 @@ function sh_partnewbie()
 	fi
 
 	#flock $sd sfdisk --delete --force $sd  > /dev/null 2>&1
-#	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
-#	| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
-#	udevadm settle > /dev/null 2>&1
+	#echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
+	#| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
+	#udevadm settle > /dev/null 2>&1
 
 	parted --script $sd -- \
 	mklabel gpt					\
@@ -1546,13 +1597,161 @@ function sh_partnewbie()
 	LDISK=1
 
 	if [ $LAUTOMATICA = $true ]; then
-		part=$sd"4"
+		if [ $TRAN_ORIGEM = "nvme" ]; then
+			part=$sd"p4"
+		else
+			part=$sd"4"
+		fi
 		LPARTITION=1
 	fi
 	return $?
 }
 
 function choosedisk()
+{
+	while true
+	do
+		# Choose disk to be parted
+		################################################################
+		#lsblk -a -n -P -o NAME,SIZE,MODEL,TYPE | grep disk
+
+		sh_disk
+		sh_disk_device
+		sh_disk_size
+		sh_disk_model
+		sh_disk_tran
+
+    	LDISK=0
+		local xmsg=$cdisco
+		local array=()
+#		local devices=()
+		local i=0
+		local x=0
+		local y=0
+		for i in ${devices[@]}
+		do
+#			devices[((n++))]="/dev/$i"
+			array[((n++))]="$i"
+			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+		done
+
+    	sd=$(dialog 		 																			\
+    				--title 			"$xmsg"								  							\
+    				--backtitle	 	"$ccabec"				 									\
+    				--cancel-label "$buttonback"													\
+    				--colors																				\
+	            --extra-button                                                    \
+               --extra-label  "$buttonpart"                                      \
+    				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
+
+    	exit_status=$?
+    	case $exit_status in
+    		$ESC)
+                if [ $LAUTOMATICA = $true ]; then
+                    return 1
+                fi
+    			init
+    			;;
+    		$CANCEL)
+               if [ $LAUTOMATICA = $true ]; then
+                    return 1
+                fi
+    			init
+    			;;
+         3)
+            local result=$( fdisk -l $sd );
+            display_result "$result" "$csmg013" "$cmsg_part_disk"
+            continue
+            ;;
+    	esac
+
+    	if [ "$1" = "SEE" ] ; then
+    		local result=$( fdisk -l $sd )
+    		display_result "$result" "$csmg013" "$cmsg_part_disk"
+    		continue
+    	fi
+
+		if [ "$1" = "GRUB" ] ; then
+      	LDISK=1
+         return 0
+      fi
+
+    	if [ $sd != "" ]; then
+			{	local item
+            index=0
+            for item in ${devices[*]}
+            do
+            	[ $item = $sd ] && { break; }
+               ((index++))
+            done
+			}
+			DEVICE_ORIGEM="${disks[index]}"
+			MODEL_ORIGEM="$sd [${size[index]}] [${model[index]}]"
+			TRAN_ORIGEM="${tran[index]}"
+			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
+
+			if [ $LAUTOMATICA = $true ]; then
+         	return 0
+         fi
+
+        typefmt=$(dialog                                                \
+            --stdout                                        \
+            --title        "$xmsg: $sd [${modelo[index]}]"              \
+            --cancel-label "$buttonback"                       \
+            --menu         "\n$cmsg010"                        \
+            0 0 0                                           \
+            "$cexpert"     "$cmsg011"                          \
+            "$cnewbie"        "$cmsg013"                             )
+
+	    	exit_status=$?
+	    	case $exit_status in
+	    		$ESC)
+					if [ $LAUTOMATICA = $true ]; then
+	            	return 1
+	            fi
+	    			init
+	    			;;
+	    		$CANCEL)
+	            if [ $LAUTOMATICA = $true ]; then
+	            	return 1
+	            fi
+	    			init
+	    			;;
+			esac
+
+			case "$typefmt" in
+         	$cexpert)
+            	sh_checksimple
+               cfdisk $sd
+               LDISK=1
+               local result=$( fdisk -l $sd )
+               display_result "$result" "$cmsg011"
+               ;;
+
+               $cnewbie)
+                  sh_checkdisk
+                  local nmontada=$?
+                  if [ $nmontada = 1 ]; then
+                     alerta "CHOOSEDISK" "$cmsg_nec_dismount"
+                     choosedisk
+                  fi
+                  conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
+                  local nb=$?
+                  case $nb in
+                     $D_OK)
+                         sh_partnewbie
+                         local result=$( fdisk -l $sd )
+                         display_result "$result" "$csmg013"
+                        ;;
+                  esac
+                  ;;
+            esac
+    	fi
+    	break
+    done
+}
+
+function choosediskOLD()
 {
     while true
     do
@@ -1775,12 +1974,10 @@ function choosepartition()
 
 function sh_mkswap()
 {
-	local result=$(fdisk $sd -l | grep swap | cut -c1-11)
-	xPARTSWAP=$result
-
-	if [ "$result" != "" ] ; then
+	xPARTSWAP=$(blkid | grep /dev/nvme0n1 --color=auto | grep -E 'SWAP|swap' --color=auto | cut -d: -f1)
+	if [ "$xPARTSWAP" != "" ] ; then
 		mensagem "$cmsg_Formatando_particao swap"
-		xUUIDSWAP=$(mkswap $result | grep UUID | awk '{print $3 }')
+		xUUIDSWAP=$(mkswap $xPARTSWAP | grep UUID | awk '{print $3 }')
 	fi
 }
 
@@ -1791,11 +1988,7 @@ function sh_domkfs()
 	mensagem "$cmsg_Formatando_particao: $part"
 	mkfs -t ext4 -L "$xLABEL" $part > /dev/null 2>&1
 	local nchoice=$?
-	if [ $nchoice = $true ]; then
-		LFORMAT=1
-	else
-		LFORMAT=0
-	fi
+	LFORMAT=$nchoice
 	return $nchoice
 }
 
@@ -1806,23 +1999,23 @@ function sh_format()
 	local format=1
 
 	if [ $nmontada = 0 ] ; then
-		LFORMAT=0
+		LFORMAT=$false
 		conf " *** FORMAT *** " "\n   $cmsgTodos_os_dados_serao_perdidos \n\n   $cmsg021 $part ?"
 		format=$?
-		if [ $format = 0 ] ; then
+		if [ $format = $true ] ; then
 			sh_domkfs
 			local nfmt=$?
 			if [ $nfmt = 0 ] ; then
 				sh_mkswap
 				alerta "MKFS" "$cmsg_mkfs_ok"
-				LFORMAT=1
+				LFORMAT=$true
 			else
 				alerta "MKFS" "$cmsg_mkfs_error."
-				LFORMAT=0
+				LFORMAT=$false
 				return 1
 			fi
 		else
-			LFORMAT=0
+			LFORMAT=$false
 		fi
 	fi
 	return $format
@@ -1874,6 +2067,7 @@ function pt_BR()
 	lang="pt_BR"
 	cmsgSetKeyboardLayout="Definir layout do teclado"
 	buttonback="Voltar"
+	buttonpart="Info disco"
 	cmsg000="Sair"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
@@ -2015,6 +2209,7 @@ function en_US()
 	lang="en_US"
 	cmsgSetKeyboardLayout="Set keyboard layout"
 	buttonback="Back"
+   buttonpart="Disk Info"
 	cmsg000="Exit"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
@@ -2322,7 +2517,7 @@ function zeravar()
 	part=""
 	LDISK=0
 	LPARTITION=0
-	LFORMAT=0
+	LFORMAT=$false
 	LMOUNT=0
 	LAUTOMATICA=$false
 }
@@ -2519,7 +2714,7 @@ function sh_liveinstall()
 	if [ $nChoice = $false ]; then
 		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
-		sh_tools
+		init
 	fi
 
 	mbr=$(dialog --radiolist 'Instalacao do GRUB:'      \

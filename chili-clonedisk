@@ -7,7 +7,10 @@
 #################################################################
 declare -r _APP_="chili-clonedisk"
 declare -r _VERSION_="v2.0.1-20220330"
-readonly DEPENDENCIES=(which lsblk cut dialog pv grep sed cat awk tput dd)
+readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
+
+#DIALOG=${DIALOG:-"whiptail"}
+DIALOG=${DIALOG:-"dialog"}
 
 # flag dialog exit status codes
 : ${D_OK=0}
@@ -1090,8 +1093,8 @@ EOF
 
 function sh_display()
 {
-   if [ $(tput cols) -lt 80 ] || [ $(tput lines) -lt 24; then
-      dialog --backtitle "$ccabec"          \
+   if [ $(tput cols) -lt 2180 ] || [ $(tput lines) -lt 24; then
+      ${DIALOG} --backtitle "$ccabec"          \
       --title "TERMINAL TOO SMALL" \
       --msgbox "\n\
 Before you continue, re-size your terminal\nso it measures at least 80 x 24 characters.\n\

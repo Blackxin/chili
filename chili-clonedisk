@@ -1088,11 +1088,23 @@ EOF
    sh_version
 }
 
+function sh_display()
+{
+   if [ $(tput cols) -lt 80 ] || [ $(tput lines) -lt 24; then
+      dialog --backtitle "$ccabec"          \
+      --title "TERMINAL TOO SMALL" \
+      --msgbox "\n\
+Before you continue, re-size your terminal\nso it measures at least 80 x 24 characters.\n\
+Otherwise you will not to able to use disk partition tools." 11 68
+	fi
+}
+
 # entrypoint - configuracao inicial
 setvarcolors
 en_US
 sh_checkroot
 checkDependencies
+sh_display
 if [[ $1 = "-v" ]] || [[ $1 = "--version" ]] || [[ $1 = "-V" ]]; then
    logo
    exit 0

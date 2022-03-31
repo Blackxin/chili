@@ -103,6 +103,12 @@ function setvarcolors(){
 	fi
 }
 
+function police()
+{
+    echo "................_@@@__"
+    echo "..... ___//___?____\________"
+    echo "...../--o--POLICE------@} ...."
+}
 
 function log_prefix()
 {

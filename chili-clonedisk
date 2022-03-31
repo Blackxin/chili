@@ -1093,7 +1093,7 @@ EOF
 
 function sh_display()
 {
-   if [ $(tput cols) -lt 2180 ] || [ $(tput lines) -lt 24; then
+   if [ $(tput cols) -lt 80 ] || [ $(tput lines) -lt 24; then
       ${DIALOG} --backtitle "$ccabec"          \
       --title "TERMINAL TOO SMALL" \
       --msgbox "\n\

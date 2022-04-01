@@ -1,0 +1,22 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='zstd'
+version='1.5.2-1'
+build='1'
+license=(BSD GPL2)
+lfs_version='11.1'
+lfs_init='INITD'
+arch='x86_64'
+distro='mazon'
+desc='Zstandard - Fast real-time compression algorithm'
+size=''
+url='https://facebook.github.io/zstd/'
+dep=('')
+depend='glibc'
+depend='gcc-libs'
+depend='zlib'
+depend='xz'
+depend='lz4'

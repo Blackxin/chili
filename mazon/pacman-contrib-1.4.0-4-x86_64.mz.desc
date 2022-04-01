@@ -1,0 +1,20 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='pacman-contrib'
+version='1.4.0-4'
+build='4'
+license='GPL'
+lfs_version='11.0'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='chili'
+desc='Contributed scripts and tools for pacman systems'
+size='106039'
+url='https://gitlab.archlinux.org/pacman/pacman-contrib'
+dep=('')
+depend='fakeroot'
+depend='pacman'
+depend='perl'

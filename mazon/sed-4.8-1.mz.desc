@@ -1,0 +1,17 @@
+######################################################################
+# Generated with fetch
+# Generated with alienpkg
+######################################################################
+maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
+pkgname='sed'
+version='4.8-1'
+build='1'
+license='GPL2'
+lfs_version='11.1'
+lfs_init='SYSTEMD'
+arch='x86_64'
+distro='mazon'
+desc='The Sed package contains a stream editor'
+size=''
+url='http://www.linuxfromscratch.org/lfs/view/systemd/'
+dep=('')

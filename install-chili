@@ -1,15 +1,15 @@
 #!/bin/bash
-declare -r version="v2.1.3-20220316"
+declare -r version="v2.2.4-20220330"
 ################################################################
 #       install dialog Chili OS - $version                     #
 #								                                       #
 #      Vilmar Catafesta 	<vcatafesta@gmail.com>	  			   #
 #      license: 				MIT           								#
 #      created: 				2019/02/15	   		               #
-#      altered: 				2020/25/09	   			            #
+#      altered: 				2022/03/30	   			            #
 ################################################################
-#. /lib/lsb/init-functions
 readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptail)
+
 # flag dialog exit status codes
 : ${D_OK=0}
 : ${D_CANCEL=1}
@@ -19,13 +19,16 @@ readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptai
 : ${D_ESC=255}
 
 #SQFS
-#export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
-#export MEDIUM=/lib/initramfs/system
-#export LIVE=/lib/initramfs/medium/isolinux/venomlive
-export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-export MEDIUM=/run/archiso/airootfs
-export LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-
+LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+if [[ -e $LIVE ]]; then
+	export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+	export MEDIUM=/run/archiso/airootfs
+	export LIVE
+else
+	export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
+	export MEDIUM=/lib/initramfs/system
+	export LIVE=/lib/initramfs/medium/isolinux/venomlive
+fi
 #mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 
 #Downloader
@@ -46,10 +49,10 @@ true=0
 TRUE=0
 OK=0
 ok=0
+false=1
 NOK=1
 nok=1
 FALSE=1
-false=1
 falso=1
 CANCEL=1
 ESC=255
@@ -119,12 +122,12 @@ if [ "${xdistro}" = "mazonos" ]; then
 else
     cdistro="ChiliOS"
     # servidor local
-    chost="locahost"
-    ptcom=""
+    chost="chilios"
+    ptcom=".com.br"
     oldspkg="/"
     calias="chili"
     cnick="chili"
-    xemail="vcatafesta@gmail.com"
+    xemail="root@$chost$ptcom"
 fi
 
 # variavel comuns
@@ -151,7 +154,7 @@ cfstab=$dir_install"/etc/fstab"
 # flag para disco/particao/formatacao/montagem
 : ${LDISK=0}
 : ${LPARTITION=0}
-: ${LFORMAT=0}
+: ${LFORMAT=1}
 : ${LMOUNT=0}
 : ${TARSUCCESS=$false}
 : ${STANDALONE=$false}
@@ -165,9 +168,24 @@ cfstab=$dir_install"/etc/fstab"
 : ${xLABEL=$cdistro}
 
 # usuario/senha/hostmame/group
-: ${cuser=""}
-: ${cpass=""}
+: ${cuser="live"}
+: ${cpass="live"}
 : ${cgroups="wheel,audio,video"}
+
+# choosedisk
+: ${ARRAY_DSK_DEVICES=()}
+: ${ARRAY_DSK_DISKS=()}
+: ${ARRAY_DSK_SIZE=()}
+: ${ARRAY_DSK_MODEL=()}
+: ${ARRAY_DSK_TRAN=()}
+: ${ARRAY_DSK_LABEL=()}
+
+replicate(){
+   for counter in $(seq 1 $2);
+   do
+      printf "%s" $1
+   done
+}
 
 wiki=$(cat << _WIKI
 Wiki
@@ -229,12 +247,16 @@ Log in to the system with your new user and password, startx to start.
 _WIKI
 )
 
-# lib functions script
-function police()
+# lib functions
+
+function sh_disk_info()
 {
-    echo "................_@@@__"
-    echo "..... ___//___?____\________"
-    echo "...../--o--POLICE------@} ...."
+   ARRAY_DSK_DISKS=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+   ARRAY_DSK_DEVICES=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+   ARRAY_DSK_SIZE=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+   ARRAY_DSK_MODEL=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+   ARRAY_DSK_TRAN=($(lsblk -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+   ARRAY_DSK_LABEL=($(lsblk -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
 }
 
 function inkey()
@@ -459,9 +481,19 @@ function alerta()
 function info()
 {
 	dialog 			 					\
-            --beep                      \
+         --beep                  \
 			--title 	"$cmsg002"		\
-			--backtitle	"$ccabec"		\
+			--backtitle	"$ccabec"	\
+			--msgbox 	"$*" 			\
+			10 60
+}
+
+function debug()
+{
+	dialog 			 					\
+         --beep                  \
+			--title 	"$cmsg002"		\
+			--backtitle	"$ccabec"	\
 			--msgbox 	"$*" 			\
 			10 60
 }
@@ -614,7 +646,6 @@ function sh_testsha256sum(){
     evaluate_retval
     return $?
 }
-
 
 function sh_confhost()
 {
@@ -1261,7 +1292,7 @@ function sh_check_install()
 			return 1
 		fi
 	fi
-	if [ $LFORMAT -eq 0 ]; then
+	if [ $LFORMAT -eq $false ]; then
 		sh_format
 		if [ $? = $false ]; then
 			LPARTITION=0
@@ -1500,10 +1531,6 @@ function sh_umountall()
 
 function sh_checkpartition()
 {
-	#cpart=$(df -h | grep $part | awk '{print $1, $2, $3, $4, $5, $6, $7}')
-	#cpart=$(df -h | sed '/$part/!d')
-	#cpart=$(df -h | grep ^$part)
-	#cpart=$(df -h | grep "$part")
 	cpart=$(df | grep $part | cut -c 1-)
 
 	local nchoice=0
@@ -1530,9 +1557,9 @@ function sh_partnewbie()
 	fi
 
 	#flock $sd sfdisk --delete --force $sd  > /dev/null 2>&1
-#	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
-#	| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
-#	udevadm settle > /dev/null 2>&1
+	#echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
+	#| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
+	#udevadm settle > /dev/null 2>&1
 
 	parted --script $sd -- \
 	mklabel gpt					\
@@ -1546,7 +1573,11 @@ function sh_partnewbie()
 	LDISK=1
 
 	if [ $LAUTOMATICA = $true ]; then
-		part=$sd"4"
+		if [ $TRAN_ORIGEM = "nvme" ]; then
+			part=$sd"p4"
+		else
+			part=$sd"4"
+		fi
 		LPARTITION=1
 	fi
 	return $?
@@ -1554,38 +1585,38 @@ function sh_partnewbie()
 
 function choosedisk()
 {
-    while true
-    do
-    	# escolha o disco a ser particionado // Choose disk to be parted
-    	################################################################
-    	#disks=( $(fdisk -l | egrep -o '^/dev/sd[a-z]'| sed "s/$/ '*' /") )
-    	#disks=( $(fdisk -l | cut -dk -f2 | grep -o /sd[a-z]))
-    	#disks=($(ls /dev/sd* | grep -o '/dev/sd[a-z]' | cat | sort | uniq | sed "s/$/ '*' /"))
-    	#disks=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $2,$3$4}'|sed 's/://p'|sed 's/[,\t]*$//'))
-    	devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
-		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-
+	while true
+	do
+		sh_disk_info
     	LDISK=0
-    	local xmsg=$cdisco
-    	if [ $1 = "GRUB" ] ; then
-    		xmsg=$1
-    	fi
-        local array=()
-        local i=0
-        local x=0
-        local y=0
-        for i in ${devices[@]}
-        do
-            array[((n++))]=$i
-            array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
-        done
+		local xmsg=$cdisco
+		local array=()
+#		local devices=()
+		local i=0
+		local x=0
+		local y=0
+		for i in ${ARRAY_DSK_DEVICES[@]}
+		do
+#			devices[((n++))]="/dev/$i"
+#			array[((n++))]="$i"
+#			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+         array[((n++))]="$i"
+         a=${ARRAY_DSK_TRAN[((x++))]}
+         b=${ARRAY_DSK_SIZE[((y++))]}
+         c=${ARRAY_DSK_MODEL[((t++))]}
+         d=${ARRAY_DSK_LABEL[((z++))]}
+         [[ $d = "" ]] && d=""
+         array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
+		done
 
-    	sd=$(dialog 		 															\
-    				--title 		"$xmsg"								  				\
-    				--backtitle	 	"$ccabec"					 						\
-    				--cancel-label 	"$buttonback"										\
-    				--menu 			"\n$cmsg009" 0 50 0 "${array[@]}" 2>&1 >/dev/tty 	)
+    	sd=$(dialog 		 																			\
+    				--title 			"$xmsg"								  							\
+    				--backtitle	 	"$ccabec"				 									\
+    				--cancel-label "$buttonback"													\
+    				--colors																				\
+	            --extra-button                                                    \
+               --extra-label  "$buttonpart"                                      \
+    				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in
@@ -1593,14 +1624,19 @@ function choosedisk()
                 if [ $LAUTOMATICA = $true ]; then
                     return 1
                 fi
-    			scrmain
+    			init
     			;;
     		$CANCEL)
-                if [ $LAUTOMATICA = $true ]; then
+               if [ $LAUTOMATICA = $true ]; then
                     return 1
                 fi
-    			scrmain
+    			init
     			;;
+         3)
+            local result=$( fdisk -l $sd );
+            display_result "$result" "$csmg013" "$cmsg_part_disk"
+            continue
+            ;;
     	esac
 
     	if [ "$1" = "SEE" ] ; then
@@ -1609,60 +1645,81 @@ function choosedisk()
     		continue
     	fi
 
-    	if [ "$1" = "GRUB" ] ; then
-    		LDISK=1
-    		return 0
-    	fi
+		if [ "$1" = "GRUB" ] ; then
+      	LDISK=1
+         return 0
+      fi
 
     	if [ $sd != "" ]; then
-            if [ $LAUTOMATICA = $true ]; then
-                return 0
-            fi
-            {   local item
-                index=0
-                for item in ${devices[*]}
-                do
-                    [ $item = $sd ] && { break; }
-                    ((index++))
-                done
-            }
+			{	local item
+            index=0
+            for item in ${ARRAY_DSK_DEVICES[*]}
+            do
+            	[ $item = $sd ] && { break; }
+               ((index++))
+            done
+			}
+			DEVICE_ORIGEM="${ARRAY_DSK_DISKS[index]}"
+			MODEL_ORIGEM="$sd [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+			TRAN_ORIGEM="${ARRAY_DSK_TRAN[index]}"
+			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
 
-     		typefmt=$(dialog                                                \
-    	    	--stdout 													\
-    	    	--title     	"$xmsg: $sd [${modelo[index]}]"        		\
-    			--cancel-label	"$buttonback"								\
-    	    	--menu		 	"\n$cmsg010"		 						\
-    	    	0 0 0 														\
-    	    	"$cexpert"  	"$cmsg011"							 	 	\
-    	    	"$cnewbie"     	"$cmsg013"				   		     		)
+			if [ $LAUTOMATICA = $true ]; then
+         	return 0
+         fi
 
-    			case "$typefmt" in
-    				$cexpert)
-    					sh_checksimple
-    					cfdisk $sd
-    					LDISK=1
-    					local result=$( fdisk -l $sd )
-    				    display_result "$result" "$cmsg011"
-    					;;
+        typefmt=$(dialog                                                \
+            --stdout                                        \
+            --title        "$xmsg: $sd [${modelo[index]}]"              \
+            --cancel-label "$buttonback"                       \
+            --menu         "\n$cmsg010"                        \
+            0 0 0                                           \
+            "$cexpert"     "$cmsg011"                          \
+            "$cnewbie"        "$cmsg013"                             )
 
-    				$cnewbie)
-    					sh_checkdisk
-    					local nmontada=$?
-    					if [ $nmontada = 1 ]; then
-    						alerta "CHOOSEDISK" "$cmsg_nec_dismount"
-    						choosedisk
-    					fi
-    					conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
-    					local nb=$?
-    					case $nb in
-    						$D_OK)
-                                sh_partnewbie
-    							local result=$( fdisk -l $sd )
-    						    display_result "$result" "$csmg013"
-    							;;
-    					esac
-    					;;
-    	    	esac
+	    	exit_status=$?
+	    	case $exit_status in
+	    		$ESC)
+					if [ $LAUTOMATICA = $true ]; then
+	            	return 1
+	            fi
+	    			init
+	    			;;
+	    		$CANCEL)
+	            if [ $LAUTOMATICA = $true ]; then
+	            	return 1
+	            fi
+	    			init
+	    			;;
+			esac
+
+			case "$typefmt" in
+         	$cexpert)
+            	sh_checksimple
+               cfdisk $sd
+               LDISK=1
+               local result=$( fdisk -l $sd )
+               display_result "$result" "$cmsg011"
+               ;;
+
+               $cnewbie)
+                  sh_checkdisk
+                  local nmontada=$?
+                  if [ $nmontada = 1 ]; then
+                     alerta "CHOOSEDISK" "$cmsg_nec_dismount"
+                     choosedisk
+                  fi
+                  conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
+                  local nb=$?
+                  case $nb in
+                     $D_OK)
+                         sh_partnewbie
+                         local result=$( fdisk -l $sd )
+                         display_result "$result" "$csmg013"
+                        ;;
+                  esac
+                  ;;
+            esac
     	fi
     	break
     done
@@ -1775,12 +1832,10 @@ function choosepartition()
 
 function sh_mkswap()
 {
-	local result=$(fdisk $sd -l | grep swap | cut -c1-11)
-	xPARTSWAP=$result
-
-	if [ "$result" != "" ] ; then
+	xPARTSWAP=$(blkid | grep /dev/nvme0n1 --color=auto | grep -E 'SWAP|swap' --color=auto | cut -d: -f1)
+	if [ "$xPARTSWAP" != "" ] ; then
 		mensagem "$cmsg_Formatando_particao swap"
-		xUUIDSWAP=$(mkswap $result | grep UUID | awk '{print $3 }')
+		xUUIDSWAP=$(mkswap $xPARTSWAP | grep UUID | awk '{print $3 }')
 	fi
 }
 
@@ -1791,11 +1846,7 @@ function sh_domkfs()
 	mensagem "$cmsg_Formatando_particao: $part"
 	mkfs -t ext4 -L "$xLABEL" $part > /dev/null 2>&1
 	local nchoice=$?
-	if [ $nchoice = $true ]; then
-		LFORMAT=1
-	else
-		LFORMAT=0
-	fi
+	LFORMAT=$nchoice
 	return $nchoice
 }
 
@@ -1806,23 +1857,23 @@ function sh_format()
 	local format=1
 
 	if [ $nmontada = 0 ] ; then
-		LFORMAT=0
+		LFORMAT=$false
 		conf " *** FORMAT *** " "\n   $cmsgTodos_os_dados_serao_perdidos \n\n   $cmsg021 $part ?"
 		format=$?
-		if [ $format = 0 ] ; then
+		if [ $format = $true ] ; then
 			sh_domkfs
 			local nfmt=$?
 			if [ $nfmt = 0 ] ; then
 				sh_mkswap
 				alerta "MKFS" "$cmsg_mkfs_ok"
-				LFORMAT=1
+				LFORMAT=$true
 			else
 				alerta "MKFS" "$cmsg_mkfs_error."
-				LFORMAT=0
+				LFORMAT=$false
 				return 1
 			fi
 		else
-			LFORMAT=0
+			LFORMAT=$false
 		fi
 	fi
 	return $format
@@ -1874,6 +1925,7 @@ function pt_BR()
 	lang="pt_BR"
 	cmsgSetKeyboardLayout="Definir layout do teclado"
 	buttonback="Voltar"
+	buttonpart="Info disco"
 	cmsg000="Sair"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
@@ -2015,6 +2067,7 @@ function en_US()
 	lang="en_US"
 	cmsgSetKeyboardLayout="Set keyboard layout"
 	buttonback="Back"
+   buttonpart="Disk Info"
 	cmsg000="Exit"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
@@ -2322,7 +2375,7 @@ function zeravar()
 	part=""
 	LDISK=0
 	LPARTITION=0
-	LFORMAT=0
+	LFORMAT=$false
 	LMOUNT=0
 	LAUTOMATICA=$false
 }
@@ -2519,7 +2572,7 @@ function sh_liveinstall()
 	if [ $nChoice = $false ]; then
 		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
-		sh_tools
+		init
 	fi
 
 	mbr=$(dialog --radiolist 'Instalacao do GRUB:'      \

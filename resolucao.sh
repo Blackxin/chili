@@ -3,7 +3,8 @@ source /usr/share/fetch/core.sh
 
 #output='VGA-1'
 #output='DVI-1'
-output='HDMI-1'
+output='DP-1'
+#output='HDMI-1'
 
 hmode=('2560' '2560' '1920')
 vmode=('1080' '1440' '1440')

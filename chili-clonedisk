@@ -6,9 +6,11 @@
 #      altered:                  2022/03/23	                   #
 #################################################################
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v1.0.11-20220323"
-readonly DEPENDENCIES=(which lsblk cut dialog pv grep sed cat awk tput dd)
-#. /lib/lsb/init-functions
+declare -r _VERSION_="v2.0.1-20220330"
+readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
+
+#DIALOG=${DIALOG:-"whiptail"}
+DIALOG=${DIALOG:-"dialog"}
 
 # flag dialog exit status codes
 : ${D_OK=0}
@@ -110,43 +112,28 @@ welcome="Welcome to the $xapp"
 : ${xLABEL=$cdistro}
 
 # choosedisk
-: ${devices=()}
-: ${disks=()}
-: ${size=()}
-: ${model=()}
+: ${ARRAY_DSK_DEVICES=()}
+: ${ARRAY_DSK_DISKS=()}
+: ${ARRAY_DSK_SIZE=()}
+: ${ARRAY_DSK_MODEL=()}
+: ${ARRAY_DSK_TRAN=()}
+: ${ARRAY_DSK_LABEL=()}
 
 replicate(){
-    for counter in $(seq 1 $2);
-    do
-        printf "%s" $1
-    done
+	for counter in $(seq 1 $2);
+   do
+   	printf "%s" $1
+   done
 }
 
-function sh_disk()
+function sh_disk_info()
 {
-#	disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
-#	 		 $(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
-	disks=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
-}
-
-function sh_disk_device()
-{
-#	devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
-#	 		 $(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
-	devices=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
-}
-
-function sh_disk_size()
-{
-#	size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
-#	   	$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-	size=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
-}
-
-function sh_disk_model()
-{
-#	model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-	model=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+	ARRAY_DSK_DISKS=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+	ARRAY_DSK_DEVICES=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+	ARRAY_DSK_SIZE=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+	ARRAY_DSK_MODEL=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+   ARRAY_DSK_TRAN=($(lsblk -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+   ARRAY_DSK_LABEL=($(lsblk -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
 }
 
 function setvarcolors()
@@ -501,11 +488,11 @@ function sh_backup_partitions()
 
 	mkdir -p $tmpdir 2> /dev/null
 	sfdisk -d $disk > $filetmp 2> /dev/null
-	alerta "BACKUP DA TABELA DE PARTICOES" 	\
-			 "Dispositivo : $disk" 					\
-			 "  Backup on : ${filetmp}"			\
-			"$(replicate "=" 80)" 					\
-			 "$(cat $filetmp)"
+#	alerta "BACKUP DA TABELA DE PARTICOES" 	\
+#			 "Dispositivo : $disk" 					\
+#			 "  Backup on : ${filetmp}"			\
+#			"$(replicate "=" 80)" 					\
+#			 "$(cat $filetmp)"
 }
 
 function sh_restore_partitions()
@@ -517,22 +504,7 @@ function choosedisk()
 {
 	while true
 	do
-		# Choose disk to be parted
-		################################################################
-#		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]|/dev/nvme[0-9][a-z][0-9]'|uniq))
-#		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
-#					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
-#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-#		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
-#				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-
-#lsblk -a -n -P -o NAME,SIZE,MODEL,TYPE | grep disk
-
-		sh_disk
-		sh_disk_device
-		sh_disk_size
-		sh_disk_model
+		sh_disk_info
 
     	LDISK=0
 		local xmsg=$cmsg_disco_origem
@@ -541,11 +513,20 @@ function choosedisk()
 		local i=0
 		local x=0
 		local y=0
-		for i in ${devices[@]}
+		local t=0
+		local z=0
+		local n=0
+		for i in ${ARRAY_DSK_DEVICES[@]}
 		do
 #			devices[((n++))]="/dev/$i"
+#			array[((n++))]="[${tran[((t++))]}] [${size[((x++))]}]  ${model[((y++))]}"
 			array[((n++))]="$i"
-			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+			a=${ARRAY_DSK_TRAN[((x++))]}
+			b=${ARRAY_DSK_SIZE[((y++))]}
+			c=${ARRAY_DSK_MODEL[((t++))]}
+			d=${ARRAY_DSK_LABEL[((z++))]}
+			[[ $d = "" ]] && d=""
+			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
 		done
 
     	sd=$(dialog 		 																			\
@@ -582,14 +563,15 @@ function choosedisk()
     	if [ $sd != "" ]; then
 			{	local item
             index=0
-            for item in ${devices[*]}
+            for item in ${ARRAY_DSK_DEVICES[*]}
             do
             	[ $item = $sd ] && { break; }
                ((index++))
             done
 			}
-			DEVICE_ORIGEM="${disks[index]}"
-			MODEL_ORIGEM="$sd [${size[index]}] [${model[index]}]"
+			DEVICE_ORIGEM="${ARRAY_DSK_DISKS[index]}"
+			MODEL_ORIGEM="$sd [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+			TRAN_ORIGEM="${ARRAY_DSK_TRAN[index]}"
 			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
 			choosediskdestin
     	fi
@@ -601,24 +583,7 @@ function choosediskdestin()
 {
 	while true
 	do
-		# Choose disk
-		################################################################
-#		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
-#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-#		devices=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print "/dev/"$4}' /proc/partitions)
-#					$(awk -e '$4 ~ /sd[a-z]$/ {print "/dev/"$4}' /proc/partitions))
-#		disks=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {print $4}' /proc/partitions)
-#					$(awk -e '$4 ~ /sd[a-z]$/ {print $4}' /proc/partitions))
-#		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-#		size=($(awk -e '$4 ~ /nvme[0-9][a-z][0-9]$/ {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions)
-#				$(awk -e '$4 ~ /sd[a-z]$/             {$x=sprintf("%10.2fGiB", $3/1024/1024); print $x}' /proc/partitions))
-#		model=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
-
-#		sh_disk
-#		sh_disk_device
-#		sh_disk_size
-#		sh_disk_model
+#		sh_disk_info
 
     	LDISK=0
 		local xmsg=$cmsg_disco_destino
@@ -627,13 +592,23 @@ function choosediskdestin()
 		local i=0
 		local x=0
 		local y=0
-#		for i in ${disks[@]}
-		for i in ${devices[@]}
+		local t=0
+		local z=0
+		local n=0
+		for i in ${ARRAY_DSK_DEVICES[@]}
 		do
 #			devices[((n++))]="/dev/$i"
 #			array[((n++))]="/dev/$i"
+#			array[((n++))]="$i"
+#			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+			[[ "${i}" = "${sd}" ]] && continue
 			array[((n++))]="$i"
-			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+			a=${ARRAY_DSK_TRAN[((x++))]}
+			b=${ARRAY_DSK_SIZE[((y++))]}
+			c=${ARRAY_DSK_MODEL[((t++))]}
+			d=${ARRAY_DSK_LABEL[((z++))]}
+			[[ $d = "" ]] && d=""
+			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
 		done
 
     	sddest=$(dialog 		 																		\
@@ -669,24 +644,23 @@ function choosediskdestin()
     	if [ $sddest != "" ]; then
 			{	local item
             index=0
-            for item in ${devices[*]}
+            for item in ${ARRAY_DSK_DEVICES[*]}
             do
             	[ $item = $sddest ] && { break; }
                ((index++))
             done
 			}
 
-			DEVICE_DESTINO="${disks[index]}"
-			MODEL_DESTINO="$sddest [${size[index]}] [${model[index]}]"
+			DEVICE_DESTINO="${ARRAY_DSK_DISKS[index]}"
+			MODEL_DESTINO="$sddest [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+			TRAN_DESTINO="${ARRAY_DSK_TRAN[index]}"
 
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WING *** " "\n   \Z1Disco ORIGEM e DESTINO não podem ser os mesmos! \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
+				alerta " *** WARWING *** " "\n   \Z1$cmsgDiscoIdem \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
 				init
 				return
 			fi
-
 			sh_backup_partitions "${sddest}" "${DEVICE_DESTINO}"
-
 			sh_checkdisk
 			local nmontada=$?
 			if [ $nmontada = 1 ]; then
@@ -875,6 +849,7 @@ function pt_BR()
     cmsgGerando_arquivo_configuracao_do_grub="Gerando arquivo de configuracao do grub"
 	cmsgNeste_modo_a_instalacao_sera_automatizada="Neste modo a instalação será automatizada"
 	cmsgDeseja_continuar_e_escolher_o_disco_destino="Deseja continuar e escolher o disco destino"
+	cmsgDiscoIdem="Disco ORIGEM e DESTINO não podem serem o mesmo!"
 }
 
 function en_US()
@@ -1024,6 +999,7 @@ function en_US()
     cmsgGerando_arquivo_configuracao_do_grub="Generating Grub configuration file"
 	cmsgNeste_modo_a_instalacao_sera_automatizada="In this mode an installation will be automated"
 	cmsgDeseja_continuar_e_escolher_o_disco_destino="Do you want to continue and choose the destination disk"
+	cmsgDiscoIdem="SOURCE and DESTINATION disk can be the same!"
 }
 
 function scrend()
@@ -1039,10 +1015,8 @@ function sh_checkroot()
 	fi
 }
 
-
 function init()
 {
-
 	while true; do
 		i18=$(dialog															\
 			--stdout                                              \
@@ -1100,7 +1074,7 @@ function checkDependencies()
 
 function sh_version()
 {
-   printf "$0 $_VERSION_\n"
+	printf "$0 $_VERSION_\n"
 }
 
 #figlet
@@ -1117,11 +1091,23 @@ EOF
    sh_version
 }
 
+function sh_display()
+{
+   if [ $(tput cols) -lt 80 ] || [ $(tput lines) -lt 24; then
+      ${DIALOG} --backtitle "$ccabec"          \
+      --title "TERMINAL TOO SMALL" \
+      --msgbox "\n\
+Before you continue, re-size your terminal\nso it measures at least 80 x 24 characters.\n\
+Otherwise you will not to able to use disk partition tools." 11 68
+	fi
+}
+
 # entrypoint - configuracao inicial
 setvarcolors
 en_US
 sh_checkroot
 checkDependencies
+sh_display
 if [[ $1 = "-v" ]] || [[ $1 = "--version" ]] || [[ $1 = "-V" ]]; then
    logo
    exit 0

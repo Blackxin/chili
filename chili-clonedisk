@@ -3,7 +3,7 @@
 #      Vilmar Catafesta 			<vcatafesta@gmail.com>      	 #
 #      license: 						MIT		                      #
 #      created: 						2020/09/20   	                #
-#      altered:                  2022/03/23	                   #
+#      altered:                  2022/03/30	                   #
 #################################################################
 declare -r _APP_="chili-clonedisk"
 declare -r _VERSION_="v2.0.1-20220330"

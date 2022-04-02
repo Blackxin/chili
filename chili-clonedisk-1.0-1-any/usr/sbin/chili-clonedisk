@@ -3,11 +3,11 @@
 #      Vilmar Catafesta 			<vcatafesta@gmail.com>      	 #
 #      license: 						MIT		                      #
 #      created: 						2020/09/20   	                #
-#      altered:                  2020/09/27	                   #
+#      altered:                  2022/03/23	                   #
 #################################################################
-declare -r version="v1.0.04-20201005"
-readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput)
-#. /lib/lsb/init-functions
+declare -r _APP_="chili-clonedisk"
+declare -r _VERSION_="v2.0.1-20220330"
+readonly DEPENDENCIES=(which lsblk cut dialog pv grep sed cat awk tput dd)
 
 # flag dialog exit status codes
 : ${D_OK=0}
@@ -18,6 +18,7 @@ readonly DEPENDENCIES=(which dialog pv grep sed cat awk tput)
 : ${D_ESC=255}
 
 # vars bool
+DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
 trancarstderr=2>&-
 true=0
 TRUE=0
@@ -86,8 +87,8 @@ xdistro=$(uname -n)
 
 # variavel comuns
 grafico=$true
-xapp="Chili clone disk"
-ccabec="Chili clone disk $version"
+xapp="Chili clonedisk"
+ccabec="Chili clonedisk $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
 
@@ -106,6 +107,31 @@ welcome="Welcome to the $xapp"
 : ${LGRUB="EFI"}
 : ${LAUTOMATICA=$false}
 : ${xLABEL=$cdistro}
+
+# choosedisk
+: ${ARRAY_DSK_DEVICES=()}
+: ${ARRAY_DSK_DISKS=()}
+: ${ARRAY_DSK_SIZE=()}
+: ${ARRAY_DSK_MODEL=()}
+: ${ARRAY_DSK_TRAN=()}
+: ${ARRAY_DSK_LABEL=()}
+
+replicate(){
+	for counter in $(seq 1 $2);
+   do
+   	printf "%s" $1
+   done
+}
+
+function sh_disk_info()
+{
+	ARRAY_DSK_DISKS=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+	ARRAY_DSK_DEVICES=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+	ARRAY_DSK_SIZE=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+	ARRAY_DSK_MODEL=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
+   ARRAY_DSK_TRAN=($(lsblk -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+   ARRAY_DSK_LABEL=($(lsblk -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+}
 
 function setvarcolors()
 {
@@ -335,25 +361,30 @@ function display_result()
 		--no-cr-wrap               \
 		--backtitle	"$xbacktitle"	\
 		--msgbox 	"$1" 				\
-		25 80
+		0 0
 }
 
 function alerta()
 {
-	dialog 								      \
+#	whiptail								      \
+	dialog								      \
+		--colors			 			     		\
 		--title 		"$1" 			     		\
+		--no-collapse							\
+		--cr-wrap    		           		\
 		--backtitle	"$ccabec"		      \
-		--msgbox 	"$2\n$3\n$4\n$5\n$6"	\
-		10 60
+		--msgbox 	"\Z2$2\n\Z1$3\n\Z3$4\n\Z4$5\n\Z5$6"	\
+		0 0
 }
 
 function info()
 {
 	dialog 			 				\
+		--colors                \
 		--beep                  \
 		--title 		"$cmsg002"	\
 		--backtitle	"$ccabec"	\
-		--msgbox 	"$*" 			\
+		--msgbox 	"\Z1$*"		\
 		10 60
 }
 
@@ -399,7 +430,6 @@ function quit()
 	[ $? -ne 0 ] && { clear ; exit ;}
 }
 
-
 function sh_checkdisk()
 {
 	local nchoice=0
@@ -416,36 +446,94 @@ function sh_checkdisk()
 	return $nchoice
 }
 
+function size_to_human(){
+   awk -v size="$1" '
+   BEGIN {
+      suffix[1] = "B"
+      suffix[2] = "KiB"
+      suffix[3] = "MiB"
+      suffix[4] = "GiB"
+      suffix[5] = "TiB"
+      suffix[6] = "PiB"
+      suffix[7] = "EiB"
+      count = 1
+
+      while (size > 1024) {
+         size /= 1024
+         count++
+      }
+
+      sizestr = sprintf("%.2f", size)
+      sub(/\.?0+$/, "", sizestr)
+      printf("%s %s", sizestr, suffix[count])
+   }'
+}
+
+function now()
+{
+	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+   printf "%s\n" $DIAHORA
+}
+
+function sh_backup_partitions()
+{
+	local disk="${1}"
+	local device="${2}"
+	local cdatetime=$(now)
+	local tmpdir="/tmp/$_APP_"
+	local filetmp="$tmpdir/${device}.$cdatetime.dump"
+
+	mkdir -p $tmpdir 2> /dev/null
+	sfdisk -d $disk > $filetmp 2> /dev/null
+#	alerta "BACKUP DA TABELA DE PARTICOES" 	\
+#			 "Dispositivo : $disk" 					\
+#			 "  Backup on : ${filetmp}"			\
+#			"$(replicate "=" 80)" 					\
+#			 "$(cat $filetmp)"
+}
+
+function sh_restore_partitions()
+{
+	sfdisk $sd < /tmp/sda.dump
+}
+
 function choosedisk()
 {
 	while true
 	do
-		# Choose disk to be parted
-		################################################################
-		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
-		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+		sh_disk_info
 
     	LDISK=0
-		local xmsg=$cdisco
-		if [ $1 = "GRUB" ] ; then
-			xmsg=$1
-    	fi
+		local xmsg=$cmsg_disco_origem
 		local array=()
+#		local devices=()
 		local i=0
 		local x=0
 		local y=0
-		for i in ${devices[@]}
+		local t=0
+		local z=0
+		local n=0
+		for i in ${ARRAY_DSK_DEVICES[@]}
 		do
-			array[((n++))]=$i
-			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
+#			devices[((n++))]="/dev/$i"
+#			array[((n++))]="[${tran[((t++))]}] [${size[((x++))]}]  ${model[((y++))]}"
+			array[((n++))]="$i"
+			a=${ARRAY_DSK_TRAN[((x++))]}
+			b=${ARRAY_DSK_SIZE[((y++))]}
+			c=${ARRAY_DSK_MODEL[((t++))]}
+			d=${ARRAY_DSK_LABEL[((z++))]}
+			[[ $d = "" ]] && d=""
+			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
 		done
 
     	sd=$(dialog 		 																			\
     				--title 			"$xmsg"								  							\
-    				--backtitle	 	"$ccabec"					 									\
-					--ok-label		"$cmsgOK"	 													\
+    				--backtitle	 	"$ccabec"				 									\
+					--ok-label		"$cmsg_select" 												\
     				--cancel-label "$buttonback"													\
+    				--colors																				\
+    				--extra-button																		\
+    				--extra-label  "$buttonpart"													\
     				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
@@ -456,6 +544,11 @@ function choosedisk()
     		$CANCEL)
     			init
     			;;
+    		3)
+         	local result=$( fdisk -l $sd );
+    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+    			continue
+    			;;
     	esac
 
     	if [ "$1" = "SEE" ] ; then
@@ -464,21 +557,19 @@ function choosedisk()
     		continue
     	fi
 
-    	if [ "$1" = "GRUB" ] ; then
-    		LDISK=1
-    		return 0
-    	fi
-
     	if [ $sd != "" ]; then
 			{	local item
             index=0
-            for item in ${devices[*]}
+            for item in ${ARRAY_DSK_DEVICES[*]}
             do
             	[ $item = $sd ] && { break; }
                ((index++))
             done
 			}
-			MODELO_ORIGEM="$sd [${size[index]}] [${modelo[index]}]"
+			DEVICE_ORIGEM="${ARRAY_DSK_DISKS[index]}"
+			MODEL_ORIGEM="$sd [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+			TRAN_ORIGEM="${ARRAY_DSK_TRAN[index]}"
+			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
 			choosediskdestin
     	fi
     	break
@@ -489,25 +580,32 @@ function choosediskdestin()
 {
 	while true
 	do
-		# Choose disk to be parted
-		################################################################
-		devices=($(fdisk -l | egrep -o '/dev/sd[a-z]'|uniq))
-		size=($(fdisk -l|sed -n '/sd[a-z]:/p'|awk '{print $3$4}'|sed 's/://p'|sed 's/[,\t]*$//'|awk '{printf "%10s\n", $1}'))
-		modelo=($(fdisk -l | grep -E "(Modelo|Model)"|sed 's/^[:\t]*//'|cut -d':' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//'|sed 's/[[:space:]]\+/_/g'))
+#		sh_disk_info
 
     	LDISK=0
-		local xmsg=$cdisco
-		if [ $1 = "GRUB" ] ; then
-			xmsg=$1
-    	fi
+		local xmsg=$cmsg_disco_destino
 		local array=()
+#		local devices=()
 		local i=0
 		local x=0
 		local y=0
-		for i in ${devices[@]}
+		local t=0
+		local z=0
+		local n=0
+		for i in ${ARRAY_DSK_DEVICES[@]}
 		do
-			array[((n++))]=$i
-			array[((n++))]="[${size[((x++))]}]  ${modelo[((y++))]}"
+#			devices[((n++))]="/dev/$i"
+#			array[((n++))]="/dev/$i"
+#			array[((n++))]="$i"
+#			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
+			[[ "${i}" = "${sd}" ]] && continue
+			array[((n++))]="$i"
+			a=${ARRAY_DSK_TRAN[((x++))]}
+			b=${ARRAY_DSK_SIZE[((y++))]}
+			c=${ARRAY_DSK_MODEL[((t++))]}
+			d=${ARRAY_DSK_LABEL[((z++))]}
+			[[ $d = "" ]] && d=""
+			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
 		done
 
     	sddest=$(dialog 		 																		\
@@ -515,7 +613,9 @@ function choosediskdestin()
     				--backtitle	 	"$ccabec"					 									\
 					--ok-label		"$cmsgOK"	 													\
     				--cancel-label "$buttonback"													\
-    				--menu 			"\nSOURCE DISK: $MODELO_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
+    				--extra-button																		\
+    				--extra-label  "$buttonpart"													\
+    				--menu 			"\nSOURCE DISK: $MODEL_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in
@@ -525,6 +625,11 @@ function choosediskdestin()
     		$CANCEL)
     			choosedisk
     			;;
+    		3)
+         	local result=$( fdisk -l $sd );
+    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+    			continue
+    			;;
     	esac
 
     	if [ "$1" = "SEE" ] ; then
@@ -533,26 +638,26 @@ function choosediskdestin()
     		continue
     	fi
 
-    	if [ "$1" = "GRUB" ] ; then
-    		LDISK=1
-    		return 0
-    	fi
-
     	if [ $sddest != "" ]; then
 			{	local item
             index=0
-            for item in ${devices[*]}
+            for item in ${ARRAY_DSK_DEVICES[*]}
             do
             	[ $item = $sddest ] && { break; }
                ((index++))
             done
 			}
-			MODELO_DESTINO="$sddest [${size[index]}] [${modelo[index]}]"
+
+			DEVICE_DESTINO="${ARRAY_DSK_DISKS[index]}"
+			MODEL_DESTINO="$sddest [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+			TRAN_DESTINO="${ARRAY_DSK_TRAN[index]}"
+
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WARNING *** " "\n   Disco ORIGEM e DESTINO são iguais! \n\n      SOURCE DISK : $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO"
+				alerta " *** WARWING *** " "\n   \Z1$cmsgDiscoIdem \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
 				init
 				return
 			fi
+			sh_backup_partitions "${sddest}" "${DEVICE_DESTINO}"
 			sh_checkdisk
 			local nmontada=$?
 			if [ $nmontada = 1 ]; then
@@ -568,8 +673,8 @@ function sh_confclone()
 {
 	conf 	" *** WARNING *** " 								\
 			"\n$cmsgTodos_os_dados_serao_perdidos\n" 	\
-			"${MODELO_DESTINO}" 								\
-			"\n\n       SOURCE DISK: $MODELO_ORIGEM \n  DISK DESTINATION: $MODELO_DESTINO" \
+			"${MODEL_DESTINO}" 								\
+			"\n\n       SOURCE DISK: $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO" \
 			"\n\n" 																								\
      		"Continuar com o clone?\n"
 
@@ -584,8 +689,10 @@ function sh_domkclone()
 {
 	LFORMAT=0
 	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
-	(pv -n $sd | dd of=$sddest conv=notrunc,noerror,sync) 2>&1 | dialog --gauge \
-	"Running dd command (cloning), please wait...\n\n     SOURCE DISK : $MODELO_ORIGEM \n DISK DESTINATION: $MODELO_DESTINO" 10 70 0
+	(pv -n $sd | 												\
+	dd of=$sddest conv=notrunc,noerror,sync) 2>&1 |	\
+	dialog --gauge 											\
+	"Running cloning dd command (dd if=$sd of=$sddest conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
 	local nchoice=$?
 	if [ $nchoice = $true ]; then
 		display_result "$(fdisk -l $sddest)"
@@ -599,11 +706,13 @@ function pt_BR()
 	lang="pt_BR"
   	cmsgErro="ERRO"
 	buttonback="Voltar"
+	buttonpart="Info disco"
   	cmsgNaoEncontreiOComando="não encontrei o comando "
   	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
    cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Aceitar"
+	cmsgOK="Ok"
 	cmsg000="Sair"
+	cmsg_select="Selecionar"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
 	cmsg003="Bem-vindo ao instalador do $cdistro"
@@ -715,6 +824,8 @@ function pt_BR()
 	cmsg_mkfs_ok="Formatacao terminada com sucesso."
 	cmsg_mkfs_error="Erro na Formatacao."
 	cdisco="DISCO"
+	cmsg_disco_origem="DISCO DE ORIGEM"
+	cmsg_disco_destino="DISCO DE DESTINO"
 	cparticao="PARTIÇÃO"
 	cmsg_extracting="Aguarde, extraindo arquivos..."
 	cmsg_part_disk="Visualizar partições do disco"
@@ -735,18 +846,21 @@ function pt_BR()
     cmsgGerando_arquivo_configuracao_do_grub="Gerando arquivo de configuracao do grub"
 	cmsgNeste_modo_a_instalacao_sera_automatizada="Neste modo a instalação será automatizada"
 	cmsgDeseja_continuar_e_escolher_o_disco_destino="Deseja continuar e escolher o disco destino"
+	cmsgDiscoIdem="Disco ORIGEM e DESTINO não podem serem o mesmo!"
 }
 
 function en_US()
 {
 	lang="en_US"
 	buttonback="Back"
+	buttonpart="Disk Info"
   	cmsgErro="ERROR"
   	cmsgNaoEncontreiOComando="não encontrei o comando "
   	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
    cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Accept"
+	cmsgOK="Ok"
 	cmsg000="Exit"
+	cmsg_select="Select"
 	cmsg001=$ccabec
 	cmsg002=$ctitle
 	cmsg003=$welcome
@@ -860,6 +974,8 @@ function en_US()
 	cmsg_mkfs_ok="Formation completed successfully."
 	cmsg_mkfs_error="Formatting error."
 	cdisco="DISK"
+	cmsg_disco_origem="SOURCE DISK"
+	cmsg_disco_destino="DESTINATION DISK"
 	cparticao="PARTITION"
 	cmsg_extracting="Wait, Extracting files..."
 	cmsg_part_disk="View disk partitions"
@@ -880,6 +996,7 @@ function en_US()
     cmsgGerando_arquivo_configuracao_do_grub="Generating Grub configuration file"
 	cmsgNeste_modo_a_instalacao_sera_automatizada="In this mode an installation will be automated"
 	cmsgDeseja_continuar_e_escolher_o_disco_destino="Do you want to continue and choose the destination disk"
+	cmsgDiscoIdem="SOURCE and DESTINATION disk can be the same!"
 }
 
 function scrend()
@@ -895,10 +1012,8 @@ function sh_checkroot()
 	fi
 }
 
-
 function init()
 {
-
 	while true; do
 		i18=$(dialog															\
 			--stdout                                              \
@@ -954,11 +1069,34 @@ function checkDependencies()
   	fi
 }
 
+function sh_version()
+{
+	printf "$0 $_VERSION_\n"
+}
+
+#figlet
+function logo()
+{
+   cat << 'EOF'
+      _                      _ _     _
+  ___| | ___  _ __   ___  __| (_)___| | __   Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
+ / __| |/ _ \| '_ \ / _ \/ _` | / __| |/ /   Copyright (c) 2019-2022 Chilios Linux Development Team
+| (__| | (_) | | | |  __/ (_| | \__ \   <
+ \___|_|\___/|_| |_|\___|\__,_|_|___/_|\_\   Este programa pode ser redistribuído livremente
+                                             sob os termos da Licença Pública Geral GNU.
+EOF
+   sh_version
+}
+
 # entrypoint - configuracao inicial
 setvarcolors
 en_US
 sh_checkroot
 checkDependencies
+if [[ $1 = "-v" ]] || [[ $1 = "--version" ]] || [[ $1 = "-V" ]]; then
+   logo
+   exit 0
+fi
 init
 
 :<<'LIXO'

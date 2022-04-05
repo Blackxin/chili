@@ -753,54 +753,71 @@ function sh_execcopiaold()
 	) | dialog --title "** COPIANDO **" --backtitle "$cabec" --gauge "$MSG" 7 60 0
 }
 
+function sh_execcopiaNew()
+{
+	ARQUIVO_LOG=/tmp/arquivo.log
+	dialog --infobox 'Iniciando instalacao...' 3 25; sleep 1
+  	declare -i cont=1
+  	{
+  		while [ $cont -le 100 ]; do
+    		echo $cont
+    		cont=$((cont+1))
+    		rsync -avh --progress $ORIGEM $DESTINO --log-file=$ARQUIVO_LOG 2>&1
+    		uniq -u $ARQUIVO_LOG
+  		done
+  	} | dialog --gauge 'Aguarde... Copiando Arquivos' 8 70 0
+  	#dialog --msgbox 'Instalacao concluído com sucesso!' 6 35
+  	#dialog --title 'Log de Backup' --textbox "$ARQUIVO_LOG" 0 0
+}
+
 function sh_execcopia()
 {
 	ORIGEM=$MEDIUM/
 	DESTINO=$dir_install/
-    DEST=$dir_install
+   DEST=$dir_install
 
-    sizeof()    { du -s "$1" | cut -f1; }
-    running()   { ps $1 | grep $1 >/dev/null; }
+   sizeof()    { du -s "$1" | cut -f1; }
+   running()   { ps $1 | grep $1 >/dev/null; }
 
-    TITLE="Copiando..."
-    MSG="Copiando o diretorio $ORIGEM para $DESTINO"
-    INTERVALO=1
-    PORCENTO=0
-    DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
+   TITLE="Copiando..."
+   MSG="Copiando o diretorio $ORIGEM para $DESTINO"
+   INTERVALO=1
+   PORCENTO=0
+   DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
 
-    MSG=$(eval echo $MSG)
-    TOTAL=$(sizeof $ORIGEM)
-    TOTALGB=$((TOTAL/1024))
-    DISPONIVEL=$(df | grep "${DEST}" | awk '{print $4}')
-    DISPONIVEL=$((DISPONIVEL/1024))
+   MSG=$(eval echo $MSG)
+   TOTAL=$(sizeof $ORIGEM)
+   TOTALGB=$((TOTAL/1024))
+   DISPONIVEL=$(df | grep "${DEST}" | awk '{print $4}')
+   DISPONIVEL=$((DISPONIVEL/1024))
 
-    log=/tmp/install-chili.log
+   log=/tmp/install-chili.log
 
-    #cp -rap $ORIGEM/* $DESTINO >$log &
-    #CPPID=$!
+   #cp -rap $ORIGEM/* $DESTINO >$log &
+   #CPPID=$!
 
-    rsync -crav $ORIGEM $DESTINO 1>&2>$log &
-    CPPID=$!
+   rsync -crav $ORIGEM $DESTINO 1>&2>$log &
+   CPPID=$!
 
-    #rsync -cra $ORIGEM $DESTINO &
-    #CPPID=$!
+   #rsync -cra $ORIGEM $DESTINO &
+   #CPPID=$!
 
-#   trap sh_trapErro 2 15
-    trap "kill $CPPID" 2 15
+#  trap sh_trapErro 2 15
+   trap "kill $CPPID" 2 15
 
-    (
-        while running $CPPID; do
-            COPIADO=$(sizeof $DIR_DESTINO)
-            PORCENTAGEM=$((COPIADO*100/TOTAL))
-            COPIADOMB=$((COPIADO/1024))
-            LASTFILE=$(tail -n1 $log)
-            [ $PORCENTAGEM -gt 100 ] && PORCENTAGEM=100
-#           echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
-#           dialog --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
-            dialog --title "$TITLE" --gauge "\n$MSG\n\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
-            sleep $INTERVALO
-        done
-        #echo 100
+   (
+       while running $CPPID; do
+           COPIADO=$(sizeof $DIR_DESTINO)
+           PORCENTAGEM=$((COPIADO*100/TOTAL))
+           COPIADOMB=$((COPIADO/1024))
+           LASTFILE=$(tail -n1 $log)
+           [ $PORCENTAGEM -gt 100 ] && PORCENTAGEM=100
+#          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
+#          dialog --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
+           dialog --title "$TITLE" --gauge "\n$MSG\n\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
+           sleep $INTERVALO
+       done
+       #echo 100
 #   )| dialog --title "$TITLE" --tailbox "$log" 8 70
     )
 }

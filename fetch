@@ -6,7 +6,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/03/29
+# 	Altered: 2022/04/04
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -34,7 +34,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.07.00.20220329"
+	readonly _VERSION_="2.07.01.20220404"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -639,7 +639,7 @@ function sh_update()
 		Apache|nginx)
 			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' | tee ${VARCACHE_SEARCH}/$FOLDERS)
 			;;
-		LiteSpeed)
+		LiteSpeed|cloudflare)
 			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o 'packages\/[a-z]+'|sed 's/packages\///g' | tee ${VARCACHE_SEARCH}/$FOLDERS)
 			;;
 		GitHub.com)
@@ -666,7 +666,7 @@ function sh_update()
 				fi
 				SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $5}' ))
 				;;
-			LiteSpeed|GitHub.com)
+			LiteSpeed|GitHub.com|cloudflare)
 				if [[ $Folders != "meta" ]]; then
 #					PackagesInFolders=$(curl --compressed --insecure --silent --url "${SITE}/packages/${Folders}/"|sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep ".${PRG}$"| awk '{print $NF}')
 					PackagesInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".${PRG}$"| awk '{print $NF}')

@@ -30,6 +30,11 @@
 #   	gettext, gpg, grep, gzip, sed, tput (ncurses), xz
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
+# Import lib
+LIBRARY=${LIBRARY:-'/usr/share/fetch'}
+SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
+source "${LIBRARY}"/core.sh
+
 function configure()
 {
 	export LC_ALL=C
@@ -46,10 +51,6 @@ function configure()
 	# Ensure GREP_OPTIONS doesn't screw with our grep calls
 	unset GREP_OPTIONS
 
-	# Import lib
-	LIBRARY=${LIBRARY:-'/usr/share/fetch'}
-	SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
-	source "${LIBRARY}"/core.sh
 	[[ -e  "${SYSCONFDIR}"/fetch.conf ]] || sh_touchconf
 	source "${SYSCONFDIR}"/fetch.conf
 
@@ -2919,8 +2920,8 @@ function parsestdin()
 	#done < /dev/stdin
 	#done < <(cat "$@")
 }
-configure
 sh_checkroot
+configure
 checkDependencies
 setvarcolors
 sh_checkdir "OFF"

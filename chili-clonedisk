@@ -1,122 +1,142 @@
-#!/bin/bash
-#################################################################
-#      Vilmar Catafesta 			<vcatafesta@gmail.com>      	 #
-#      license: 						MIT		                      #
-#      created: 						2020/09/20   	                #
-#      altered:                  2022/04/07	                   #
-#################################################################
-#set -e
-declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v2.0.3-20220407"
-readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
+#!/usr/bin/env bash
 
-#DIALOG=${DIALOG:-"whiptail"}
-DIALOG=${DIALOG:-"dialog"}
+#  clonedisk - utility written in bash to clone disks
+#  ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#  ChiliLinux GNU/Linux - https://chililinux.com
+#  ChiliLinux GNU/Linux - https://chilios.com.br
+#
+#  Created: 2019/04/05
+#  Altered: 2022/04/07
+#
+#  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-# flag dialog exit status codes
-: ${D_OK=0}
-: ${D_CANCEL=1}
-: ${D_HELP=2}
-: ${D_EXTRA=3}
-: ${D_ITEM_HELP=4}
-: ${D_ESC=255}
+#  fetch uses quite a few external programs during its execution. You
+#  need to have at least the following installed for makepkg to function:
+#     awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
+#     gettext, gpg, grep, gzip, sed, tput (ncurses), xz
+#  contains portion of software https://bananapkg.github.io/
+#########################################################################
 
-# vars bool
-DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-trancarstderr=2>&-
-true=0
-TRUE=0
-OK=0
-ok=0
-NOK=1
-nok=1
-FALSE=1
-false=1
-falso=1
-CANCEL=1
-ESC=255
-HEIGHT=0
-WIDTH=0
+configure()
+{
+	#set -e
+	declare -r _APP_="chili-clonedisk"
+	declare -r _VERSION_="v2.0.3-20220407"
+	readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
-# Use a colored prefix
-NORMAL="\\033[0;39m"         # Standard console grey
-SUCCESS="\\033[1;32m"        # Success is green
-WARNING="\\033[1;33m"        # Warnings are yellow
-FAILURE="\\033[1;31m"        # Failures are red
-INFO="\\033[1;36m"           # Information is light cyan
-BRACKET="\\033[1;34m"        # Brackets are blue
+	#DIALOG=${DIALOG:-"whiptail"}
+	DIALOG=${DIALOG:-"dialog"}
 
-BMPREFIX="     "
-SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
-FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
-WARNING_PREFIX="${WARNING} *** ${NORMAL}"
-SKIP_PREFIX="${INFO}  S  ${NORMAL}"
+	# flag dialog exit status codes
+	: ${D_OK=0}
+	: ${D_CANCEL=1}
+	: ${D_HELP=2}
+	: ${D_EXTRA=3}
+	: ${D_ITEM_HELP=4}
+	: ${D_ESC=255}
 
-SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
-FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
-WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
-SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
+	# vars bool
+	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+	trancarstderr=2>&-
+	true=0 TRUE=0 OK=0 ok=0
+	false=1 FALSE=1 NOK=1 nok=1 falso=1 CANCEL=1
+	HEIGHT=0 WIDTH=0
+	ESC=255
 
-BOOTLOG=$HOME/bootlog
-KILLDELAY=3
-SCRIPT_STAT="0"
+	# Use a colored prefix
+	NORMAL="\\033[0;39m"         # Standard console grey
+	SUCCESS="\\033[1;32m"        # Success is green
+	WARNING="\\033[1;33m"        # Warnings are yellow
+	FAILURE="\\033[1;31m"        # Failures are red
+	INFO="\\033[1;36m"           # Information is light cyan
+	BRACKET="\\033[1;34m"        # Brackets are blue
 
-# Set any user specified environment variables e.g. HEADLESS
-[ -r /etc/sysconfig/rc.site ]  && . /etc/sysconfig/rc.site
+	BMPREFIX="     "
+	SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
+	FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
+	WARNING_PREFIX="${WARNING} *** ${NORMAL}"
+	SKIP_PREFIX="${INFO}  S  ${NORMAL}"
 
-## Screen Dimensions
-# Find current screen size
-if [ -z "${COLUMNS}" ]; then
-   COLUMNS=$(stty size)
-   COLUMNS=${COLUMNS##* }
-fi
+	SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
+	FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
+	WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
+	SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
 
-# When using remote connections, such as a serial port, stty size returns 0
-if [ "${COLUMNS}" = "0" ]; then
-   COLUMNS=80
-fi
+	BOOTLOG=$HOME/bootlog
+	KILLDELAY=3
+	SCRIPT_STAT="0"
 
-## Measurements for positioning result messages
-COL=$((${COLUMNS} - 8))
-WCOL=$((${COL} - 2))
+	# Set any user specified environment variables e.g. HEADLESS
+	[ -r /etc/sysconfig/rc.site ]  && . /etc/sysconfig/rc.site
 
-## Set Cursor Position Commands, used via echo
-SET_COL="\\033[${COL}G"      # at the $COL char
-SET_WCOL="\\033[${WCOL}G"    # at the $WCOL char
-CURS_UP="\\033[1A\\033[0G"   # Up one line, at the 0'th char
-CURS_ZERO="\\033[0G"
+	## Screen Dimensions
+	# Find current screen size
+	if [ -z "${COLUMNS}" ]; then
+	   COLUMNS=$(stty size)
+	   COLUMNS=${COLUMNS##* }
+	fi
 
-# variavel comuns
-grafico=$true
-xapp="Chili GNU/Linux CloneDisk"
-ccabec="${xapp} $_VERSION_"
-ctitle="$cdistro Linux"
-welcome="Welcome to the $xapp"
-xkernel=$(uname -n)
+	# When using remote connections, such as a serial port, stty size returns 0
+	if [ "${COLUMNS}" = "0" ]; then
+	   COLUMNS=80
+	fi
 
-# flag para disco/particao/formatacao/montagem
-: ${LDISK=0}
-: ${LPARTITION=0}
-: ${LFORMAT=0}
-: ${LMOUNT=0}
-: ${TARSUCCESS=$false}
-: ${STANDALONE=$false}
-: ${STARTXFCE4=$true}
-: ${xUUIDSWAP=""}
-: ${xPARTSWAP=""}
-: ${xPARTEFI=""}
-: ${lEFI=$false}
-: ${LGRUB="EFI"}
-: ${LAUTOMATICA=$false}
-: ${xLABEL=$cdistro}
+	## Measurements for positioning result messages
+	COL=$((${COLUMNS} - 8))
+	WCOL=$((${COL} - 2))
 
-# choosedisk
-: ${ARRAY_DSK_DEVICES=()}
-: ${ARRAY_DSK_DISKS=()}
-: ${ARRAY_DSK_SIZE=()}
-: ${ARRAY_DSK_MODEL=()}
-: ${ARRAY_DSK_TRAN=()}
-: ${ARRAY_DSK_LABEL=()}
+	## Set Cursor Position Commands, used via echo
+	SET_COL="\\033[${COL}G"      # at the $COL char
+	SET_WCOL="\\033[${WCOL}G"    # at the $WCOL char
+	CURS_UP="\\033[1A\\033[0G"   # Up one line, at the 0'th char
+	CURS_ZERO="\\033[0G"
+
+	# variavel comuns
+	grafico=$true
+	xapp="Chili GNU/Linux CloneDisk"
+	ccabec="${xapp} $_VERSION_"
+	ctitle="$cdistro Linux"
+	welcome="Welcome to the $xapp"
+	xkernel=$(uname -n)
+
+	# flag para disco/particao/formatacao/montagem
+	: ${LDISK=0}
+	: ${LPARTITION=0}
+	: ${LFORMAT=0}
+	: ${LMOUNT=0}
+	: ${TARSUCCESS=$false}
+	: ${STANDALONE=$false}
+	: ${STARTXFCE4=$true}
+	: ${xUUIDSWAP=""}
+	: ${xPARTSWAP=""}
+	: ${xPARTEFI=""}
+	: ${lEFI=$false}
+	: ${LGRUB="EFI"}
+	: ${LAUTOMATICA=$false}
+	: ${xLABEL=$cdistro}
+
+	# choosedisk
+	: ${ARRAY_DSK_DEVICES=()}
+	: ${ARRAY_DSK_DISKS=()}
+	: ${ARRAY_DSK_SIZE=()}
+	: ${ARRAY_DSK_MODEL=()}
+	: ${ARRAY_DSK_TRAN=()}
+	: ${ARRAY_DSK_LABEL=()}
+}
 
 replicate(){
 	for counter in $(seq 1 $2);
@@ -1107,6 +1127,7 @@ Otherwise you will not to able to use disk partition tools." 11 68
 }
 
 # entrypoint - configuracao inicial
+configure
 setvarcolors
 en_US
 sh_checkroot

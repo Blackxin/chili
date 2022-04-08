@@ -120,10 +120,10 @@ if [ "${xdistro}" = "mazonos" ]; then
     cnick="mazon"
     xemail="root@$chost$ptcom"
 else
-    cdistro="ChiliOS"
+    cdistro="Chili"
     # servidor local
-    chost="chilios"
-    ptcom=".com.br"
+    chost="chili"
+    ptcom=".com"
     oldspkg="/"
     calias="chili"
     cnick="chili"
@@ -134,8 +134,8 @@ fi
 grafico=$true
 site="$chost$ptcom"
 chostname=$calias
-ccabec="$cdistro Linux installer $version"
-ctitle="$cdistro Linux"
+ccabec="$cdistro GNU/Linux installer $version"
+ctitle="$cdistro GNU/Linux"
 welcome="Welcome to the $ctitle"
 export dir_install="/mnt/lfs"
 url_release="http://$site/releases"

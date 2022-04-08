@@ -3,7 +3,7 @@
 #      Vilmar Catafesta 			<vcatafesta@gmail.com>      	 #
 #      license: 						MIT		                      #
 #      created: 						2020/09/20   	                #
-#      altered:                  2022/04/06	                   #
+#      altered:                  2022/04/07	                   #
 #################################################################
 #set -e
 declare -r _APP_="chili-clonedisk"
@@ -86,15 +86,13 @@ SET_WCOL="\\033[${WCOL}G"    # at the $WCOL char
 CURS_UP="\\033[1A\\033[0G"   # Up one line, at the 0'th char
 CURS_ZERO="\\033[0G"
 
-#distro
-xdistro=$(uname -n)
-
 # variavel comuns
 grafico=$true
 xapp="Chili GNU/Linux CloneDisk"
 ccabec="${xapp} $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
+xkernel=$(uname -n)
 
 # flag para disco/particao/formatacao/montagem
 : ${LDISK=0}
@@ -309,7 +307,7 @@ function is_true()
 
 function sh_trapErro()
 {
-	dialog --msgbox "Voce pressionou ctrl-c" 7 60
+	${DIALOG} --msgbox "Voce pressionou ctrl-c" 7 60
 }
 
 
@@ -321,7 +319,7 @@ function confirma()
 function msg()
 {
 	if [ $grafico -eq $true ]; then
-        dialog              \
+        ${DIALOG}           \
         --no-collapse       \
         --title     "$1"    \
         --infobox   "\n$2"  \
@@ -333,7 +331,7 @@ function msg()
 
 function mensagem()
 {
-	dialog                  	\
+	${DIALOG}                	\
 		--title 		"$ctitle"  	\
 		--backtitle	"$ccabec"	\
 		--infobox 	"$*"        \
@@ -358,7 +356,7 @@ function display_result()
 		xbacktitle="$3"
 	fi
 
-	dialog 								\
+	${DIALOG}							\
 		--title 		"$2"				\
 		--beep                     \
 		--no-collapse					\
@@ -370,8 +368,7 @@ function display_result()
 
 function alerta()
 {
-#	whiptail								      \
-	dialog								      \
+	${DIALOG}							      \
 		--colors			 			     		\
 		--title 		"$1" 			     		\
 		--no-collapse							\
@@ -383,7 +380,7 @@ function alerta()
 
 function info()
 {
-	dialog 			 				\
+	${DIALOG}  	 				   \
 		--colors                \
 		--beep                  \
 		--title 		"$cmsg002"	\
@@ -396,7 +393,7 @@ function conf()
 {
 	xtitle="$1"
 	shift
-	dialog								\
+	${DIALOG}							\
 		--title 		"$xtitle" 		\
 		--backtitle	"$ccabec"		\
 		--yes-label "$yeslabel"		\
@@ -410,7 +407,7 @@ function confmulti()
 {
 	xtitle="$1"
 	shift
-	dialog							\
+	${DIALOG}						\
 		--title 		"$xtitle"	\
 		--backtitle	"$ccabec"	\
 		--yes-label "$yeslabel"	\
@@ -422,7 +419,7 @@ function confmulti()
 
 function inkey1()
 {
-	dialog							\
+	${DIALOG}						\
 		--title 		"$2" 			\
 		--backtitle	"$ccabec"	\
 		--pause 		"$2"			\
@@ -536,9 +533,9 @@ function choosedisk()
 			((nc++))
 		done
 
-    	sd=$(dialog 		 																			\
-    				--title 			"$xmsg"								  							\
-    				--backtitle	 	"$ccabec"				 									\
+    	sd=$(${DIALOG} 	 																			\
+    				--title 			"$xmsg"					  			  							\
+    				--backtitle	 	"$ccabec"				   									\
 					--ok-label		"$cmsg_select" 												\
     				--cancel-label "$buttonback"													\
     				--colors																				\
@@ -618,7 +615,7 @@ function choosediskdestin()
 			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
 		done
 
-    	sddest=$(dialog 		 																		\
+    	sddest=$(${DIALOG}	 																		\
     				--title 			"$xmsg"	  			  			  							   \
     				--backtitle	 	"$ccabec"					 									\
 					--ok-label		"$cmsgOK"	 													\
@@ -701,7 +698,7 @@ function sh_domkclone()
 	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
 	(pv -n $sd | 												\
 	dd of=$sddest conv=notrunc,noerror,sync) 2>&1 |	\
-	dialog --gauge 											\
+	${DIALOG} --gauge 										\
 	"Running cloning dd command (dd if=$sd of=$sddest conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
 	local nchoice=$?
 	if [ $nchoice = $true ]; then
@@ -1025,7 +1022,7 @@ function sh_checkroot()
 function init()
 {
 	while true; do
-		i18=$(dialog															\
+		i18=$(${DIALOG}														\
 			--stdout                                              \
 			--backtitle	 	"$ccabec"				                  \
 			--title 			"$welcome"			                    	\

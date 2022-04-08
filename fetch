@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
-# 	ChiliOS GNU/Linux - https://github.com/vcatafesta/ChiliOS
-#	ChiliOS GNU/Linux - https://chilios.com.br
+# 	ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#	ChiliLinux GNU/Linux - https://chililinux.com
+#	ChiliLinux GNU/Linux - https://chilios.com.br
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/04/04
+# 	Altered: 2022/04/07
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -39,7 +40,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.07.01.20220404"
+	readonly _VERSION_="2.07.03.20220407"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -60,7 +61,7 @@ function configure()
 	ALTA=${MENSAGEM}
 	cmdopts=()
 	PRG="${PKG_EXT:=chi.zst}"
-	SITE="${PKG_SITE:=https://chilios.com.br}"
+	SITE="${PKG_SITE:=http://chililinux.com}"
 	GITSITE="${GITSITE:=0}"
 	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
 	AUTO_YES="${AUTO_YES:=1}"
@@ -108,18 +109,21 @@ function sh_touchconf(){
 ######################################################################
 # fetch.conf
 ######################################################################
-# extension of packages: chilios=chi.zst, mazonos=mz
+# extension of packages: chililinux=chi.zst, mazonos=mz
 #PKG_EXT='mz'			# http://mazonos.com
-PKG_EXT='chi.zst'		# https://github.com/vcatafesta/ChiliOS
+PKG_EXT='chi.zst'		# https://chililinux.com | https://github.com/vcatafesta/ChiliOS
 
 # packages hosted on GITHUB repository: yes='1', not='0'
 GITSITE='0'
 
 # distro hosting website/packages
 #PKG_SITE='https://github.com/vcatafesta/ChiliOS/tree/master'		# for use set GITSITE=1
-PKG_SITE='https://chilios.com.br'											# for use set GITSITE=0
+PKG_SITE='https://chililinux.com'					    					# for use set GITSITE=0
+#PKG_SITE='https://chilios.com.br'											# for use set GITSITE=0
+#PKG_SITE='http://chililinux.org'					     					# for use set GITSITE=0
+#PKG_SITE='http://chililinux.online'				  	   				# for use set GITSITE=0
+#PKG_SITE='http://sybernet.com.br'				  	   					# for use set GITSITE=0
 #PKG_SITE='http://localhost'													# for use set GITSITE=0
-#PKG_SITE='http://201.7.66.107'												# for use set GITSITE=0
 #PKG_SITE='http://mazonos.com'												# for use set GITSITE=0
 
 #not needed change
@@ -2755,7 +2759,7 @@ function logo()
 	_CAT << 'EOF'
   __      _       _
  / _| ___| |_ ___| |__     Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
-| |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 Chilios Linux Development Team
+| |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 ChiliLinux GNU/Linux Development Team
 |  _|  __/ || (__| | | |
 |_|  \___|\__\___|_| |_|   Este programa pode ser redistribuído livremente
                            sob os termos da Licença Pública Geral GNU.

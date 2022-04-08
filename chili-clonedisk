@@ -5,6 +5,7 @@
 #      created: 						2020/09/20   	                #
 #      altered:                  2022/04/06	                   #
 #################################################################
+#set -e
 declare -r _APP_="chili-clonedisk"
 declare -r _VERSION_="v2.0.2-20220406"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
@@ -90,8 +91,8 @@ xdistro=$(uname -n)
 
 # variavel comuns
 grafico=$true
-xapp="Chili clonedisk"
-ccabec="Chili clonedisk $_VERSION_"
+xapp="Chili CloneDisk"
+ccabec="Chili CloneDisk $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
 

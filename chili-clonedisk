@@ -7,7 +7,7 @@
 #################################################################
 #set -e
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v2.0.2-20220406"
+declare -r _VERSION_="v2.0.3-20220407"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 #DIALOG=${DIALOG:-"whiptail"}
@@ -91,8 +91,8 @@ xdistro=$(uname -n)
 
 # variavel comuns
 grafico=$true
-xapp="Chili CloneDisk"
-ccabec="Chili CloneDisk $_VERSION_"
+xapp="Chili GNU/Linux CloneDisk"
+ccabec="${xapp} $_VERSION_"
 ctitle="$cdistro Linux"
 welcome="Welcome to the $xapp"
 

@@ -585,12 +585,11 @@ function strzero()
 	printf "%0*d" $2 $1
 }
 
-function replicate()
-{
-	for c in $(seq 1 $2);
-	do
-		printf "%s" $1
-	done
+replicate(){
+   for counter in $(seq 1 $2);
+   do
+      printf "%s" $1
+   done
 }
 
 function maxcol()
@@ -605,6 +604,15 @@ function maxcol()
 function inkey()
 {
 	read -t "$1" -n1 -r -p "" lastkey
+}
+
+inkey1()
+{
+   dialog	                  \
+      --title     "$2"        \
+      --backtitle "$ccabec"   \
+      --pause     "$2"        \
+      0 0         "$1"
 }
 
 # simulando bash com echo

@@ -65,6 +65,7 @@ function configure()
 	GITSITE="${GITSITE:=0}"
 	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
 	AUTO_YES="${AUTO_YES:=1}"
+	APP="${0##*/}"
 	APP="fetch"
 	VARCACHE="/var/cache/fetch"
 	VARCACHE_ARCHIVES="/var/cache/${APP}/archives"

@@ -983,8 +983,7 @@ sh_display
 ##############################################################################################################
 #TEMP=$(getopt -o vnh: --long version,nocolor,help:,debugfile:,minheap:,maxheap: -n 'clonedisk' -- "$@")
 #if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
-if ! TEMP=$(getopt -o vnh --long version,nocolor,help -n ${0##*/} -- "$@")
-then
+if ! TEMP=$(getopt -o vnh --long version,nocolor,help -n ${0##*/} -- "$@"); then
 	usage; exit 1
 fi
 eval set -- "$TEMP"
@@ -1003,10 +1002,10 @@ bflag=no
 cargument=none
 
 # options may be followed by one colon to indicate they have a required argument
-if ! options=$(getopt -o abc: -l along,blong,clong: -n 'clonedisk' -- "$@")
-then
-    # something went wrong, getopt will put out an error message for us
-    exit 1
+if ! options=$(getopt -o abc: -l along,blong,clong: -n 'clonedisk' -- "$@"); then
+   # something went wrong, getopt will put out an error message for us
+	usage
+   exit 1
 fi
 set -- $options
 while [ $# -gt 0 ]

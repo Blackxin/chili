@@ -952,12 +952,10 @@ testelang()
 
 usage()
 {
-   cat <<EOF
-${cyan}Most used commands:
-${red}	-h  ${reset}- display this help and exit
-${red}	-v  ${reset}- display version
-${red}	-c  ${reset}- no color
-EOF
+	printf "${cyan}Most used commands:\n"
+	printf "${red}	-h  ${reset}- display this help and exit\n"
+	printf "${red}	-v  ${reset}- display version\n"
+	printf "${red}	-c  ${reset}- no color\n"
 }
 
 #testelang
@@ -967,19 +965,35 @@ sh_configure
 en_US
 sh_checkDependencies
 sh_display
+##############################################################################################################
+#while getopts "vch" o; do
+#    case "${o}" in
+#    	v) sh_logo; exit 0;;
+#	   n) unsetvarcolors;;
+#	   h) usage; exit 0;;
+#    esac
+#done
+#shift $((OPTIND-1))
 
-while getopts "vch" o; do
-    case "${o}" in
-    	v) sh_logo; exit 0;;
-	   c) setunvarcolors;;
-	   h) usage; exit 0;;
-    esac
-done
-shift $((OPTIND-1))
 #if [[ $1 = "-v" || $1 = "--version" || $1 = "-V" ]]; then
 #	sh_logo
 #	exit 0
 #fi
+##############################################################################################################
+#TEMP=$(getopt -o vnh: --long version,nocolor,help:,debugfile:,minheap:,maxheap: -n 'clonedisk' -- "$@")
+#if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+TEMP=$(getopt -o vnh --long version,nocolor,help,debugfile:,minheap:,maxheap: -n 'clonedisk' -- "$@")
+if [ $? != 0 ] ; then usage; exit 1 ; fi
+eval set -- "$TEMP"
+while true; do
+	case "$1" in
+		-v|--version) 	sh_logo; exit 0;;
+		-n|--nocolor)	unsetvarcolors; break;;
+		-h|--help) 		usage; exit 0;;
+		--) shift; break;;
+		*) break;;
+	esac
+done
 init
 
 :<<'LIXO'

@@ -598,7 +598,7 @@ function maxcol()
 		COLUMNS=$(stty size)
 		COLUMNS=${COLUMNS##* }
 	fi
-	return $COLUMNS
+	printf $COLUMNS
 }
 
 function inkey()

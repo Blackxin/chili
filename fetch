@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/04/07
+# 	Altered: 2022/04/13
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -40,8 +40,9 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.07.03.20220407"
-	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
+	readonly _VERSION_="2.07.05.20220413"
+#	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
+	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
 
 	# gettext initialization
 	export TEXTDOMAIN='fetch-scripts'
@@ -77,6 +78,7 @@ function configure()
    METAPACKAGES='metapackages.csv'
    PACKAGES_SPLIT='packages-split.csv'
    PACKAGES_INSTALLED_SPLIT='packages-installed-split.csv'
+   PACKAGES_IN_CACHE='packages-in-cache.csv'
 
 	LIBRARY=${LIBRARY:-'/usr/share/${APP}'}
 	USE_COLOR='y'
@@ -520,7 +522,7 @@ function sh_clean()
 	local	nfiles=$(find $VARCACHE_ARCHIVES -type f -iname "*.${PRG}" -type f  | wc -l)
 
 	if !(( $nfiles )); then
-		printf '' >| "$VARCACHE_SEARCH/packages-in-cache"
+		printf '' >| "$VARCACHE_SEARCH/$PACKAGES_IN_CACHE"
 		log_msg "${yellow}($nfiles) ${cyan}find packages in cache"
 		return $lRetval
 	fi
@@ -537,7 +539,7 @@ function sh_clean()
 	if (( $LAUTO )); then
 		log_msg "${pink}Deleting downloaded package files"
 		[[ -d $VARCACHE_ARCHIVES ]] && rm -f $VARCACHE_ARCHIVES/*.${PRG}* || mkdir -p $VARCACHE_ARCHIVES
-		printf '' >| "$VARCACHE_SEARCH/packages-in-cache"
+		printf '' >| "$VARCACHE_SEARCH/$PACKAGES_IN_CACHE"
 		log_success_msg2 "${yellow}($nfiles) ${cyan}packages deleted"
 		lRetval=$true
 	fi
@@ -720,32 +722,26 @@ function sh_update()
 
 function sh_FilesInCache()
 {
-	local nfilesincache=0
-	local index=1
+   LLIST=$true
+	printf "" >| $VARCACHE_SEARCH/$PACKAGES_IN_CACHE
+	local aCache=($(find $VARCACHE_ARCHIVES/ -iname "*.${PRG}" -type f))
+	local nfilesincache=${#aCache[*]}
+   local index=1
 
-	pushd $VARCACHE_ARCHIVES/ &>/dev/null
-	aCache=($(echo *.${PRG}))
-	[ ${aCache[0]} = "*.${PRG}" ] && aCache=()
-	[[ -e $VARCACHE_SEARCH/packages-in-cache ]] || rm -f $VARCACHE_SEARCH/packages-in-cache
-	printf '' > "$VARCACHE_SEARCH/packages-in-cache"
-	for item in ${aCache[*]}; do
-    	echo $item >> $VARCACHE_SEARCH/packages-in-cache
-	done
-	popd  &>/dev/null
-	nfilesincache=${#aCache[*]}
-
-    if [[ "$1" != "OFF" ]]; then
-        [ $nfilesincache <> 0 ] || maxcol; replicate "=" $?
-        index=1
-        for y in ${aCache[*]}
-        do
-            log_success_msg2 "IN CACHE: [$index]${orange}$y${reset}"
+   if (( $nfilesincache )); then
+      local item
+   	for item in ${aCache[*]}; do
+       	echo $item >> $VARCACHE_SEARCH/$PACKAGES_IN_CACHE
+         if (( $LLIST )); then
+            log_success_msg2 "IN CACHE: [$index] ${orange}$item${reset}"
             ((index++))
-        done
-        [ $nfilesincache <> 0 ] || maxcol; replicate "=" $?
-        echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
-    fi
-	return $nfilesincache
+         fi
+   	done
+      if (( $LLIST )); then
+         echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
+      fi
+   fi
+   return $nfilesincache
 }
 
 function sh_pkgoutcache()
@@ -1635,7 +1631,7 @@ function sh_recreatefilepackagesinstalled()
 			if (( verbose >= 2 )); then
 				sh_write $cfileinstalled "5" $pkgNumber
 			fi
-			sh_ascanpkg "$cfileinstalled" "5"
+			sh_ascanpkg "$cfileinstalled" 5
 			cline="${aPKGARRAY[0]}$SEP${aPKGARRAY[1]}$SEP${aPKGARRAY[2]}$SEP${aPKGARRAY[3]}$SEP${aPKGARRAY[4]}$SEP${aPKGARRAY[5]}$SEP${aPKGARRAY[6]}"
 			echo "${cline}" >> $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
 			if ! [[ -e $VARCACHE_INSTALLED/${cfileinstalled} ]]; then
@@ -2778,6 +2774,7 @@ ${red}  -S,  install        ${reset}- install packages
 ${red}  -Ss, search         ${reset}- search for packages
 ${red}  -Su, upgrade        ${reset}- upgrade packages
 ${red}  -Sw, download       ${reset}- only download the binary package into cache directory
+${red}  -Sr, recreate       ${reset}- recreate list packages installed
 ${red}  -Sa, alienpkg       ${reset}- import package from ArchLinux
 ${red}  -Sl, local          ${reset}- install local package
 ${red}  -Sg, generate       ${reset}- generate info package from source
@@ -2886,6 +2883,7 @@ function init()
 			-Sm|--meta|meta) 		            		shift;sh_installmeta "${@}";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;
+			-Sr|recreate) 									shift;sh_recreatefilepackagesinstalled "$@";exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;
 			-Lc|list-cache) 	        					shift;sh_FilesInCache "${param}";exit;;

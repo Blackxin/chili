@@ -733,14 +733,12 @@ function sh_FilesInCache()
    	for item in ${aCache[*]}; do
        	echo $item >> $VARCACHE_SEARCH/$PACKAGES_IN_CACHE
          if (( $LLIST )); then
-            log_success_msg2 "IN CACHE: [$index] ${orange}$item${reset}"
+            printf "%s\n" "$item"
             ((index++))
          fi
    	done
-      if (( $LLIST )); then
-         echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
-      fi
    fi
+   echo -e "${yellow}($nfilesincache) ${cyan}packages IN CACHE $VARCACHE_ARCHIVES"
    return $nfilesincache
 }
 

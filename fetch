@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
-# 	ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
-#	ChiliLinux GNU/Linux - https://chililinux.com
-#	ChiliLinux GNU/Linux - https://chilios.com.br
+# 	Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#	Chili GNU/Linux - https://chililinux.com
+#	Chili GNU/Linux - https://chilios.com.br
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
@@ -114,7 +114,7 @@ function sh_touchconf(){
 ######################################################################
 # fetch.conf
 ######################################################################
-# extension of packages: chililinux=chi.zst, mazonos=mz
+# extension of packages: chili=chi.zst, mazonos=mz
 #PKG_EXT='mz'			# http://mazonos.com
 PKG_EXT='chi.zst'		# https://chililinux.com | https://github.com/vcatafesta/ChiliOS
 
@@ -262,7 +262,7 @@ function sh_ascanpkg()
 function sh_cabec()
 {
 	local nfiles=$1
-	printf "${reset}%5s(${pink}%04d${reset})${green} sta Package%37sversion%8s%11ssize fullbasename\n" "" "${nfiles}"
+	printf "${reset}%5s(${pink}%04d${reset})${green} sta package%37sversion%8s%11ssize fullbasename\n" "" "${nfiles}"
 	echo -n
 }
 
@@ -2720,7 +2720,7 @@ function logo()
 	_CAT << 'EOF'
   __      _       _
  / _| ___| |_ ___| |__     Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
-| |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 ChiliLinux GNU/Linux Development Team
+| |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 Chili GNU/Linux Development Team <root@chililinux.com>
 |  _|  __/ || (__| | | |
 |_|  \___|\__\___|_| |_|   Este programa pode ser redistribuído livremente
                            sob os termos da Licença Pública Geral GNU.

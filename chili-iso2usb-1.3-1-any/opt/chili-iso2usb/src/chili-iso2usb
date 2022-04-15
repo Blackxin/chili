@@ -31,7 +31,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #########################################################################
-version="1.0.0.20220304"
+version="1.3.20220415"
+readonly DEPENDENCIES=(which yad dialog dd sed grep cat awk tput stat tee)
+
+function checkDependencies()
+{
+  local errorFound=0
+
+  for command in "${DEPENDENCIES[@]}"; do
+    if ! which "$command"  &> /dev/null ; then
+      echo "ERRO: não encontrei o comando '$command'" >&2
+      errorFound=1
+    fi
+  done
+
+  if [[ "$errorFound" != "0" ]]; then
+    echo "---IMPOSSÍVEL CONTINUAR---"
+    echo "Esse script precisa dos comandos listados acima" >&2
+    echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+    exit 1
+  fi
+}
 
 yad_message()
 {
@@ -203,7 +223,7 @@ function sh_main()
 	done
 }
 colddir=$PWD
-cd /opt/iso2usb/
+checkDependencies
 sh_initvar
 sh_main
 cd $colddir

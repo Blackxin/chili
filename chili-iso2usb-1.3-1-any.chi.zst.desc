@@ -4,9 +4,9 @@
 ######################################################################
 maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
 pkgname='chili-iso2usb'
-version=1.0-1
+version=1.3-1
 build=1
-pkgver=1.0
+pkgver=1.3
 pkgrel=1
 license='GPL2'
 lfs_version='11.1'

@@ -40,7 +40,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="2.9.5.20220415"
+	readonly _VERSION_="2.95.20220415"
 #	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
 

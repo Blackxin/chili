@@ -1,0 +1,31 @@
+#!/bin/env bash
+source /usr/share/fetch/core.sh
+
+#The script is run right before files are extracted. One argument is passed: new package version.
+pre_install(){
+echo
+}
+#The script is run right before files are extracted. Two arguments are passed in the following order
+pre_upgrade(){
+echo
+}
+#The script is run right after files are extracted. Two arguments are passed in the following order
+post_upgrade(){
+echo
+}
+#The script is run right before files are removed. One argument is passed: old package version.
+pre_remove(){
+echo
+}
+#The script is run right after files are removed. One argument is passed: old package version.
+post_remove(){
+echo
+}
+#The script is run right after files are extracted. One argument is passed: new package version.
+post_install()
+{
+log_msg "Ajustando /etc/shells"
+cat >> /etc/shells << "EOF"
+/bin/dash
+EOF
+}

@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/04/20
+# 	Altered: 2022/04/22
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -44,7 +44,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.00.20220420"
+	readonly _VERSION_="3.05.20220422"
 #	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
 
@@ -316,21 +316,21 @@ function sh_ascanpkg()
 function sh_cabec()
 {
 	local nfiles=$1
-	printf "${reset}%5s(${pink}%04d${reset})${green} sta package%37sversion%8s%11ssize fullbasename\n" "" "${nfiles}"
+	printf "${reset}%5s(${pink}%04d${reset})${green} sts package%47sversion%8s%11ssize fullbasename\n" "" "${nfiles}"
 	echo -n
 }
 
 function sh_write()
 {
    status="$4"
+	strstatus='         '
    [[ -z $status ]] && status=" A "
 	local pkgsearch="$1"
 	local pkgfile="$2"
 	local pkgCheckNumber="$3"
 	sh_ascanpkg "$pkgsearch" "$pkgfile"
-#	printf "${green}%s(%04d) ${yellow}$status ${orange}%-43s ${reset}%-15s%15s %s\n" "     " "$pkgCheckNumber" "${aPKGARRAY[0]}" "${aPKGARRAY[1]}" "$(size_to_human ${aPKGARRAY[6]})" "${SITE}/packages/${aPKGARRAY[4]}"
-	printf "${green}%s(%04d) ${yellow}$status ${orange}%-43s ${reset}%-15s%15s %s\n" "     " "$pkgCheckNumber" "${aPKGARRAY[0]}" "${aPKGARRAY[1]}" "$(size_to_human ${aPKGARRAY[6]})" "${aPKGARRAY[3]}"
-
+	[[ $status = 'I' ]] && strstatus='installed'
+	printf "${green}%s(%04d) ${cyan} $status  ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n" "     " "$pkgCheckNumber" "${aPKGARRAY[0]}" "${aPKGARRAY[1]}" "$(size_to_human ${aPKGARRAY[6]})" "${aPKGARRAY[3]}"
 }
 
 function sh_footer()
@@ -339,6 +339,7 @@ function sh_footer()
 	log_msg "${green}($pkgCheckNumber)${reset} package(s) found."
 }
 
+# -La
 function sh_list()
 {
 	local param=$@
@@ -346,6 +347,8 @@ function sh_list()
 	local arr
 	local s
 	local x
+	local status='A'
+	local	SEARCH_CUT='-f1'
 	pkg=
 
 	sh_checkdir "OFF"
@@ -389,10 +392,18 @@ function sh_list()
 			if (( verbose )); then
 				sh_cabec $nfiles
 			fi
+
 			for i in $pkg; do
 				((pkgCheckNumber++))
 				if (( verbose )); then
-					[[ $LLIST = $true ]] && sh_write $i "0" $pkgCheckNumber
+					pkginstalled=$(grep ^$i$SEP $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP $SEARCH_CUT)
+					sh_splitpkg ${pkginstalled}
+					if [[ -n "$pkginstalled" && "$i" = "$pkginstalled" ]]; then
+						status='I'
+					else
+						status='A'
+					fi
+					[[ $LLIST = $true ]] && sh_write $i "0" $pkgCheckNumber $status
 				fi
 			done
 		fi
@@ -456,15 +467,18 @@ function sh_listpkgdisp()
 		SPLITPOS='4'
 		SEARCH_CUT='-f5'
 		AWK_CUT='$5'
-	elif [[ "$SPLITPOS" == "0" ]]; then
+ 	elif [[ "$SPLITPOS" == "0" ]]; then
 		SEARCH_CUT='-f1'
 		AWK_CUT='$1'
+ 	elif [[ "$SPLITPOS" == "4" ]]; then
+		SEARCH_CUT='-f5'
+		AWK_CUT='$5'
 	fi
 
 	if (( $LALL )) || [[ "$public_ListSearch" == "" ]]; then
 		if (( $LALL )); then
 #			public_pkg=$(grep ^ $file_list_package | cut -d$SEP $SEARCH_CUT)
-			public_pkg=$(awk -F $SEP '{print '$AWK_CUT'}' $file_list_package)
+			public_pkg=$(awk -F$SEP '{print '$AWK_CUT'}' $file_list_package)
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
 			exit 1
@@ -1724,15 +1738,15 @@ function sh_recreatefilepackagesinstalled()
 #			sed -i '/'${_pkg}'/d' $VARCACHE_SEARCH/$PACKAGES_SPLIT
 #			echo "${cline}" >> $VARCACHE_SEARCH/$PACKAGES_SPLIT
 			printf '' >| $VARCACHE_INSTALLED/${cfileinstalled}
-  			echo "${cline}" >> $VARCACHE_INSTALLED/${cfileinstalled}
+ 			echo "${cline}" >> $VARCACHE_INSTALLED/${cfileinstalled}
 			mv $item $VARLIB_DESC/$cfileinstalled.desc  &> /dev/null    #consertar nome pacotes antigos
    	done
-   fi
-	cat $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | sort|uniq >/tmp/$PACKAGES_INSTALLED_SPLIT
-	cp /tmp/$PACKAGES_INSTALLED_SPLIT $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
-	rm -f /tmp/$PACKAGES_INSTALLED_SPLIT
-	if (( verbose >= 2 )); then
-      printf "${yellow}($nfiles) ${cyan}packages installed\n"
+		cat $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT |sort|uniq >/tmp/$PACKAGES_INSTALLED_SPLIT
+		cp /tmp/$PACKAGES_INSTALLED_SPLIT $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
+		rm -f /tmp/$PACKAGES_INSTALLED_SPLIT
+		if (( verbose >= 2 )); then
+   	   printf "${yellow}($nfiles) ${cyan}packages installed\n"
+	   fi
    fi
 	return $nfiles
 }

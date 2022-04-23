@@ -6,7 +6,7 @@
 #  ChiliLinux GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/04/07
+#  Altered: 2022/04/23
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -33,7 +33,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v2.0.3-20220407"
+declare -r _VERSION_="v3.0.0-20220423"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -105,12 +105,32 @@ replicate(){
 
 sh_disk_info()
 {
-	ARRAY_DSK_DISKS=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
-	ARRAY_DSK_DEVICES=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
-	ARRAY_DSK_SIZE=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
-	ARRAY_DSK_MODEL=($(lsblk -a -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'| awk '{print "["$0"]"}'))
-   ARRAY_DSK_TRAN=($(lsblk -a -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2 | awk '{print "["$0"]"}'))
-   ARRAY_DSK_LABEL=($(lsblk -a -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+	     ARRAY_DSK_DISKS=()
+	   ARRAY_DSK_DEVICES=()
+	      ARRAY_DSK_SIZE=()
+	      ARRAY_DSK_TRAN=()
+	     ARRAY_DSK_MODEL=()
+	while IFS='\ ' read -r dsk_type dsk_name dsk_path dsk_size dsk_tran dsk_model dsk_model1 dsk_model2
+	do
+		[[ -z $dsk_size  ]] && dsk_size="0B"
+		[[ -z $dsk_tran  ]] && dsk_tran="blk"
+		[[ -z $dsk_model ]] && dsk_model="unknown"
+	     ARRAY_DSK_DISKS+=("${dsk_name}")
+	   ARRAY_DSK_DEVICES+=("${dsk_path}")
+	      ARRAY_DSK_SIZE+=("${dsk_size}")
+	      ARRAY_DSK_TRAN+=("${dsk_tran}")
+	     ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
+	done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+}
+
+sh_disk_infoOLD()
+{
+	  ARRAY_DSK_DISKS=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
+	ARRAY_DSK_DEVICES=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
+	   ARRAY_DSK_SIZE=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
+	  ARRAY_DSK_MODEL=($(lsblk -a -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'| awk '{print "["$0"]"}'))
+      ARRAY_DSK_TRAN=($(lsblk -a -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2 | awk '{print "["$0"]"}'))
+     ARRAY_DSK_LABEL=($(lsblk -a -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
 }
 
 DOT()
@@ -324,30 +344,15 @@ choosedisk()
 
     	LDISK=0
 		local xmsg=$cmsg_disco_origem
-		local arr=()
 		local array=()
-#		local devices=()
-		local i=0
-		local x=0
-		local y=0
-		local t=0
-		local z=0
+		local i
 		local n=0
 		local nc=0
-		for i in ${ARRAY_DSK_DEVICES[@]}
+
+		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
-#			devices[((n++))]="/dev/$i"
-#			array[((n++))]="[${tran[((t++))]}] [${size[((x++))]}]  ${model[((y++))]}"
-			a=${ARRAY_DSK_TRAN[$nc]}
-			b=${ARRAY_DSK_SIZE[$nc]}
-			c=${ARRAY_DSK_MODEL[$nc]}
-			d=${ARRAY_DSK_LABEL[$nc]}
-			[[ $a = "[]" ]] && a="[blk]"
-			[[ $b = "[]" ]] && b="[unknown]"
-			[[ $c = "[]" ]] && c="[unknown]"
-			[[ $d = "[]" ]] && d="[unknown]"
 			array[((n++))]="$i"
-			array[((n++))]=$(printf "%-6s|%6s|%-30s|%s" $a $b $c $d)
+			array[((n++))]=$(printf "%-6s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
 			((nc++))
 		done
 
@@ -406,31 +411,23 @@ choosediskdestin()
 	while true
 	do
 #		sh_disk_info
-
     	LDISK=0
 		local xmsg=$cmsg_disco_destino
 		local array=()
-#		local devices=()
-		local i=0
-		local x=0
-		local y=0
-		local t=0
-		local z=0
+		local i
 		local n=0
+		local nc=0
+
 		for i in ${ARRAY_DSK_DEVICES[@]}
 		do
-#			devices[((n++))]="/dev/$i"
-#			array[((n++))]="/dev/$i"
-#			array[((n++))]="$i"
-#			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
-			[[ "${i}" = "${sd}" ]] && continue
+			if [[ "${i}" = "${sd}" ]]; then
+				((n++))
+				((nc++))
+				continue
+			fi
 			array[((n++))]="$i"
-			a=${ARRAY_DSK_TRAN[((x++))]}
-			b=${ARRAY_DSK_SIZE[((y++))]}
-			c=${ARRAY_DSK_MODEL[((t++))]}
-			d=${ARRAY_DSK_LABEL[((z++))]}
-			[[ $d = "" ]] && d=""
-			array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
+			array[((n++))]=$(printf "%-4s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
+			((nc++))
 		done
 
     	sddest=$(${DIALOG}	 																		\

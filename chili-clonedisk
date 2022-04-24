@@ -496,10 +496,11 @@ sh_domakeclone()
 	LFORMAT=0
 	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
 	(pv -n $sd | 												\
-	dd of=$sddest conv=notrunc,noerror,sync) 2>&1 |	\
+	dd of=$sddest bs=128k conv=notrunc,noerror,sync) 2>&1 |	\
 	${DIALOG} --gauge 										\
-	"Running cloning dd command (dd if=$sd of=$sddest conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
+	"Running cloning dd command (dd if=$sd of=$sddest bs=128k conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
 	local nchoice=$?
+
 	if [ $nchoice = $true ]; then
 		display_result "$(fdisk -l $sddest)"
 		LFORMAT=1

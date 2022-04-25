@@ -2017,13 +2017,15 @@ _GENERATE_DESC()
 	[[ ! -d "info" ]] && mkdir info
 
 	if [ -e info/desc ]; then
-		evaluate_retval
+#		evaluate_retval
 		(( ncount++ ))
 		if !(( $LFORCE )); then
-			log_info_msg "$(fmt)${orange} info/desc ${reset}already exist. Skipping... Use the -f option to force recreate."
+#			log_info_msg "$(fmt)${orange} info/desc ${reset}already exist. Skipping... Use the -f option to force recreate."
+			log_msg "$(fmt)${orange} info/desc ${reset}already exist. Skipping... Use the -f option to force recreate."
 			return
 		else
-			log_info_msg "$(fmt)${orange} info/desc ${reset}already exist. Rewriting"
+#			log_info_msg "$(fmt)${orange} info/desc ${reset}already exist. Rewriting"
+			log_msg "$(fmt)${orange} info/desc ${reset}already exist. Rewriting"
 		fi
 	fi
 	_CAT > "info/desc" << EOF
@@ -2340,8 +2342,7 @@ function _CREATE_PKG()
 	local package="${1}"
 	local ext_desc='desc'
 
-#	if tar --force-local --use-compress-program="zstd -19" --create --file ../${package}.${PKG_EXT} .; then
-	if tar --force-local --use-compress-program="zstd --ultra" --create --file ../${package} . ; then
+	if tar --force-local --use-compress-program="zstd --ultra" --create --file ../"${package}" .; then
 		cp "$descme" ../${package}.${ext_desc} &>/dev/null
 		pushd .. &>/dev/null
 		if (( $CREATE_SHA256 )); then
@@ -2367,14 +2368,14 @@ function sh_generatepkg()
 		LLIST=$false
 		pkg="${PWD##*/}.${PRG}"
 	else
-		for s in ${param[@]}; do
+		for s in "${param[@]}"; do
 			pkg="$s"
 			continue
 		done
 	fi
 
 	(( ncount++ ))
-	log_info_msg "$(fmt) Generating info for package $pkg"
+	log_msg "$(fmt) Generating info for package $pkg"
 	if [[ ! -e "info/desc" ]]; then
 		LFORCE=$true
 	fi
@@ -2397,38 +2398,41 @@ function sh_generatepkg()
 		[[ -z "$DESC" ]] && DESC="$field_pkgname-$field_version"
 		_GENERATE_DESC "$field_pkgname" "$field_version" "$field_build" "${field_pkgver::-2}" "$field_pkgrel" || return $ERR_ERROR
 	fi
-	evaluate_retval
+#	evaluate_retval
 	return $true
 }
 
 function sh_createpkg()
 {
    local param=$@
-	local s
+	local s=
+	local pkg=()
 
-	for s in ${param[@]}; do
-      pkg="$pkg $(echo ${s})"
+	for s in "${param[@]}"; do
+      pkg+=$(echo ${s})
 	done
 
 	if [[ -z "$pkg" ]] ; then
-		local pkg=$(echo $PWD |sed 's/\// /g'|awk '{print $NF}')
+		pkg=$(echo $PWD |sed 's/\// /g'|awk '{print $NF}')
 	fi
 
-	log_wait_msg "$(fmt) Building package $pkg"
+	log_msg "$(fmt) Building package $pkg"
 	pkg="$pkg.${PKG_EXT}"
-	sh_generatepkg $pkg
+	sh_generatepkg "$pkg"
    _NAME_FORMAT_PKG "$pkg" || exit 1
    _VERIFY_ON "$pkg" || exit 1
 	_CREATE_PKG "$pkg" || exit 1
 	(( ncount++ ))
-	log_info_msg "$(fmt) Generating package $pkg"
-	evaluate_retval
+#	log_info_msg "$(fmt) Generating package $pkg"
+	log_msg "$(fmt) Generating package $pkg"
+#	evaluate_retval
 }
 
-function sh_alienpkg_pkgsize()
+# -Sa
+function sh_alienpkg_main()
 {
-	size="$(du -sk --apparent-size)"
-   size="$(( ${size%%[^0-9]*} * 1024 ))"
+	sh_alienpkg_initvars $*
+	sh_alienpkg_exec $*
 }
 
 function sh_alienpkg_initvars()
@@ -2448,9 +2452,6 @@ function sh_alienpkg_exec()
 	local param=$*
 	local package
 	local LFORCELOCAL=
-#	local LFIND=$false
-#	local LALL=$false
-#	local mtime=0
 	local string=
 	local ntotalpkg=0
 	local ncount=0
@@ -2460,17 +2461,12 @@ function sh_alienpkg_exec()
 		LALL=$true
 	fi
 
-#	if [[ $(toupper "${param}") = "--DEFAULT" ]]; then
-#		param="all -atime=0 -keep"
-#	fi
-
   	for s in ${param[@]}; do
 		string="$string ${s}"
 	done
 
 	if (( $LALL )); then
 		if !(( $LFIND )); then
-#			pkg=$(ls -1 $ALIEN_CACHE_DIR/*.{zst,xz})
 			pkg=$(find $ALIEN_CACHE_DIR/ -regex ".+\.zst$" -type f)
 		   pkg="$pkg $(find $ALIEN_CACHE_DIR/ -regex ".+\.xz$" -type f)"
 		else
@@ -2530,30 +2526,22 @@ function sh_alienpkg_exec()
 
 			destdir=$BUILDDIR/$pkgtar
 			((ncount++))
-			log_info_msg "$(fmt) Creating directory $destdir"
+#			log_info_msg "$(fmt) Creating directory $destdir"
+			log_msg "$(fmt) Creating directory $destdir"
 			mkdir -p $destdir
-			evaluate_retval
+#			evaluate_retval
 
 			((ncount++))
-			log_info_msg "$(fmt) Unpacking package $package at $destdir"
+#			log_info_msg "$(fmt) Unpacking package $package at $destdir"
+			log_msg "$(fmt) Unpacking package $package at $destdir"
 			tar --use-compress-program=zstd --force-local --extract --file $package -C $destdir >/dev/null 2>&1
-			evaluate_retval
+#			evaluate_retval
 
 			case $packagedir in
 				luit-[0-9]* )
 				sed -i -e "/D_XOPEN/s/5/6/" configure
 				;;
 			esac
-
-	#		CFG_FILE=$destdir/.PKGINFO
-	#		CFG_CONTENT=$(cat $CFG_FILE | sed -r '/[^=]+=[^=]+/!d' | sed -r 's/\s+=\s/=/g')
-	#		eval "$CFG_CONTENT"
-	#		info $CFG_CONTENT
-
-	#		while read var value
-	#		do
-	#		    export "$var" "$value"
-	#		done < $destdir/.PKGINFO
 
 			sed -i 's/ = /="/g' $destdir/.PKGINFO  >/dev/null 2>&1
 			sed -i 's/$/"/g' $destdir/.PKGINFO  >/dev/null 2>&1
@@ -2587,17 +2575,20 @@ function sh_alienpkg_exec()
 			rm -f $destdir/.PKGINFO   >/dev/null 2>&1
 
 			((ncount++))
-			sh_createpkg $pkgtar $pkgtar -Y -F
+#			sh_createpkg $pkgtar $pkgtar -Y -F
+			sh_createpkg "${pkgtar}"
 			sh_alienpkg_pkgsize
 
 			if !(( $LKEEP )); then
 				((ncount++))
-				log_wait_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+#				log_wait_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+				log_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
 				#removeoldpkgchili $cPacoteSemExt
 				((ncount++))
-				log_info_msg "$(fmt) Removing ${red}OLD ${reset}package ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+#				log_info_msg "$(fmt) Removing ${red}OLD ${reset}package ${yellow}${GITDIR}/packages/$cPacoteSemExt"
+				log_msg "$(fmt) Removing ${red}OLD ${reset}package ${yellow}${GITDIR}/packages/$cPacoteSemExt"
 				fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
-				evaluate_retval
+#				evaluate_retval
 			fi
 			echo
 			(( ntotalpkg-- ))
@@ -2607,6 +2598,12 @@ function sh_alienpkg_exec()
 	fi
 	popd >/dev/null 2>&1
 	unset size ncount ntotalpkg
+}
+
+function sh_alienpkg_pkgsize()
+{
+	size="$(du -sk --apparent-size)"
+   size="$(( ${size%%[^0-9]*} * 1024 ))"
 }
 
 function sh_alienpkg_logo()
@@ -2635,12 +2632,6 @@ function sh_aliencheck()
 			echo "file exist: ${destpkg}"
 		fi
 	done
-}
-
-function sh_alienpkg_main()
-{
-	sh_alienpkg_initvars $*
-	sh_alienpkg_exec $*
 }
 
 function sh_upgrade()

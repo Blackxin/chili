@@ -1023,7 +1023,7 @@ function print(){
 }
 
 function fmt(){
-	printf "${pink}(j#${ncount}:8/f#${ntotalpkg}:${nfullpkg})${reset}"
+	printf "${pink}(${ncount}:8/${ntotalpkg}:${nfullpkg})${reset}"
 	return $?
 }
 

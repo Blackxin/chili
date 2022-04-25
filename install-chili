@@ -53,6 +53,9 @@ else
 fi
 #mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 
+#DIALOG=${DIALOG:-"whiptail"}
+DIALOG=${DIALOG:-"dialog"}
+
 #Downloader
 DOWNLOADER="curl -L -O -C - "
 
@@ -441,7 +444,7 @@ function is_true()
 
 function sh_trapErro()
 {
-    dialog --msgbox "Voce pressionou ctrl-c" 7 60
+	${DIALOG} --msgbox "Voce pressionou ctrl-c" 7 60
 }
 
 
@@ -453,7 +456,7 @@ function confirma()
 function msg()
 {
     if [ $grafico -eq $true ]; then
-        dialog              \
+        ${DIALOG}           \
         --no-collapse       \
         --title     "$1"    \
         --infobox   "\n$2"  \
@@ -465,8 +468,8 @@ function msg()
 
 function mensagem()
 {
-    dialog                  \
-	--title 	"$ctitle"   \
+	${DIALOG}            	\
+	--title 	"$ctitle"   	\
 	--backtitle	"$ccabec"   \
 	--infobox 	"$*"        \
    6 60
@@ -490,7 +493,7 @@ function display_result()
 		xbacktitle="$3"
 	fi
 
-	dialog 	--title 	"$2"			\
+	${DIALOG} 	--title 	"$2"			\
             --beep                      \
     		--no-collapse				\
             --no-cr-wrap                \
@@ -501,7 +504,7 @@ function display_result()
 
 function alerta()
 {
-	dialog 								        \
+	${DIALOG} 								        \
 			--title 	"$1" 			        \
 			--backtitle	"$ccabec"		        \
 			--msgbox 	"$2\n$3\n$4\n$5\n$6"    \
@@ -510,7 +513,7 @@ function alerta()
 
 function info()
 {
-	dialog 			 					\
+	${DIALOG} 			 					\
          --beep                  \
 			--title 	"$cmsg002"		\
 			--backtitle	"$ccabec"	\
@@ -520,7 +523,7 @@ function info()
 
 function debug()
 {
-	dialog 			 					\
+	${DIALOG} 			 					\
          --beep                  \
 			--title 	"$cmsg002"		\
 			--backtitle	"$ccabec"	\
@@ -530,7 +533,7 @@ function debug()
 
 function conf()
 {
-    dialog									\
+    ${DIALOG}									\
 			--title 		"$1" 				\
 			--backtitle	"$ccabec"		\
 			--yes-label "$yeslabel"		\
@@ -544,7 +547,7 @@ function conf2()
 {
 	xtitle="$1"
 	shift
-   dialog									\
+   ${DIALOG}									\
 			--title 		"$xtitle" 		\
 			--backtitle	"$ccabec"		\
 			--yes-label "$yeslabel"		\
@@ -558,7 +561,7 @@ function confmulti()
 {
 	xtitle="$1"
 	shift
-   dialog									\
+   ${DIALOG}									\
 			--title 		"$xtitle" 		\
 			--backtitle	"$ccabec"		\
 			--yes-label "$yeslabel"		\
@@ -728,7 +731,7 @@ function sh_tailexectar()
 	    tar xJpvf $pwd/$tarball_default -C $dir_install
         nret=$?
     } > out &
-    dialog  --title "**TAR**"                   \
+    ${DIALOG}  --title "**TAR**"                   \
         --begin 10 10 --tailboxbg out 25 120    \
         --and-widget                            \
         --begin 3 10 --msgbox "Exit" 5 30
@@ -766,13 +769,13 @@ function sh_execcopiaold()
 	        #sleep $INTERVALO
 	    done
 	    echo 100
-	) | dialog --title "** COPIANDO **" --backtitle "$cabec" --gauge "$MSG" 7 60 0
+	) | ${DIALOG} --title "** COPIANDO **" --backtitle "$cabec" --gauge "$MSG" 7 60 0
 }
 
 function sh_execcopiaNew()
 {
 	ARQUIVO_LOG=/tmp/arquivo.log
-	dialog --infobox 'Iniciando instalacao...' 3 25; sleep 1
+	${DIALOG} --infobox 'Iniciando instalacao...' 3 25; sleep 1
   	declare -i cont=1
   	{
   		while [ $cont -le 100 ]; do
@@ -781,9 +784,9 @@ function sh_execcopiaNew()
     		rsync -avh --progress $ORIGEM $DESTINO --log-file=$ARQUIVO_LOG 2>&1
     		uniq -u $ARQUIVO_LOG
   		done
-  	} | dialog --gauge 'Aguarde... Copiando Arquivos' 8 70 0
-  	#dialog --msgbox 'Instalacao concluído com sucesso!' 6 35
-  	#dialog --title 'Log de Backup' --textbox "$ARQUIVO_LOG" 0 0
+  	} | ${DIALOG} --gauge 'Aguarde... Copiando Arquivos' 8 70 0
+  	#${DIALOG} --msgbox 'Instalacao concluído com sucesso!' 6 35
+  	#${DIALOG} --title 'Log de Backup' --textbox "$ARQUIVO_LOG" 0 0
 }
 
 function sh_execcopia()
@@ -829,19 +832,19 @@ function sh_execcopia()
            LASTFILE=$(tail -n1 $log)
            [ $PORCENTAGEM -gt 100 ] && PORCENTAGEM=100
 #          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
-#          dialog --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
-           dialog --title "$TITLE" --gauge "\n$MSG\n\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
+#          ${DIALOG} --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
+           ${DIALOG} --title "$TITLE" --gauge "\n$MSG\n\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
            sleep $INTERVALO
        done
        #echo 100
-#   )| dialog --title "$TITLE" --tailbox "$log" 8 70
+#   )| ${DIALOG} --title "$TITLE" --tailbox "$log" 8 70
     )
 }
 
 function sh_pvexectar(){
     (pv -n $pwd/$tarball_default			            \
     |tar xJpf - -C $dir_install ) 2>&1 		            \
-    |dialog	--title "** TAR **"                         \
+    |${DIALOG}	--title "** TAR **"                         \
             --backtitle "$ccabec"                       \
             --gauge "\n$cmsg_extracting: $dir_install" 	\
     7 60
@@ -1170,11 +1173,11 @@ function sh_wgettarball()
 
 #	wget -c $URL 2>&1 														\
 #	| stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' 	\
-#	| dialog --title "$plswait" --backtitle "$ccabec" --gauge "\n\n$URL" 9 70
+#	| ${DIALOG} --title "$plswait" --backtitle "$ccabec" --gauge "\n\n$URL" 9 70
 #	return $?
 
 	(pv -n | $DOWNLOADER $URL)  2>&1                                                   \
-   | dialog --title "$plswait" --backtitle "$ccabec" --gauge "\n\n$URL" 9 70
+   | ${DIALOG} --title "$plswait" --backtitle "$ccabec" --gauge "\n\n$URL" 9 70
    return $?
 }
 
@@ -1375,7 +1378,8 @@ function sh_startinstall()
 			;;
 		esac
 	fi
-    sh_fstab
+
+	sh_fstab
 	sh_initbind
 
 	if [ $LAUTOMATICA = $false ]; then
@@ -1391,7 +1395,7 @@ function menuinstall()
 {
 	while true
 	do
-    	resposta=$( dialog												\
+    	resposta=$( ${DIALOG}												\
 		--stdout														\
         --title 		"$cmsgPacotes_disponiveis"						\
 		--backtitle 	"$ccabec"										\
@@ -1420,7 +1424,7 @@ function menuinstall()
 
 		case "$resposta" in
 		FULL)
-			resfull=$(dialog									\
+			resfull=$(${DIALOG}									\
 			--stdout											\
 			--backtitle 	"$ccabec"							\
 			--cancel-label	"$buttonback"						\
@@ -1482,7 +1486,7 @@ function menuinstall()
 			;;
 
 		custom)
-			rescustom=$(dialog --stdout                 					\
+			rescustom=$(${DIALOG} --stdout                 					\
             --separate-output                       						\
             --checklist 'Choose install softwares:' 						\
             0 0 0                                   						\
@@ -1637,7 +1641,7 @@ function choosedisk()
 			((nc++))
 		done
 
-    	sd=$(dialog 		 																			\
+    	sd=$(${DIALOG} 		 																			\
     				--title 			"$xmsg"								  							\
     				--backtitle	 	"$ccabec"				 										\
     				--cancel-label "$buttonback"													\
@@ -1696,7 +1700,7 @@ function choosedisk()
 				return 0
          fi
 
-			typefmt=$(dialog                                   \
+			typefmt=$(${DIALOG}                                   \
 				--stdout                                        \
             --title        "$xmsg: $sd [${modelo[index]}]"	\
             --cancel-label "$buttonback"                    \
@@ -1819,7 +1823,7 @@ function choosepartition()
         array[((n++))]="${size[((y++))]} ${type[((x++))]}"
     done
 
-	part=$(dialog															\
+	part=$(${DIALOG}															\
 			--title 			"$cparticao"					  			\
 			--backtitle	 	"$ccabec"					 				\
 			--cancel-label	"$buttonback"								\
@@ -1851,7 +1855,7 @@ function choosepartition()
 
 function sh_mkswap()
 {
-	xPARTSWAP=$(blkid | grep /dev/nvme0n1 --color=auto | grep -E 'SWAP|swap' --color=auto | cut -d: -f1)
+	xPARTSWAP=$(blkid | grep $sd --color=auto | grep -E 'SWAP|swap' --color=auto | cut -d: -f1)
 	if [ "$xPARTSWAP" != "" ] ; then
 		mensagem "$cmsg_Formatando_particao swap"
 		xUUIDSWAP=$(mkswap $xPARTSWAP | grep UUID | awk '{print $3 }')
@@ -1902,7 +1906,7 @@ function scrmain()
 {
 	while true
 	do
-		main=$(dialog 									\
+		main=$(${DIALOG} 									\
 			--stdout                            \
 			--backtitle 	"$ccabec"				\
 			--title 			"$cmsg001"				\
@@ -2236,24 +2240,6 @@ function sh_checkroot()
 	fi
 }
 
-function sh_testdialog()
-{
-	local xswap_grafico=$grafico
-	grafico=$false
-	clear
-	cinfo=`log_info_msg "Wait, verifying dialog..."`
-	msg "INFO" "$cinfo"
-	test -e /usr/bin/dialog > /dev/null 2>&1
-	evaluate_retval
-
-	if [ $? = $false ]; then
-		echo "You must install the dialog package to run $0"
-		echo "Voce deve instalar o pacote dialog para executar o $0!"
-		scrend 1
-	fi
-	grafico=$xswap_grafico
-}
-
 function sh_testlive()
 {
 	test -e $LIVE
@@ -2263,13 +2249,11 @@ function sh_testlive()
 
 function init()
 {
-	sh_testdialog
-	sh_checkroot
 	sh_testlive
 	live=$?
 
 	while true; do
-		i18=$(dialog																\
+		i18=$(${DIALOG}																\
 			--stdout                                                	\
 			--backtitle	 	"$ccabec"				                    	\
 			--title 			"$welcome"				                    	\
@@ -2310,7 +2294,7 @@ function init()
 			fi
 			;;
 		3)
-			dialog --no-collapse --title "$cdistro Wiki" --msgbox "$wiki" 0 0
+			${DIALOG} --no-collapse --title "$cdistro Wiki" --msgbox "$wiki" 0 0
 			;;
 		esac
 	done
@@ -2326,7 +2310,7 @@ function sh_packagedisp()
 	sh_delpackageindex
 	sh_wgetpackageindex
 	pkt=($(curl -k -s --url "${site}/releases/$oldspkg"| sed 's/^.*href="//'|sed 's/".*$//' | grep ".xz$" | awk '{print $1,$1}'))
-	sd=$(dialog 				                                	\
+	sd=$(${DIALOG}				                                	\
    			--backtitle     "$ccabec"                     	\
             --title         "$ccabec"                     	\
             --cancel-label  "Voltar"                      	\
@@ -2352,7 +2336,7 @@ sh_tools()
 {
 	while true
 	do
-		tools=$(dialog 							\
+		tools=$(${DIALOG}							\
 			--stdout                         \
 			--backtitle 	"$ccabec"			\
 			--title 			"$cmsg001"			\
@@ -2427,7 +2411,7 @@ function sh_automated_install()
         zeravar
         sh_tools
     fi
-    mbr=$(dialog --radiolist 'Instalacao do GRUB:'      \
+    mbr=$(${DIALOG} --radiolist 'Instalacao do GRUB:'      \
         0 0 0                                           \
         EFI     "Interface de Firmaware Extensivel" OFF \
         BIOS    "Sistema Básico de Entrada e Saída" ON  \
@@ -2480,7 +2464,7 @@ function sh_pvexecrsyncold()
 	| grep -o "[0-9]*%" \
 	| tr -d '%' \
 	| echo -e "$q \n#""${MSG[10]}"" : $q %" \
-	|dialog --title "** RSYNC **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
+	|${DIALOG} --title "** RSYNC **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
 }
 
 function sh_pvexecrsync()
@@ -2489,13 +2473,13 @@ function sh_pvexecrsync()
 	rsync -ravp --info=progress2 $MEDIUM/ $dir_install/ \
 	| grep -o "[0-9]*%"     \
 	| tr -d '%'     \
-	|dialog --title "** RSYNC **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
+	|${DIALOG} --title "** RSYNC **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
 }
 
 function sh_pvexecrunsquashfs()
 {
 	unsquashfs -f -d $dir_install $ROOTSQFS | grep -o "[0-9]*%" | tr -d '%' \
-	|dialog --title "** UNQUASHING **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
+	|${DIALOG} --title "** UNQUASHING **" --backtitle "$ccabec" --gauge "\n$cmsg_extracting:$dir_install" 7 60
 }
 
 function sh_confadduser()
@@ -2504,7 +2488,7 @@ function sh_confadduser()
 	do
 		# open fd
 		exec 3>&1
-		dialog 														\
+		${DIALOG} 														\
 			--separate-widget	$'\n'								\
 			--cancel-label 	"$buttonback"					\
 			--backtitle 		"$cmsgusermanager"			\
@@ -2553,7 +2537,7 @@ function sh_tailexecrsync()
 		echo
 		echo "COPIA EFETUADA COM SUCESSO. TECLE ALGO"
 	} > out &
-	dialog  	--title "**RSYNC**"                   	\
+	${DIALOG}  	--title "**RSYNC**"                   	\
         		--begin 10 10 --tailboxbg out 04 120 	\
         		--and-widget                           \
         		--begin 3 10 --msgbox "Aguarde" 5 30
@@ -2596,7 +2580,7 @@ function sh_liveinstall()
 		init
 	fi
 
-	mbr=$(dialog --radiolist 'Instalacao do GRUB:'      \
+	mbr=$(${DIALOG} --radiolist 'Instalacao do GRUB:'      \
 		0 0 0                                           \
       EFI     "Interface de Firmaware Extensivel" off \
       BIOS    "Sistema Básico de Entrada e Saída" on 	\
@@ -2666,7 +2650,6 @@ function sh_liveinstall()
    zeravar
 }
 
-
 function setkeymap()
 {
 #	items=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
@@ -2677,7 +2660,7 @@ function setkeymap()
 		options+=("${item%%.*}" "")
 	done
 
-	keymap=$(whiptail --backtitle "${ccabec}" --title "Set keyboard layout" --menu "" 0 0 0 \
+	keymap=$(${$DIALOG} --backtitle "${ccabec}" --title "Set keyboard layout" --menu "" 0 0 0 \
 	"${options[@]}" \
 	3>&1 1>&2 2>&3)
 	nchoice=$?
@@ -2707,6 +2690,19 @@ sh_checkDependencies()
 	fi
 }
 
+function sh_touchfstab()
+{
+	cat > $dir_install/etc/fstab << "EOF"
+# Begin /etc/fstab
+# Static information about the filesystems.
+# See fstab(5) for details.
+
+# file system  mount-point  type     options             dump  fsck
+#                                                              order
+
+EOF
+}
+
 function sh_fstab()
 {
 	cinfo=`log_info_msg "$cmsgAlterar_FSTAB"`
@@ -2721,6 +2717,7 @@ function sh_fstab()
     			return $STANDALONE
     		fi
     	fi
+
     	if [ $LPARTITION -eq 0 ]; then
 	    	choosepartition
     		if [ $LPARTITION -eq 0 ]; then
@@ -2728,6 +2725,7 @@ function sh_fstab()
     			return 1
     		fi
     	fi
+
     	if [ $LMOUNT -eq 0 ]; then
     		sh_mountpartition
     	fi
@@ -2736,25 +2734,16 @@ function sh_fstab()
 	sh_testlive
    live=$?
 
-	mkdir -p $dir_install/etc >/dev/null
-	xuuid=$(blkid | grep $part | awk '{print $3}')
-	label="/            ext4     defaults            1     1"
+	[ -d $dir_install/etc 		 ] || mkdir -p $dir_install/etc >/dev/null
+	[ -e $dir_install/etc/fstab ]	||	sh_touchfstab
+	[ $live -eq 1 ]					||	sh_touchfstab
 
-#	if [ $live = $false ]; then
-#		sed -ir "/<xxx>/ i $xuuid $label" $cfstab
-#		sed -i 's|/dev/<xxx>|#'$part'|g' $cfstab
-#   else
-#       echo -e "$xuuid $label" >> $cfstab
-#    fi
+	xUUIDPART=$(blkid $part --match-tag UUID --match-tag TYPE | cut -d'"' -f2)
+	xFSTYPE=$(blkid $part --match-tag UUID --match-tag TYPE | cut -d'"' -f4)
+	echo -e "UUID=$xUUIDPART		/           $xFSTYPE     defaults            1 1" >> $cfstab
 
 	if [ $xUUIDSWAP != "" ]; then
-		label="swap         swap     pri=1               0     0"
-        if [ $live = $false ]; then
-        	sed -ir "/<yyy>/ i $xUUIDSWAP $label" $cfstab
-    		sed -i 's|/dev/<yyy>|'$xPARTSWAP'|g' $cfstab
-        else
-            echo -e "$xUUIDSWAP $label" >> $cfstab
-        fi
+		echo -e "$xUUIDSWAP		none			swap		 pri=1					0 0" >> $cfstab
 	fi
 
 	if [ $STANDALONE = $true ]; then
@@ -2784,9 +2773,8 @@ function sh_confkeyboard()
 	fi
 }
 
-# Init - configuracao inicial
 sh_checkDependencies
-#sh_stopbind
+sh_checkroot
 init
 
 :<<'LIXO'

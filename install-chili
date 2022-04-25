@@ -200,7 +200,6 @@ cfstab=$dir_install"/etc/fstab"
 : ${ARRAY_DSK_SIZE=()}
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
-: ${ARRAY_DSK_LABEL=()}
 
 replicate()
 {
@@ -294,18 +293,7 @@ sh_disk_info()
 
 function inkey()
 {
-    #read -rsp $'Press enter to continue...\n'
-    #read -rsp $'Press escape to continue...\n' -d $'\e'
-    #read -rsp $'Press any key to continue...\n' -n 1 key
-    # echo $key
-    #read -rp $'Are you sure (Y/n) : ' -ei $'Y' key;
-    # echo $key
-    #read -rsp $'Press any key or wait 5 seconds to continue...\n' -n 1 -t 5;
-    #read -rst 0.5; timeout=$?
-    # echo $timeout
-    #read -rsp $'' -n 1 -t 5;
-    #read -n1 -r -p "" lastkey ; timeout=$?
-    read -t "$1" -n1 -r -p "" lastkey
+	read -t "$1" -n1 -r -p "" lastkey
 }
 
 function sh_partitions()
@@ -320,16 +308,16 @@ function sh_partitions()
 
 function arraylen()
 {
-    for item in ${array[*]}
-    do
-        printf "   %s\n" $item
-    done
-    arraylength=${"$1"[*]}
+	for item in ${array[*]}
+   do
+		printf "   %s\n" $item
+   done
+   arraylength=${"$1"[*]}
 }
 
 function timespec()
 {
-   STAMP="$(echo `date +"%b %d %T %:z"` `hostname`) "
+	STAMP="$(echo `date +"%b %d %T %:z"` `hostname`) "
    return 0
 }
 
@@ -446,7 +434,6 @@ function sh_trapErro()
 {
 	${DIALOG} --msgbox "Voce pressionou ctrl-c" 7 60
 }
-
 
 function confirma()
 {
@@ -2676,23 +2663,6 @@ function setkeymap()
 	return $nchoice
 }
 
-sh_checkDependencies()
-{
-	local errorFound=0
-	for command in "${DEPENDENCIES[@]}"; do
-	if ! which "$command"  &> /dev/null ; then
-		echo "ERRO: não encontrei o comando '$command'" >&2
-		errorFound=1
-		fi
-	done
-	if [[ "$errorFound" != "0" ]]; then
-		echo "---IMPOSSÍVEL CONTINUAR---"
-		echo "Esse script precisa dos comandos listados acima" >&2
-		echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
-		exit 1
-	fi
-}
-
 function sh_touchfstab()
 {
 	cat > $dir_install/etc/fstab << "EOF"
@@ -2773,6 +2743,23 @@ function sh_confkeyboard()
 		sed -i 's|KEYMAP|#KEYMAP|g'  $cvconsole
 		echo "KEYMAP=$keymap" >> $cvconsole
 		return $?
+	fi
+}
+
+sh_checkDependencies()
+{
+	local errorFound=0
+	for command in "${DEPENDENCIES[@]}"; do
+		if ! which "$command"  &> /dev/null ; then
+			echo "ERRO: não encontrei o comando '$command'" >&2
+			errorFound=1
+		fi
+	done
+	if [[ "$errorFound" != "0" ]]; then
+		echo "---IMPOSSÍVEL CONTINUAR---"
+		echo "Esse script precisa dos comandos listados acima" >&2
+		echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+		exit 1
 	fi
 }
 

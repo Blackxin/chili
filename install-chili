@@ -2652,8 +2652,11 @@ function sh_liveinstall()
 
 function setkeymap()
 {
-#	items=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
-	items=$(localectl list-keymaps | sort -V)
+	if [ "${xdistro}" = "mazonos" ]; then
+		items=$(find /usr/share/kbd/keymaps/ -type f -printf "%f\n" | sort -V)
+	else
+		items=$(localectl list-keymaps | sort -V)
+	fi
 	options=()
 
 	for item in ${items}; do

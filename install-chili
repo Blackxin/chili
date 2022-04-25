@@ -1,12 +1,12 @@
 #!/bin/bash
-declare -r version="v2.2.4-20220330"
+declare -r version="v2.2.5-20220424"
 ################################################################
 #       install dialog Chili OS - $version                     #
 #								                                       #
 #      Vilmar Catafesta 	<vcatafesta@gmail.com>	  			   #
 #      license: 				MIT           								#
 #      created: 				2019/02/15	   		               #
-#      altered: 				2022/03/30	   			            #
+#      altered: 				2022/04/24	   			            #
 ################################################################
 readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptail)
 
@@ -249,14 +249,24 @@ _WIKI
 
 # lib functions
 
-function sh_disk_info()
+sh_disk_info()
 {
-   ARRAY_DSK_DISKS=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
-   ARRAY_DSK_DEVICES=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
-   ARRAY_DSK_SIZE=($(lsblk -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
-   ARRAY_DSK_MODEL=($(lsblk -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'))
-   ARRAY_DSK_TRAN=($(lsblk -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
-   ARRAY_DSK_LABEL=($(lsblk -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
+        ARRAY_DSK_DISKS=()
+      ARRAY_DSK_DEVICES=()
+         ARRAY_DSK_SIZE=()
+         ARRAY_DSK_TRAN=()
+        ARRAY_DSK_MODEL=()
+   while IFS='\ ' read -r dsk_type dsk_name dsk_path dsk_size dsk_tran dsk_model dsk_model1 dsk_model2
+   do
+      [[ -z $dsk_size  ]] && dsk_size="0B"
+      [[ -z $dsk_tran  ]] && dsk_tran="blk"
+      [[ -z $dsk_model ]] && dsk_model="unknown"
+        ARRAY_DSK_DISKS+=("${dsk_name}")
+      ARRAY_DSK_DEVICES+=("${dsk_path}")
+         ARRAY_DSK_SIZE+=("${dsk_size}")
+         ARRAY_DSK_TRAN+=("${dsk_tran}")
+        ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
+   done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
 }
 
 function inkey()
@@ -1605,25 +1615,19 @@ function choosedisk()
 	while true
 	do
 		sh_disk_info
+
     	LDISK=0
 		local xmsg=$cdisco
 		local array=()
-#		local devices=()
-		local i=0
-		local x=0
-		local y=0
-		for i in ${ARRAY_DSK_DEVICES[@]}
+		local i
+		local n=0
+		local nc=0
+
+		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
-#			devices[((n++))]="/dev/$i"
-#			array[((n++))]="$i"
-#			array[((n++))]="[${size[((x++))]}]  ${model[((y++))]}"
          array[((n++))]="$i"
-         a=${ARRAY_DSK_TRAN[((x++))]}
-         b=${ARRAY_DSK_SIZE[((y++))]}
-         c=${ARRAY_DSK_MODEL[((t++))]}
-         d=${ARRAY_DSK_LABEL[((z++))]}
-         [[ $d = "" ]] && d=""
-         array[((n++))]=$(printf "%-4s|%6s|%-30s|%s" $a $b $c $d)
+         array[((n++))]=$(printf "%-6s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
+			((nc++))
 		done
 
     	sd=$(dialog 		 																			\

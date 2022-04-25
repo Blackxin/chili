@@ -123,16 +123,6 @@ sh_disk_info()
 	done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
 }
 
-sh_disk_infoOLD()
-{
-	  ARRAY_DSK_DISKS=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $2}' | sed 's/[NAME=*\"]//g'))
-	ARRAY_DSK_DEVICES=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $3}' | sed 's/[PATH=*\"]//g'))
-	   ARRAY_DSK_SIZE=($(lsblk -a -P -o TYPE,NAME,PATH,NAME,SIZE,MODEL,TRAN,LABEL | awk '$0~/disk/{print $5}' | sed 's/[SIZE=*\"]//g'))
-	  ARRAY_DSK_MODEL=($(lsblk -a -P -o TYPE,MODEL | egrep "disk" | cut -d'"' -f4- | sed 's/"//g'| sed 's/[[:space:]]\+/_/g'| awk '{print "["$0"]"}'))
-      ARRAY_DSK_TRAN=($(lsblk -a -P -o TRAN,TYPE,MODEL | egrep "disk" | cut -d'"' -f2 | awk '{print "["$0"]"}'))
-     ARRAY_DSK_LABEL=($(lsblk -a -P -o LABEL,TYPE,MODEL | egrep "disk" | cut -d'"' -f2))
-}
-
 DOT()
 {
 	printf "${blue}:: ${reset}"

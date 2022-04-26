@@ -48,19 +48,10 @@
 IFS=$' \t\n'
 SAVEIFS=$IFS
 
-OK=1
-NOK=0
-NEG=1
 true=1
-TRUE=1
 false=0
-FALSE=0
 LINSTALLED=2
 LREMOVED=3
-LAUTO=0
-LFORCE=0
-LLIST=0
-verbose=1
 declare -l BAIXA=${MENSAGEM}
 declare -u ALTA=${MENSAGEM}
 trancarstderr=2>&-
@@ -108,7 +99,36 @@ sh_backup_partitions()
       #         "  Backup on : ${filetmp}"         \
       #        "$(replicate "=" 80)"               \
       #         "$(cat $filetmp)"
-   }
+   fi
+}
+
+sh_display()
+{
+   if [ $(tput cols) -lt 80 ] || [ $(tput lines) -lt 24 ]; then
+      dialog --backtitle "$ccabec"	\
+      --title "TERMINAL TOO SMALL" 	\
+      --msgbox "\n\
+Before you continue, re-size your terminal\nso it measures at least 80 x 24 characters.\n\
+Otherwise you will not to able to use disk partition tools." 11 68
+   fi
+}
+
+display_result()
+{
+   local xbacktitle=$ccabec
+
+   if [ "$3" != "" ] ; then
+      xbacktitle="$3"
+   fi
+
+   dialog	                     \
+      --title     "$2"           \
+      --beep                     \
+      --no-collapse              \
+      --no-cr-wrap               \
+      --backtitle "$xbacktitle"  \
+      --msgbox    "$1"           \
+      0 0
 }
 
 sh_restore_partitions()
@@ -726,7 +746,7 @@ function maxcol()
 	printf $COLUMNS
 }
 
-function inkey()
+inkey()
 {
 	read -t "$1" -n1 -r -p "" lastkey
 }
@@ -786,7 +806,7 @@ function sh_msgdoevangelho()
 	printf "${blue}${msg}${reset}\n"
 }
 
-function spinner()
+spinner()
 {
 	spin=('\' '|' '/' '-' '+')
 
@@ -798,12 +818,41 @@ function spinner()
 	done
 }
 
-function sh_checkroot()
+sh_checkDependencies()
 {
-	if [ "$(id -u)" != "0" ]; then
-		log_failure_msg2 "ERROR: This script must be run with root privileges."
-		exit
-	fi
+   local errorFound=0
+
+   for command in "${DEPENDENCIES[@]}"; do
+      log_msg "Checking dependencie : $command"
+      if ! which "$command"  &> /dev/null ; then
+         echo "ERRO: não encontrei o comando '$command'" >&2
+         errorFound=1
+      fi
+   done
+   if [[ "$errorFound" != "0" ]]; then
+      echo "---IMPOSSÍVEL CONTINUAR---"
+      echo "Esse script precisa dos comandos listados acima" >&2
+      echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+      exit 1
+   fi
+}
+
+sh_version()
+{
+	printf "${orange}${0##*/} ${_VERSION_}\n"
+}
+
+scrend()
+{
+	exit $1
+}
+
+sh_checkroot()
+{
+   if [ "$(id -u)" != "0" ]; then
+      printf "${red} error: You should run this script as root!\n"
+      exit 1
+   fi
 }
 
 function criartemp()

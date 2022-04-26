@@ -29,19 +29,28 @@
 #		awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
-readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptail)
-declare -r version="v3.0.0-20220425"
+#set -e
+declare -r APP="${0##*/}"
 declare -r _APP_="chili-install"
+declare -r _VERSION_="v3.0.0-20220426"
+readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
 # Import lib
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 [ -r "${LIBRARY}"/core.sh ] && source "${LIBRARY}"/core.sh
-DIALOG=${DIALOG:-"dialog"}
 
-function configure()
+sh_configure()
 {
+	: ${DIALOG=${DIALOG:-"dialog"}}
+	: ${DOWNLOADER="curl -L -O -C - "}
+
+	# vars bool
+	: ${true=0}
+	: ${false=1}
+	: ${grafico=$true}
+
 	# flag dialog exit status codes
 	: ${D_OK=0}
 	: ${D_CANCEL=1}
@@ -63,45 +72,21 @@ function configure()
 	fi
 	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 
-	#Downloader
-	DOWNLOADER="curl -L -O -C - "
-
-	# sfdisk type
-	nEFI=1
-	nBIOS=4
-	nSWAP=19
-	nLINUX=20
-
-	# vars bool
-	true=0
-	TRUE=0
-	OK=0
-	ok=0
-	false=1
-	NOK=1
-	nok=1
-	FALSE=1
-	falso=1
-	CANCEL=1
-	ESC=255
-	HEIGHT=0
-	WIDTH=0
-	BOOTLOG=$HOME/bootlog-${_APP_}
 	confdistro
 
 	# common vars
-	grafico=$true
-	site="$chost$ptcom"
-	chostname=$calias
-	ccabec="$cdistro GNU/Linux installer $version"
-	ctitle="$cdistro GNU/Linux"
-	welcome="Welcome to the $ctitle"
-	export dir_install="/mnt/lfs"
-	url_release="http://$site/releases"
-	url_distro="http://$site/releases/"
 	pwd=$PWD
-	cvconsole=$dir_install"/etc/vconsole.conf"
-	cfstab=$dir_install"/etc/fstab"
+	: ${BOOTLOG="$HOME/bootlog-${_APP_}"}
+	: ${site="$chost$ptcom"}
+	: ${chostname=$calias}
+	: ${ccabec="$cdistro GNU/Linux installer ${_VERSION_}"}
+	: ${ctitle="$cdistro GNU/Linux"}
+	: ${welcome="Welcome to the ${ctitle}"}
+	: ${url_release="http://${site}/releases"}
+	: ${url_distro="http://${site}/releases/"}
+	: ${dir_install="/mnt/lfs"}
+	: ${cvconsole=${dir_install}"/etc/vconsole.conf"}
+	: ${cfstab=${dir_install}"/etc/fstab"}
 	: ${tarball_min=$cnick"_minimal-0.3.tar.xz"}
 	: ${sha256_min=$cnick"_minimal-0.3.tar.xz.sha256sum"}
 	: ${tarball_full=$cnick"_beta-1.3.tar.xz"}
@@ -109,22 +94,28 @@ function configure()
 	: ${FULLINST=$true}
 	: ${tarball_default=$tarball_full}
 	: ${sha256_default=$sha256_full}
+	: ${TARSUCCESS=$false}
+	: ${STANDALONE=$false}
+	: ${STARTXFCE4=$true}
+	: ${xLABEL=$cdistro}
 
 	# flag para disco/particao/formatacao/montagem
 	: ${LDISK=0}
 	: ${LPARTITION=0}
 	: ${LFORMAT=1}
 	: ${LMOUNT=0}
-	: ${TARSUCCESS=$false}
-	: ${STANDALONE=$false}
-	: ${STARTXFCE4=$true}
 	: ${xUUIDSWAP=""}
 	: ${xPARTSWAP=""}
 	: ${xPARTEFI=""}
-	: ${lEFI=$false}
 	: ${LGRUB="EFI"}
+	: ${lEFI=$false}
 	: ${LAUTOMATICA=$false}
-	: ${xLABEL=$cdistro}
+
+	# sfdisk types
+	: ${nEFI=1}
+	: ${nBIOS=4}
+	: ${nSWAP=19}
+	: ${nLINUX=20}
 
 	# usuario/senha/hostmame/group
 	: ${cuser="live"}
@@ -137,24 +128,21 @@ function confdistro()
 {
 	xdistro=$(uname -n)
 	if [ "${xdistro}" = "mazonos" ]; then
-	    cdistro="MazonOS"
-	    # servidor internet
-	    chost="mazonos"
-	    ptcom=".com"
-	    oldspkg="olds/"
-	    calias="mazonos"
-	    cnick="mazon"
-	    xemail="root@$chost$ptcom"
+	    : ${cdistro="MazonOS"}
+	    : ${chost="mazonos"}
+	    : ${ptcom=".com"}
+	    : ${oldspkg="olds/"}
+	    : ${calias="mazonos"}
+	    : ${cnick="mazon"}
 	else
-	    cdistro="Chili"
-	    # servidor local
-	    chost="chililinux"
-	    ptcom=".com"
-	    oldspkg="/"
-	    calias="chili"
-	    cnick="chili"
-	    xemail="root@$chost$ptcom"
+	    : ${cdistro="Chili"}
+	    : ${chost="chililinux"}
+	    : ${ptcom=".com"}
+	    : ${oldspkg="/"}
+	    : ${calias="chili"}
+	    : ${cnick="chili"}
 	fi
+	: ${xemail="root@$chost$ptcom"}
 }
 
 function showwiki()
@@ -1121,13 +1109,13 @@ function menuinstall()
 
 		exit_status=$?
 		case $exit_status in
-		$ESC)
+		$D_ESC)
       	if [ $LAUTOMATICA = $true ]; then
          	return 1
 			fi
 			scrmain
 			;;
-		$CANCEL)
+		$D_CANCEL)
 			if [ $LAUTOMATICA = $true ]; then
          	return 1
 			fi
@@ -1149,13 +1137,13 @@ function menuinstall()
 
 			exit_status=$?
 			case $exit_status in
-			$ESC)
+			$D_ESC)
          	if [ $LAUTOMATICA = $true ]; then
             	return 1
 				fi
 				loop
 				;;
-			$CANCEL)
+			$D_CANCEL)
 				if [ $LAUTOMATICA = $true ]; then
 					return 1
 				fi
@@ -1333,13 +1321,13 @@ function choosedisk()
 
     	exit_status=$?
 		case $exit_status in
-    	$ESC)
+    	$D_ESC)
         	if [ $LAUTOMATICA = $true ]; then
            	return 1
         	fi
     		init
     		;;
-    	$CANCEL)
+    	$D_CANCEL)
 			if [ $LAUTOMATICA = $true ]; then
            	return 1
         	fi
@@ -1392,13 +1380,13 @@ function choosedisk()
 
 	    	exit_status=$?
 	    	case $exit_status in
-	    		$ESC)
+	    		$D_ESC)
 					if [ $LAUTOMATICA = $true ]; then
 	            	return 1
 	            fi
 	    			init
 	    			;;
-	    		$CANCEL)
+	    		$D_CANCEL)
 	            if [ $LAUTOMATICA = $true ]; then
 	            	return 1
 	            fi
@@ -1511,12 +1499,12 @@ function choosepartition()
 
 	exit_status=$?
 	case $exit_status in
-	$ESC)
+	$D_ESC)
 		LDISK=0
 		LPARTITION=0
 		scrmain
 		;;
-	$CANCEL)
+	$D_CANCEL)
 		LDISK=0
 		LPARTITION=0
 		scrmain
@@ -1594,7 +1582,7 @@ function scrmain()
 
 		exit_status=$?
 		case $exit_status in
-		$ESC|$CANCEL)
+		$D_ESC|$D_CANCEL)
 			init
 			;;
 		esac
@@ -1893,11 +1881,6 @@ function en_US()
 	cmsgDeseja_continuar_e_escolher_o_disco_destino="Do you want to continue and choose the destination disk"
 }
 
-function scrend()
-{
-	exit $1
-}
-
 function sh_checkroot()
 {
 	if [ "$(id -u)" != "0" ]; then
@@ -1931,11 +1914,11 @@ function init()
 
 		exit_status=$?
 		case $exit_status in
-		$ESC)
+		$D_ESC)
 			clear
 			scrend 1
 			;;
-		$CANCEL)
+		$D_CANCEL)
         	clear
 			scrend 0
 			;;
@@ -1985,7 +1968,7 @@ function sh_packagedisp()
 
 		exit_status=$?
 		case $exit_status in
-		$ESC|$CANCEL)
+		$D_ESC|$D_CANCEL)
 			scrmain
 			;;
 		esac
@@ -2013,7 +1996,7 @@ sh_tools()
 
 			exit_status=$?
 			case $exit_status in
-			$ESC|$CANCEL)
+			$D_ESC|$D_CANCEL)
 				scrmain
 				;;
 			esac
@@ -2075,12 +2058,12 @@ function sh_automated_install()
 
     exit_status=$?
     case $exit_status in
-    $ESC)
+    $D_ESC)
         info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
         zeravar
         sh_tools
         ;;
-    $CANCEL)
+    $D_CANCEL)
         info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
         zeravar
         sh_tools
@@ -2244,12 +2227,12 @@ function sh_liveinstall()
 
 	exit_status=$?
 	case $exit_status in
-		$ESC)
+		$D_ESC)
 			info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 			zeravar
 			sh_tools
 			;;
-		$CANCEL)
+		$D_CANCEL)
 			info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 			zeravar
 			sh_tools
@@ -2429,26 +2412,9 @@ function sh_trapErro()
    fi
 }
 
-sh_checkDependencies()
-{
-	local errorFound=0
-	for command in "${DEPENDENCIES[@]}"; do
-		if ! which "$command"  &> /dev/null ; then
-			echo "ERRO: não encontrei o comando '$command'" >&2
-			errorFound=1
-		fi
-	done
-	if [[ "$errorFound" != "0" ]]; then
-		echo "---IMPOSSÍVEL CONTINUAR---"
-		echo "Esse script precisa dos comandos listados acima" >&2
-		echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
-		exit 1
-	fi
-}
-
 sh_checkDependencies
 sh_checkroot
-configure
+sh_configure
 trap sh_trapErro 2 15
 init
 
@@ -2460,4 +2426,6 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
 proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 :'LIXO'
+
+# vim:set ts=3 sw=3 et:
 

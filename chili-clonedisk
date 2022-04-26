@@ -47,10 +47,11 @@ sh_configure()
 	: ${true=0}
 	: ${false=1}
 
-	# flag dialog exit status codes
+	# flag languages
 	: ${PT_BR=0}
 	: ${EN_US=1}
 	: ${DE_DE=2}
+	: ${FR_FR=3}
 	: ${LC_DEFAULT=${EN_US}}
 
 	# flag dialog exit status codes
@@ -337,61 +338,80 @@ sh_language()
 	langmsg=(
 		'lang=("pt BR" \
 				 "en_US" \
-				 "de_DE")'
-		'cmsg_Error=("ERRO" \
+				 "de_DE" \
+				 "fr_FR")'
+		'cmsg_Error=("ERRO" 	\
 						 "ERROR" \
-						 "ERROR")'
-		'cmsg_button_voltar=("Voltar" \
-									"Back" \
-									"Zurückkehren")'
-		'cmsg_info_disco=("Info disco" \
-								"Disk info" \
-								"Festplatteninfo")'
-		'cmsg_Ok=(	"Ok" \
-						"Ok" \
-						"Ok")'
-		'cmsg_Exit=("Sair" \
-						"Exit" \
-						"Ausgehen")'
-		'cmsg_Select=( "Selecionar" \
-							"Select" \
-							"Auswählen")'
+						 "ERROR" \
+						 "ERREUR")'
+		'cmsg_button_voltar=("Voltar" 		\
+									"Back" 			\
+									"Zurückkehren"	\
+									"Retourner")'
+		'cmsg_info_disco=("Info disco" 		\
+								"Disk info" 		\
+								"Festplatteninfo"	\
+								"Disque va")'
+		'cmsg_Ok=(	"Ok" 			\
+						"Ok"			\
+						"Ok" 			\
+						"D_Accord")'
+		'cmsg_Exit=("Sair" 		\
+						"Exit" 		\
+						"Ausgehen" 	\
+						"Sortir")'
+		'cmsg_Select=( "Selecionar" 	\
+							"Select" 		\
+							"Auswählen" 	\
+							"Sélectionner")'
 		'cmsg_disco_origem=( "DISCO DE ORIGEM" \
-									"SOURCE DISK" \
-									"QUELLDISK")'
-		'cmsg_disco_destino=("DISCO DE DESTINO" \
-									"DESTINATION DISK" \
-									"ZIELDISKETTE")'
-		'cmsg_dest=("Escolha o disco de DESTINO:" \
-						"Choose destination DISK:" \
-						"Wahl der DESTINATION-Festplatte")'
+									"SOURCE DISK" 		\
+									"QUELLDISK"			\
+									"DISQUE SOURCE")'
+		'cmsg_disco_destino=("DISCO DE DESTINO" 	\
+									"DESTINATION DISK" 	\
+									"ZIELDISKETTE"			\
+									"DISQUE DE DESTINATION")'
+		'cmsg_dest=("Escolha o disco de DESTINO:" 		\
+						"Choose destination DISK:" 			\
+						"Wahl der DESTINATION-Festplatte"	\
+						"Choisissez le disque DESTINATION")'
 		'cmsg_yeslabel=(  "Sim" \
 								"Yes" \
-								"Ja")'
-		'cmsg_nolabel=("Não" \
-							"No" \
-							"Nein")'
-		'cmsg_disco_identico=("Disco ORIGEM e DESTINO não podem serem o mesmo!" \
+								"Ja" 	\
+								"Oui")'
+		'cmsg_nolabel=("Não" 	\
+							"No" 		\
+							"Nein" 	\
+							"Nom")'
+		'cmsg_disco_identico=("Disco ORIGEM e DESTINO não podem ser o mesmo!" \
 									 "SOURCE and DESTINATION disk can be the same!" 	\
-									 "SOURCE- und DESTINY-Datenträger dürfen nicht identisch sein")'
+									 "SOURCE- und DESTINY-Datenträger dürfen nicht identisch sein"	\
+									 "Les disques SOURCE et DESTINY ne peuvent pas être identiques !")'
 		'cmsg_nec_dismount=("Necessário desmontar particao para reparticionar automaticamente." \
 								  "Need to dismount partition to repartition automatically." 				\
-								  "Sie müssen die Partition aushängen, um sie automatisch neu zu partitionieren.")'
+								  "Sie müssen die Partition aushängen, um sie automatisch neu zu partitionieren." \
+								  "Besoin de démonter la partition pour repartitionner automatiquement.")'
    	'cmsg_formatando_particao=("Formatando partição" \
    										"Formatting partition" \
-   										"Partition formatieren")'
+   										"Partition formatieren"	\
+   										"Partition de formatage")'
 		'cmsgTodos_os_dados_serao_perdidos=("** AVISO ** Todos os dados disco DESTINO abaixo serão perdidos!" \
 														"** NOTICE ** All DESTINATION disk data below will be lost!" 		\
-														"** WARNUNG ** Alle Daten der ZIEL-Festplatte unten gehen verloren!**")'
+														"** WARNUNG ** Alle Daten der ZIEL-Festplatte unten gehen verloren!**" \
+														"** ATTENTION ** Toutes les données du disque DESTINATION ci-dessous seront perdues !")'
   		'cmsg_continuar_com_a_clonagem=("Continuar com a clonagem" \
   												  "Continue with the cloning" \
-  												  "Fahren Sie mit dem Klonen fort")'
-  		'cwarning=("** AVISO **" \
-						"** WARNING **" \
-  						"** NOTIZ **")'
-  		'cmsg_choose_disk=("Escolha o disco de ORIGEM:" \
-  								 "Choose the SOURCE disk:" \
-  								 "Wählen Sie die SOURCE-Festplatte")'
+  												  "Fahren Sie mit dem Klonen fort" \
+  												  "Continuer le clonage")'
+  		'cwarning=("** AVISO **"		\
+						"** WARNING **"	\
+  						"** NOTIZ **" 		\
+  						"** AVIS **")'
+  		'cmsg_choose_disk=("Escolha o disco de ORIGEM:" 		\
+  								 "Choose the SOURCE disk:" 			\
+  								 "Wählen Sie die SOURCE-Festplatte" \
+  								 "Choisissez le disque SOURCE")'
 	)
 	for xmsg in "${langmsg[@]}"; do eval $xmsg; done
 	#echo "lang       ${#lang[@]} ${lang[@]} ${lang[$PT_BR]} ${lang[$EN_US]}"
@@ -422,18 +442,10 @@ init()
 					;;
 			esac
 			case $i18 in
-			1)
-				LC_DEFAULT=${PT_BR}
-				choosedisk
-				;;
-			2)
-				LC_DEFAULT=${EN_US}
-				choosedisk
-				;;
-			3)
-				LC_DEFAULT=${DE_DE}
-				choosedisk
-				;;
+			1)	LC_DEFAULT=${PT_BR}; choosedisk;;
+			2)	LC_DEFAULT=${EN_US}; choosedisk;;
+			3)	LC_DEFAULT=${DE_DE};	choosedisk;;
+			4)	LC_DEFAULT=${FR_FR};	choosedisk;;
 			esac
 	done
 }

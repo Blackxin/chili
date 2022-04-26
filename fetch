@@ -2991,3 +2991,6 @@ else
 fi
 
 # vim:set ts=3 sw=3 et:
+
+#converter .desc para pacotes instalado
+#for i in *.desc; do echo $i; var=(${i/%-any.chi.zst.desc/.desc}); cp $i $var;done

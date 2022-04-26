@@ -39,21 +39,17 @@ readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput 
 # Import lib
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
-[ -r "${LIBRARY}"/core.sh ] && source "${LIBRARY}"/core.sh
+source "${LIBRARY}"/core.sh
 
 sh_configure()
 {
-
-	#DIALOG=${DIALOG:-"whiptail"}
-	DIALOG=${DIALOG:-"dialog"}
-
 	# common vars
+	DIALOG=${DIALOG:-"dialog"}
 	grafico=$true
 	xapp="Chili GNU/Linux CloneDisk"
 	ccabec="${xapp} $_VERSION_"
 	ctitle="$cdistro Linux"
 	welcome="Welcome to the $xapp"
-	xkernel=$(uname -n)
 
 	# flag dialog exit status codes
 	: ${D_OK=0}
@@ -64,88 +60,9 @@ sh_configure()
 	: ${D_ESC=255}
 
 	# vars bool
-	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-	trancarstderr=2>&-
+	DIAHORA=$(sh_diahora)
 	true=0 TRUE=0 OK=0 ok=0
 	false=1 FALSE=1 NOK=1 nok=1 falso=1 CANCEL=1
-	HEIGHT=0 WIDTH=0
-	ESC=255
-
-	# flag para disco/particao/formatacao/montagem
-	: ${LDISK=0}
-	: ${LPARTITION=0}
-	: ${LFORMAT=0}
-	: ${LMOUNT=0}
-	: ${TARSUCCESS=$false}
-	: ${STANDALONE=$false}
-	: ${STARTXFCE4=$true}
-	: ${xUUIDSWAP=""}
-	: ${xPARTSWAP=""}
-	: ${xPARTEFI=""}
-	: ${lEFI=$false}
-	: ${LGRUB="EFI"}
-	: ${LAUTOMATICA=$false}
-	: ${xLABEL=$cdistro}
-
-	# choosedisk
-	: ${ARRAY_DSK_DEVICES=()}
-	: ${ARRAY_DSK_DISKS=()}
-	: ${ARRAY_DSK_SIZE=()}
-	: ${ARRAY_DSK_MODEL=()}
-	: ${ARRAY_DSK_TRAN=()}
-	: ${ARRAY_DSK_LABEL=()}
-}
-
-replicate(){
-	for counter in $(seq 1 $2);
-   do
-   	printf "%s" $1
-   done
-}
-
-sh_disk_info()
-{
-	     ARRAY_DSK_DISKS=()
-	   ARRAY_DSK_DEVICES=()
-	      ARRAY_DSK_SIZE=()
-	      ARRAY_DSK_TRAN=()
-	     ARRAY_DSK_MODEL=()
-	while IFS='\ ' read -r dsk_type dsk_name dsk_path dsk_size dsk_tran dsk_model dsk_model1 dsk_model2
-	do
-		[[ -z $dsk_size  ]] && dsk_size="0B"
-		[[ -z $dsk_tran  ]] && dsk_tran="blk"
-		[[ -z $dsk_model ]] && dsk_model="unknown"
-	     ARRAY_DSK_DISKS+=("${dsk_name}")
-	   ARRAY_DSK_DEVICES+=("${dsk_path}")
-	      ARRAY_DSK_SIZE+=("${dsk_size}")
-	      ARRAY_DSK_TRAN+=("${dsk_tran}")
-	     ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
-	done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
-}
-
-DOT()
-{
-	printf "${blue}:: ${reset}"
-	return
-}
-
-arraylen()
-{
-	for item in ${array[*]}
-	do
-		printf "   %s\n" $item
-	done
-	arraylength=${"$1"[*]}
-}
-
-is_true()
-{
-	[ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
-}
-
-sh_trapErro()
-{
-	${DIALOG} --msgbox "Voce pressionou ctrl-c" 7 60
 }
 
 confirma()
@@ -173,16 +90,6 @@ mensagem()
 		--backtitle	"$ccabec"	\
 		--infobox 	"$*"        \
     	6 60
-}
-
-tolower()
-{
-	$1 | tr 'A-Z' 'a-z'
-}
-
-toupper()
-{
-	$1 | tr 'a-z' 'Z-A'
 }
 
 display_result()
@@ -254,11 +161,6 @@ confmulti()
 		return $?
 }
 
-quit()
-{
-	[ $? -ne 0 ] && { clear ; exit ;}
-}
-
 sh_checkdisk()
 {
 	local nchoice=0
@@ -275,55 +177,15 @@ sh_checkdisk()
 	return $nchoice
 }
 
-size_to_human(){
-   awk -v size="$1" '
-   BEGIN {
-      suffix[1] = "B"
-      suffix[2] = "KiB"
-      suffix[3] = "MiB"
-      suffix[4] = "GiB"
-      suffix[5] = "TiB"
-      suffix[6] = "PiB"
-      suffix[7] = "EiB"
-      count = 1
-
-      while (size > 1024) {
-         size /= 1024
-         count++
-      }
-
-      sizestr = sprintf("%.2f", size)
-      sub(/\.?0+$/, "", sizestr)
-      printf("%s %s", sizestr, suffix[count])
-   }'
-}
-
-now()
-{
-	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-	printf "%s\n" $DIAHORA
-}
-
-sh_backup_partitions()
-{
-	local disk="${1}"
-	local device="${2}"
-	local cdatetime=$(now)
-	local tmpdir="/tmp/$_APP_"
-	local filetmp="$tmpdir/${device}.$cdatetime.dump"
-
-	mkdir -p $tmpdir 2> /dev/null
-	sfdisk -d $disk > $filetmp 2> /dev/null
-#	alerta "BACKUP DA TABELA DE PARTICOES" 	\
-#			 "Dispositivo : $disk" 					\
-#			 "  Backup on : ${filetmp}"			\
-#			"$(replicate "=" 80)" 					\
-#			 "$(cat $filetmp)"
-}
-
 sh_restore_partitions()
 {
-	sfdisk $sd < /tmp/sda.dump
+	if [ $# -ge 2 ]; then
+		local disk="${1}"
+		local filetmp="${2}"
+		if [ -e $filetmp ] ; then
+			sfdisk $disk < $filetmp 2> /dev/null
+		fi
+	fi
 }
 
 choosedisk()
@@ -331,8 +193,6 @@ choosedisk()
 	while true
 	do
 		sh_disk_info
-
-    	LDISK=0
 		local xmsg=$cmsg_disco_origem
 		local array=()
 		local i
@@ -358,7 +218,7 @@ choosedisk()
 
     	exit_status=$?
     	case $exit_status in
-			$ESC)
+			$D_ESC)
     			init
     			;;
     		$CANCEL)
@@ -401,7 +261,6 @@ choosediskdestin()
 	while true
 	do
 #		sh_disk_info
-    	LDISK=0
 		local xmsg=$cmsg_disco_destino
 		local array=()
 		local i
@@ -431,7 +290,7 @@ choosediskdestin()
 
     	exit_status=$?
     	case $exit_status in
-			$ESC)
+			$D_ESC)
     			init
     			;;
     		$CANCEL)
@@ -483,7 +342,6 @@ choosediskdestin()
 
 sh_domakeclone()
 {
-	LFORMAT=0
 	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
 	(pv -n $sd | 												\
 	dd of=$sddest bs=128k conv=notrunc,noerror,sync) 2>&1 |	\
@@ -493,7 +351,6 @@ sh_domakeclone()
 
 	if [ $nchoice = $true ]; then
 		display_result "$(fdisk -l $sddest)"
-		LFORMAT=1
    fi
 	return $nchoice
 }
@@ -858,9 +715,9 @@ init()
 
 			exit_status=$?
 			case $exit_status in
-				$ESC)
+				$D_ESC)
 					clear
-					scrend 1
+					scrend 0
 					;;
 				$CANCEL)
                clear

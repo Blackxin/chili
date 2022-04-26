@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#  install-chili - utility written in bash to install chili/mazon distro
+#  chili-install - utility written in bash to install chili/mazon distro
 #  ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
 #  ChiliLinux GNU/Linux - https://chililinux.com
 #  ChiliLinux GNU/Linux - https://chilios.com.br
@@ -24,194 +24,144 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#  install-chili uses quite a few external programs during its execution. You
+#  chili-install uses quite a few external programs during its execution. You
 #  need to have at least the following installed for makepkg to function:
 #		awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
 readonly DEPENDENCIES=(which tar curl sed grep rsync cat awk tput dialog whiptail)
-declare -r version="v2.2.6-20220424"
+declare -r version="v3.0.0-20220425"
+declare -r _APP_="chili-install"
 
-# flag dialog exit status codes
-: ${D_OK=0}
-: ${D_CANCEL=1}
-: ${D_HELP=2}
-: ${D_EXTRA=3}
-: ${D_ITEM_HELP=4}
-: ${D_ESC=255}
-
-#SQFS
-LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-if [[ -e $LIVE ]]; then
-	export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-	export MEDIUM=/run/archiso/airootfs
-	export LIVE
-else
-	export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
-	export MEDIUM=/lib/initramfs/system
-	export LIVE=/lib/initramfs/medium/isolinux/venomlive
-fi
-#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
-
-#DIALOG=${DIALOG:-"whiptail"}
+# Import lib
+# Import lib
+LIBRARY=${LIBRARY:-'/usr/share/fetch'}
+SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
+[ -r "${LIBRARY}"/core.sh ] && source "${LIBRARY}"/core.sh
 DIALOG=${DIALOG:-"dialog"}
 
-#Downloader
-DOWNLOADER="curl -L -O -C - "
-
-#hex code
-barra=$'\x5c'
-
-# sfdisk type
-nEFI=1
-nBIOS=4
-nSWAP=19
-nLINUX=20
-
-# vars bool
-trancarstderr=2>&-
-true=0
-TRUE=0
-OK=0
-ok=0
-false=1
-NOK=1
-nok=1
-FALSE=1
-falso=1
-CANCEL=1
-ESC=255
-HEIGHT=0
-WIDTH=0
-
-# Use a colored prefix
-NORMAL="\\033[0;39m"         # Standard console grey
-SUCCESS="\\033[1;32m"        # Success is green
-WARNING="\\033[1;33m"        # Warnings are yellow
-FAILURE="\\033[1;31m"        # Failures are red
-INFO="\\033[1;36m"           # Information is light cyan
-BRACKET="\\033[1;34m"        # Brackets are blue
-
-BMPREFIX="     "
-SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
-FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
-WARNING_PREFIX="${WARNING} *** ${NORMAL}"
-SKIP_PREFIX="${INFO}  S  ${NORMAL}"
-
-SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
-FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
-WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
-SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
-
-BOOTLOG=$HOME/bootlog
-KILLDELAY=3
-SCRIPT_STAT="0"
-
-## Screen Dimensions
-# Find current screen size
-if [ -z "${COLUMNS}" ]; then
-   COLUMNS=$(stty size)
-   COLUMNS=${COLUMNS##* }
-fi
-
-# When using remote connections, such as a serial port, stty size returns 0
-if [ "${COLUMNS}" = "0" ]; then
-   COLUMNS=80
-fi
-
-## Measurements for positioning result messages
-COL=$((${COLUMNS} - 8))
-WCOL=$((${COL} - 2))
-
-## Set Cursor Position Commands, used via echo
-SET_COL="\\033[${COL}G"      # at the $COL char
-SET_WCOL="\\033[${WCOL}G"    # at the $WCOL char
-CURS_UP="\\033[1A\\033[0G"   # Up one line, at the 0'th char
-CURS_ZERO="\\033[0G"
-
-#distro
-xdistro=$(uname -n)
-
-if [ "${xdistro}" = "mazonos" ]; then
-    cdistro="MazonOS"
-    # servidor internet
-    chost="mazonos"
-    ptcom=".com"
-    oldspkg="olds/"
-    calias="mazonos"
-    cnick="mazon"
-    xemail="root@$chost$ptcom"
-else
-    cdistro="Chili"
-    # servidor local
-    chost="chili"
-    ptcom=".com"
-    oldspkg="/"
-    calias="chili"
-    cnick="chili"
-    xemail="root@$chost$ptcom"
-fi
-
-# common vars
-grafico=$true
-site="$chost$ptcom"
-chostname=$calias
-ccabec="$cdistro GNU/Linux installer $version"
-ctitle="$cdistro GNU/Linux"
-welcome="Welcome to the $ctitle"
-export dir_install="/mnt/lfs"
-url_release="http://$site/releases"
-url_distro="http://$site/releases/"
-pwd=$PWD
-cvconsole=$dir_install"/etc/vconsole.conf"
-cfstab=$dir_install"/etc/fstab"
-: ${tarball_min=$cnick"_minimal-0.3.tar.xz"}
-: ${sha256_min=$cnick"_minimal-0.3.tar.xz.sha256sum"}
-: ${tarball_full=$cnick"_beta-1.3.tar.xz"}
-: ${sha256_full=$cnick"_beta-1.3.tar.xz.sha256sum"}
-: ${FULLINST=$true}
-: ${tarball_default=$tarball_full}
-: ${sha256_default=$sha256_full}
-
-# flag para disco/particao/formatacao/montagem
-: ${LDISK=0}
-: ${LPARTITION=0}
-: ${LFORMAT=1}
-: ${LMOUNT=0}
-: ${TARSUCCESS=$false}
-: ${STANDALONE=$false}
-: ${STARTXFCE4=$true}
-: ${xUUIDSWAP=""}
-: ${xPARTSWAP=""}
-: ${xPARTEFI=""}
-: ${lEFI=$false}
-: ${LGRUB="EFI"}
-: ${LAUTOMATICA=$false}
-: ${xLABEL=$cdistro}
-
-# usuario/senha/hostmame/group
-: ${cuser="live"}
-: ${cpass="live"}
-: ${cgroups="wheel,audio,video"}
-
-# choosedisk
-: ${ARRAY_DSK_DEVICES=()}
-: ${ARRAY_DSK_DISKS=()}
-: ${ARRAY_DSK_SIZE=()}
-: ${ARRAY_DSK_MODEL=()}
-: ${ARRAY_DSK_TRAN=()}
-
-replicate()
+function configure()
 {
-	for counter in $(seq 1 $2);
-   do
-   	printf "%s" $1
-   done
+	# flag dialog exit status codes
+	: ${D_OK=0}
+	: ${D_CANCEL=1}
+	: ${D_HELP=2}
+	: ${D_EXTRA=3}
+	: ${D_ITEM_HELP=4}
+	: ${D_ESC=255}
+
+	#SQFS
+	LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+	if [[ -e $LIVE ]]; then
+		export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+		export MEDIUM=/run/archiso/airootfs
+		export LIVE
+	else
+		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
+		export MEDIUM=/lib/initramfs/system
+		export LIVE=/lib/initramfs/medium/isolinux/venomlive
+	fi
+	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
+
+	#Downloader
+	DOWNLOADER="curl -L -O -C - "
+
+	# sfdisk type
+	nEFI=1
+	nBIOS=4
+	nSWAP=19
+	nLINUX=20
+
+	# vars bool
+	true=0
+	TRUE=0
+	OK=0
+	ok=0
+	false=1
+	NOK=1
+	nok=1
+	FALSE=1
+	falso=1
+	CANCEL=1
+	ESC=255
+	HEIGHT=0
+	WIDTH=0
+	BOOTLOG=$HOME/bootlog-${_APP_}
+	confdistro
+
+	# common vars
+	grafico=$true
+	site="$chost$ptcom"
+	chostname=$calias
+	ccabec="$cdistro GNU/Linux installer $version"
+	ctitle="$cdistro GNU/Linux"
+	welcome="Welcome to the $ctitle"
+	export dir_install="/mnt/lfs"
+	url_release="http://$site/releases"
+	url_distro="http://$site/releases/"
+	pwd=$PWD
+	cvconsole=$dir_install"/etc/vconsole.conf"
+	cfstab=$dir_install"/etc/fstab"
+	: ${tarball_min=$cnick"_minimal-0.3.tar.xz"}
+	: ${sha256_min=$cnick"_minimal-0.3.tar.xz.sha256sum"}
+	: ${tarball_full=$cnick"_beta-1.3.tar.xz"}
+	: ${sha256_full=$cnick"_beta-1.3.tar.xz.sha256sum"}
+	: ${FULLINST=$true}
+	: ${tarball_default=$tarball_full}
+	: ${sha256_default=$sha256_full}
+
+	# flag para disco/particao/formatacao/montagem
+	: ${LDISK=0}
+	: ${LPARTITION=0}
+	: ${LFORMAT=1}
+	: ${LMOUNT=0}
+	: ${TARSUCCESS=$false}
+	: ${STANDALONE=$false}
+	: ${STARTXFCE4=$true}
+	: ${xUUIDSWAP=""}
+	: ${xPARTSWAP=""}
+	: ${xPARTEFI=""}
+	: ${lEFI=$false}
+	: ${LGRUB="EFI"}
+	: ${LAUTOMATICA=$false}
+	: ${xLABEL=$cdistro}
+
+	# usuario/senha/hostmame/group
+	: ${cuser="live"}
+	: ${cpass="live"}
+	: ${cgroups="wheel,audio,video"}
+	showwiki
 }
 
-wiki=$(cat << _WIKI
-Wiki
-There are two ways to install, with the install-$cnick (dep dialog) script or the manual form as follows:
+function confdistro()
+{
+	xdistro=$(uname -n)
+	if [ "${xdistro}" = "mazonos" ]; then
+	    cdistro="MazonOS"
+	    # servidor internet
+	    chost="mazonos"
+	    ptcom=".com"
+	    oldspkg="olds/"
+	    calias="mazonos"
+	    cnick="mazon"
+	    xemail="root@$chost$ptcom"
+	else
+	    cdistro="Chili"
+	    # servidor local
+	    chost="chililinux"
+	    ptcom=".com"
+	    oldspkg="/"
+	    calias="chili"
+	    cnick="chili"
+	    xemail="root@$chost$ptcom"
+	fi
+}
+
+function showwiki()
+{
+	wiki=$(cat << _WIKI
+There are two ways to install, with the install-$cnick (dep dialog) script
+or the manual form as follows:
 
 Pre Requirements:
 - Download $cdistro Linux
@@ -267,172 +217,7 @@ Add a password with:
 
 Log in to the system with your new user and password, startx to start.
 _WIKI
-)
-
-# lib functions
-
-sh_disk_info()
-{
-        ARRAY_DSK_DISKS=()
-      ARRAY_DSK_DEVICES=()
-         ARRAY_DSK_SIZE=()
-         ARRAY_DSK_TRAN=()
-        ARRAY_DSK_MODEL=()
-   while IFS='\ ' read -r dsk_type dsk_name dsk_path dsk_size dsk_tran dsk_model dsk_model1 dsk_model2
-   do
-      [[ -z $dsk_size  ]] && dsk_size="0B"
-      [[ -z $dsk_tran  ]] && dsk_tran="blk"
-      [[ -z $dsk_model ]] && dsk_model="unknown"
-        ARRAY_DSK_DISKS+=("${dsk_name}")
-      ARRAY_DSK_DEVICES+=("${dsk_path}")
-         ARRAY_DSK_SIZE+=("${dsk_size}")
-         ARRAY_DSK_TRAN+=("${dsk_tran}")
-        ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
-   done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
-}
-
-function inkey()
-{
-	read -t "$1" -n1 -r -p "" lastkey
-}
-
-function sh_partitions()
-{
-    array=($(fdisk -l $sd           \
-    | grep "$sd[0-9]"               \
-    | awk '{print $1,$5,$6,$7}'     \
-    | sed 's/ /_/'g                 \
-    | sed 's/.//10'                 \
-    | sed 's/./& /9'))
-}
-
-function arraylen()
-{
-	for item in ${array[*]}
-   do
-		printf "   %s\n" $item
-   done
-   arraylength=${"$1"[*]}
-}
-
-function timespec()
-{
-	STAMP="$(echo `date +"%b %d %T %:z"` `hostname`) "
-   return 0
-}
-
-function log_success_msg()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
-
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-
-    timespec
-    echo -e "${STAMP} ${logmessage} OK" >> ${BOOTLOG}
-
-    return 0
-}
-
-function log_success_msg2()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
-    echo " OK" >> ${BOOTLOG}
-    return 0
-}
-
-function log_failure_msg()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
-
-    # Strip non-printable characters from log file
-
-    timespec
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    echo -e "${STAMP} ${logmessage} FAIL" >> ${BOOTLOG}
-
-    return 0
-}
-
-function log_failure_msg2()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
-    echo "FAIL" >> ${BOOTLOG}
-    return 0
-}
-
-function log_warning_msg()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${WARNING_PREFIX}${SET_COL}${WARNING_SUFFIX}"
-
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    timespec
-    echo -e "${STAMP} ${logmessage} WARN" >> ${BOOTLOG}
-
-    return 0
-}
-
-function log_skip_msg()
-{
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${SKIP_PREFIX}${SET_COL}${SKIP_SUFFIX}"
-
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    echo "SKIP" >> ${BOOTLOG}
-
-    return 0
-}
-
-function log_info_msg()
-{
-    echo -n -e "${BMPREFIX}${@}"
-
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    timespec
-    echo -n -e "${STAMP} ${logmessage}" >> ${BOOTLOG}
-
-    return 0
-}
-
-function log_info_msg2()
-{
-    echo -n -e "${@}"
-
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    echo -n -e "${logmessage}" >> ${BOOTLOG}
-
-    return 0
-}
-
-function evaluate_retval()
-{
-	local error_value="${?}"
-
-	if [ ${error_value} = 0 ]; then
-		log_success_msg2
-	else
-		log_failure_msg2
-   	fi
-	return ${error_value}
-}
-
-function is_true()
-{
-   [ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
-}
-
-function sh_trapErro()
-{
-	${DIALOG} --msgbox "Voce pressionou ctrl-c" 7 60
+	)
 }
 
 function confirma()
@@ -462,16 +247,6 @@ function mensagem()
    6 60
 }
 
-function tolower()
-{
-	$1 | tr 'A-Z' 'a-z'
-}
-
-function toloupper()
-{
-	$1 | tr 'a-z' 'Z-A'
-}
-
 function display_result()
 {
 	local xbacktitle=$ccabec
@@ -480,54 +255,54 @@ function display_result()
 		xbacktitle="$3"
 	fi
 
-	${DIALOG} 	--title 	"$2"			\
-            --beep                      \
-    		--no-collapse				\
-            --no-cr-wrap                \
-			--backtitle	"$xbacktitle"	\
-    		--msgbox 	"$1" 			\
-			25 80
+	${DIALOG} 	--title 	"$2"					\
+            	--beep                     \
+    				--no-collapse					\
+            	--no-cr-wrap               \
+					--backtitle	"$xbacktitle"	\
+    				--msgbox 	"$1" 				\
+					25 80
 }
 
 function alerta()
 {
-	${DIALOG} 								        \
-			--title 	"$1" 			        \
-			--backtitle	"$ccabec"		        \
-			--msgbox 	"$2\n$3\n$4\n$5\n$6"    \
-			10 60
+	${DIALOG} 								   \
+		--title 	"$1" 			        		\
+		--backtitle	"$ccabec"		      \
+		--msgbox 	"$2\n$3\n$4\n$5\n$6"	\
+		10 60
 }
 
 function info()
 {
-	${DIALOG} 			 					\
-         --beep                  \
-			--title 	"$cmsg002"		\
-			--backtitle	"$ccabec"	\
-			--msgbox 	"$*" 			\
-			10 60
+	${DIALOG} 			 			\
+		--beep                  \
+		--title 	"$cmsg002"		\
+		--backtitle	"$ccabec"	\
+		--msgbox 	"$*" 			\
+		10 60
 }
 
 function debug()
 {
-	${DIALOG} 			 					\
-         --beep                  \
-			--title 	"$cmsg002"		\
-			--backtitle	"$ccabec"	\
-			--msgbox 	"$*" 			\
-			10 60
+	${DIALOG} 			 			\
+		--beep                  \
+		--title 	"$cmsg002"		\
+		--backtitle	"$ccabec"	\
+		--msgbox 	"$*" 			\
+		10 60
 }
 
 function conf()
 {
-    ${DIALOG}									\
-			--title 		"$1" 				\
-			--backtitle	"$ccabec"		\
-			--yes-label "$yeslabel"		\
-			--no-label  "$nolabel"		\
-			--yesno 		"$2" 				\
-			10 100
-			return $?
+    ${DIALOG}							\
+		--title 		"$1" 				\
+		--backtitle	"$ccabec"		\
+		--yes-label "$yeslabel"		\
+		--no-label  "$nolabel"		\
+		--yesno 		"$2" 				\
+		10 100
+		return $?
 }
 
 function conf2()
@@ -688,13 +463,15 @@ function sh_adduser()
 			sh_mountpartition
 		fi
 
+		sh_confstartx
 		sh_initbind
 		cinfo=`log_info_msg "$cmsgadduser"`
 	   msg "INFO" "$cinfo"
+	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
 	   chroot . /bin/bash -c "useradd -m -G ${cgroups} ${cuser} -p ${cpass} > /dev/null 2>&1"
 	   chroot . /bin/bash -c "(echo $cuser:$cpass) | chpasswd -m > /dev/null 2>&1"
-	   chroot . /bin/bash -c "cp /home/live/.xinitrc /home/$cuser > /dev/null 2>&1"
-	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
+#	   chroot . /bin/bash -c "cp /home/live/.xinitrc /home/$cuser > /dev/null 2>&1"
+#	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
 	   evaluate_retval
 		sh_confhost
 		sh_confkeyboard
@@ -759,23 +536,6 @@ function sh_execcopiaold()
 	) | ${DIALOG} --title "** COPIANDO **" --backtitle "$cabec" --gauge "$MSG" 7 60 0
 }
 
-function sh_execcopiaNew()
-{
-	ARQUIVO_LOG=/tmp/arquivo.log
-	${DIALOG} --infobox 'Iniciando instalacao...' 3 25; sleep 1
-  	declare -i cont=1
-  	{
-  		while [ $cont -le 100 ]; do
-    		echo $cont
-    		cont=$((cont+1))
-    		rsync -avh --progress $ORIGEM $DESTINO --log-file=$ARQUIVO_LOG 2>&1
-    		uniq -u $ARQUIVO_LOG
-  		done
-  	} | ${DIALOG} --gauge 'Aguarde... Copiando Arquivos' 8 70 0
-  	#${DIALOG} --msgbox 'Instalacao concluído com sucesso!' 6 35
-  	#${DIALOG} --title 'Log de Backup' --textbox "$ARQUIVO_LOG" 0 0
-}
-
 function sh_execcopia()
 {
 	ORIGEM=$MEDIUM/
@@ -785,8 +545,8 @@ function sh_execcopia()
    sizeof()    { du -s "$1" | cut -f1; }
    running()   { ps $1 | grep $1 >/dev/null; }
 
-   TITLE="Copiando..."
-   MSG="Copiando o diretorio $ORIGEM para $DESTINO"
+   TITLE="INSTALL"
+   MSG="Aguarde, instalando... if=$ORIGEM of=$DESTINO"
    INTERVALO=1
    PORCENTO=0
    DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
@@ -797,19 +557,20 @@ function sh_execcopia()
    DISPONIVEL=$(df | grep "${DEST}" | awk '{print $4}')
    DISPONIVEL=$((DISPONIVEL/1024))
 
-   log=/tmp/install-chili.log
+   log="/tmp/${_APP_}.log"
+   [ -e $log ] && rm -f $log
 
    #cp -rap $ORIGEM/* $DESTINO >$log &
    #CPPID=$!
 
    rsync -crav $ORIGEM $DESTINO 1>&2>$log &
-   CPPID=$!
+   export CPPID=$!
 
    #rsync -cra $ORIGEM $DESTINO &
    #CPPID=$!
 
 #  trap sh_trapErro 2 15
-   trap "kill $CPPID" 2 15
+   #trap "kill $CPPID" 2 15
 
    (
        while running $CPPID; do
@@ -820,8 +581,9 @@ function sh_execcopia()
            [ $PORCENTAGEM -gt 100 ] && PORCENTAGEM=100
 #          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
 #          ${DIALOG} --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
-           ${DIALOG} --title "$TITLE" --gauge "\n$MSG\n\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
-           sleep $INTERVALO
+           ${DIALOG} --title "$TITLE" --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
+#          sleep $INTERVALO
+           sleep 0.5
        done
        #echo 100
 #   )| ${DIALOG} --title "$TITLE" --tailbox "$log" 8 70
@@ -865,6 +627,11 @@ function sh_exectar()
 	return $TARSUCCESS
 }
 
+function sh_stopmount()
+{
+	umount -rl $dir_install
+}
+
 function sh_stopbind()
 {
 	local xproc="$dir_install/proc"
@@ -874,55 +641,24 @@ function sh_stopbind()
 	local xshm="$dir_install/dev/shm"
 	local xqueue="$dir_install/dev/mqueue"
 	local xrun="$dir_install/run"
-	local lproc=$false
-	local lsys=$false
-	local ldev=$false
-	local lpts=$false
-	local lrun=$false
-	local lshm=$false
-	local lqueue=$false
+	local lproc="OK"
+	local lsys="OK"
+	local ldev="OK"
+	local lpts="OK"
+	local lrun="OK"
+	local lshm="OK"
+	local lqueue="OK"
+	local lresultbind=$true
 
 	pushd $pwd &>/dev/null
-	mensagem "umount $xshm"
-	umount -Rl $xshm > /dev/null 2>&1
-	lresultbind=$true
+	mensagem "umount $xshm"   ; umount $xshm   > /dev/null 2>&1 ; [ $? = 0 ] || lshm="FAIL"   ; lresultbind=$false
+	mensagem "umount $xqueue" ; umount $xqueue > /dev/null 2>&1 ; [ $? = 0 ] || lqueue="FAIL" ; lresultbind=$false
+	mensagem "umount $xpts"   ; umount $xpts   > /dev/null 2>&1 ; [ $? = 0 ] || lpts="FAIL"   ; lresultbind=$false
+	mensagem "umount $xproc"  ; umount $xproc  > /dev/null 2>&1 ; [ $? = 0 ] || lproc="FAIL"  ; lresultbind=$false
+	mensagem "umount $xsys"   ; umount $xsys   > /dev/null 2>&1 ; [ $? = 0 ] || lsys="FAIL"   ; lresultbind=$false
+	mensagem "umount $xrun"   ; umount $xrun   > /dev/null 2>&1 ; [ $? = 0 ] || lrun="FAIL"   ; lresultbind=$false
+	mensagem "umount $xdev"   ; umount $xdev   > /dev/null 2>&1 ; [ $? = 0 ] || ldev="FAIL"   ; lresultbind=$false
 
-	if [ $? = 0 ] ; then lshm="OK"; else lshm="FAIL" lresultbind=$false; fi
-	mensagem "umount $xqueue"
-	umount -Rl $xqueue > /dev/null 2>&1
-	lresultbind=$true
-
-  	if [ $? = 0 ] ; then lqueue="OK"; else lqueue="FAIL" lresultbind=$false; fi
-	mensagem "umount $xpts"
-	umount -Rl $xpts > /dev/null 2>&1
-	lresultbind=$true
-
-	if [ $? = 0 ] ; then lpts="OK"; else lpts="FAIL" lresultbind=$false; fi
-	mensagem "umount $xproc"
-	umount -Rl $xproc > /dev/null 2>&1
-	lresultbind=$true
-
-	if [ $? = 0 ] ; then lproc="OK"; else lproc="FAIL" lresultbind=$false; fi
-	mensagem "umount $xsys"
-	umount -Rl $xsys > /dev/null 2>&1
-
-	if [ $? = 0 ] ; then lsys="OK"; else lsys="FAIL" lresultbind=$false; fi
-	mensagem "umount $xrun"
-	umount -Rl $xrun > /dev/null 2>&1
-
-	if [ $? = 0 ] ; then lrun="OK"; else lrun="FAIL" lresultbind=$false; fi
-	mensagem "umount $xdev"
-	umount -Rl $xdev > /dev/null 2>&1
-
-	if [ $? = 0 ] ; then ldev="OK"; else ldev="FAIL" lresultbind=$false; fi
-	mensagem "umount $xdev"
-	umount -Rl $xdev > /dev/null 2>&1
-
-	if [ $? = 0 ] ; then ldev="OK"; else ldev="FAIL" lresultbind=$false; fi
-	mensagem "umount $xdev"
-	umount -Rl $xdev > /dev/null 2>&1
-
-	if [ $? = 0 ] ; then ldev="OK"; else ldev="FAIL" lresultbind=$false; fi
 	xstrbind="mount $xproc : $lproc    \
             \nmount $xsys : $lsys     \
             \nmount $xdev : $ldev     \
@@ -936,40 +672,31 @@ function sh_initbind()
 	local xsys="--rbind /sys $dir_install/sys/"
    local xdev="--rbind /dev $dir_install/dev/"
    local xrun="--rbind /run $dir_install/run/"
-   local lproc=$false
-   local lsys=$false
-   local ldev=$false
-   local lrun=$false
+   local lproc="OK"
+   local lsys="OK"
+   local ldev="OK"
+   local lrun="OK"
+   local lresultbind=$true
 
-	cd $dir_install
-	mkdir -p $dir_install/home > /dev/null 2>&1
-	mkdir -p $dir_install/proc > /dev/null 2>&1
-	mkdir -p $dir_install/sys > /dev/null 2>&1
-	mkdir -p $dir_install/dev > /dev/null 2>&1
-	mkdir -p $dir_install/run > /dev/null 2>&1
-	mkdir -p $dir_install/boot/EFI > /dev/null 2>&1
+	pushd $dir_install &>/dev/null
+	[ -d $dir_install/home     ] || mkdir -p $dir_install/home > /dev/null 2>&1
+	[ -d $dir_install/proc     ] || mkdir -p $dir_install/proc > /dev/null 2>&1
+	[ -d $dir_install/sys      ] || mkdir -p $dir_install/sys > /dev/null 2>&1
+	[ -d $dir_install/dev      ] || mkdir -p $dir_install/dev > /dev/null 2>&1
+	[ -d $dir_install/run      ] || mkdir -p $dir_install/run > /dev/null 2>&1
+	[ -d $dir_install/boot/EFI ] || mkdir -p $dir_install/boot/EFI > /dev/null 2>&1
 
-	mensagem "mount $xproc"
-   mount $xproc > /dev/null 2>&1
-   lresultbind=$true
-   if [ $? = 0 ] ; then lproc="OK"; else lproc="FAIL" lresultbind=$false; fi
+	mensagem "mount $xproc"; mount $xproc > /dev/null 2>&1 ; [ $? = 0 ] || lproc="FAIL"; lresultbind=$false
+	mensagem "mount $xsys" ; mount $xsys > /dev/null 2>&1  ;	[ $? = 0 ] || lsys="FAIL"; lresultbind=$false
+	mensagem "mount $xdev" ; mount $xdev > /dev/null 2>&1  ; [ $? = 0 ] || ldev="FAIL"; lresultbind=$false
+	mensagem "mount $xrun" ; mount $xrun > /dev/null 2>&1  ; [ $? = 0 ] || lrun="FAIL"; lresultbind=$false
 
-	mensagem "mount $xsys"
-	mount $xsys > /dev/null 2>&1
-    if [ $? = 0 ] ; then lsys="OK"; else lsys="FAIL" lresultbind=$false; fi
-
-    mensagem "mount $xdev"
-    mount $xdev > /dev/null 2>&1
-    if [ $? = 0 ] ; then ldev="OK"; else ldev="FAIL" lresultbind=$false; fi
-
-    mensagem "mount $xrun"
-    mount $xrun > /dev/null 2>&1
-    if [ $? = 0 ] ; then lrun="OK"; else lrun="FAIL" lresultbind=$false; fi
-
-    xstrbind="mount $xproc : $lproc    \
+	xstrbind="mount $xproc : $lproc    \
             \nmount $xsys : $lsys     \
             \nmount $xdev : $ldev     \
             \nmount $xrun : $lrun"
+
+	popd &>/dev/null
 }
 
 function sh_bind()
@@ -1039,7 +766,7 @@ function sh_grubEFI()
 {
     cinfo=`log_info_msg "$cmsg_Desmontando_particao: $sd"`
     msg "INFO" "$cinfo"
-    umount -f -rl $xPARTEFI 2> /dev/null
+    umount -f $xPARTEFI 2> /dev/null
     evaluate_retval
 
     cinfo=`log_info_msg "$cmsg_Formatando_particao: $sd"`
@@ -1349,7 +1076,7 @@ function sh_check_install()
 
 function sh_startinstall()
 {
-  	cd $dir_install
+	cd $dir_install
 	sh_exectar
 	if [ $? = 1 ]; then
 		conf "*** ERRO ***" "$cmsg_erro_tar_continue"
@@ -1382,70 +1109,68 @@ function menuinstall()
 {
 	while true
 	do
-    	resposta=$( ${DIALOG}												\
-		--stdout														\
-        --title 		"$cmsgPacotes_disponiveis"						\
+		resposta=$( ${DIALOG}											\
+		--stdout																\
+      --title 		"$cmsgPacotes_disponiveis"						\
 		--backtitle 	"$ccabec"										\
 		--cancel-label	"$buttonback"									\
 		--menu			"\n$cmsg004"									\
-		0 70 0															\
+		0 70 0																\
 	   	FULL			"$cmsgfull"										\
 		MINIMAL			"$cmsgmin"										)
-#		custom			'Choose softwares. (GIMP, QT5, LIBREOFFICE...)'
 
 		exit_status=$?
 		case $exit_status in
-			$ESC)
-                if [ $LAUTOMATICA = $true ]; then
-                    return 1
-                fi
-				scrmain
-				;;
-			$CANCEL)
-                if [ $LAUTOMATICA = $true ]; then
-                    return 1
-                fi
-				scrmain
-				;;
+		$ESC)
+      	if [ $LAUTOMATICA = $true ]; then
+         	return 1
+			fi
+			scrmain
+			;;
+		$CANCEL)
+			if [ $LAUTOMATICA = $true ]; then
+         	return 1
+			fi
+			scrmain
+			;;
 		esac
 
 		case "$resposta" in
 		FULL)
 			resfull=$(${DIALOG}									\
-			--stdout											\
+			--stdout													\
 			--backtitle 	"$ccabec"							\
 			--cancel-label	"$buttonback"						\
-			--title			'FULL INSTALATION'					\
+			--title			'FULL INSTALATION'				\
 			--menu			"\n$cchooseX:"						\
-			0 0 0                               		    	\
-			XFCE4			"$cxfce4"							\
-			i3WM			"$ci3wm"							)
+			0 0 0                               		   \
+			XFCE4			"$cxfce4"								\
+			i3WM			"$ci3wm"									)
 
 			exit_status=$?
 			case $exit_status in
-				$ESC)
-                    if [ $LAUTOMATICA = $true ]; then
-                        return 1
-                    fi
-					loop
-					;;
-				$CANCEL)
-                    if [ $LAUTOMATICA = $true ]; then
-                        return 1
-                    fi
-					loop
-					;;
+			$ESC)
+         	if [ $LAUTOMATICA = $true ]; then
+            	return 1
+				fi
+				loop
+				;;
+			$CANCEL)
+				if [ $LAUTOMATICA = $true ]; then
+					return 1
+				fi
+				loop
+				;;
 			esac
 
 			case "$resfull" in
-				# TROCAR POR /MNT *********************
 			XFCE4)
 				FULLINST=$true
 				STARTXFCE4=$true
 				cmsgversion=$cmsg016
-                if [ $LAUTOMATICA = $true ]; then
-                    return 0
-                fi
+				if [ $LAUTOMATICA = $true ]; then
+            	return 0
+				fi
 				sh_wgetdefault
 				break
 				;;
@@ -1454,9 +1179,9 @@ function menuinstall()
 				FULLINST=$true
 				STARTXFCE4=$false
 				cmsgversion=$cmsg016
-                if [ $LAUTOMATICA = $true ]; then
-                    return 0
-                fi
+				if [ $LAUTOMATICA = $true ]; then
+					return 0
+				fi
 				sh_wgetdefault
 				break
 				;;
@@ -1466,52 +1191,11 @@ function menuinstall()
 		MINIMAL)
 			FULLINST=$false
 			cmsgversion=$cmsg015
-            if [ $LAUTOMATICA = $true ]; then
-                return 0
-            fi
+			if [ $LAUTOMATICA = $true ]; then
+				return 0
+			fi
 			sh_wgetdefault
 			;;
-
-		custom)
-			rescustom=$(${DIALOG} --stdout                 					\
-            --separate-output                       						\
-            --checklist 'Choose install softwares:' 						\
-            0 0 0                                   						\
-			LIBREOFFICE  			'Office suite free' 				OFF	\
-			GIMP 		 			'GNU Image Manipulation Program' 	OFF	\
-			INKSCAPE 	 			'Draw freely' 						OFF	\
-			QT5 		 			'Framework' 						OFF \
-			SUBLIME_TEXT 			'Text editor for code' 				OFF \
-			VLC 		 			'Player video' 						OFF \
-            OPENJDK 	 			'Open Java' 						OFF \
-            TELEGRAM 	 			'Communicator' 						OFF	\
-            SIMPLESCREENRECORDER	'Recorder desktop' 					OFF	)
-
-			# create choose softwares vars
-			libre= ; gimp= ; inkscape= ; qt5= ; sublime_text= ; vlc= ; openjdk= ; telegram=
-			echo "$rescustom" | while read LINHA
-          	do
-				if [ $LINHA = "LIBREOFFICE" ]; then
-					libre="--exclude-from=/tmp/libre.exclude"
-				elif [ $LINHA = "GIMP" ]; then
-					gimp="--exclude-from=/tmp/gimp.exclude"
-				elif [ $LINHA = "INKSCAPE" ]; then
-					inkscape="--exclude-from=/tmp/inkscape.exclude"
-				elif [ $LINHA = "QT5" ]; then
-					qt5="--exclude-from=/tmp/qt5.exclude"
-				elif [ $LINHA = "SUBLIME_TEXT" ]; then
-					sublime_text="--exclude-from=/tmp/sublime_text.exclude"
-				elif [ $LINHA = "VLC" ]; then
-					vlc="--exclude-from=/tmp/vlc.exclude"
-				elif [ $LINHA = "OPENJDK" ]; then
-					openjdk="--exclude-from=/tmp/openjdk.exclude"
-				elif [ $LINHA = "TELEGRAM" ]; then
-					telegram="--exclude-from=/tmp/telegram.exclude"
-				elif [ $LINHA = "SIMPLESCREENRECORDER" ]; then
-					ssr="--exclude-from=/tmp/ssr.exclude"
-				fi
-			done
-           	;;
 		esac
 	done
 }
@@ -1546,12 +1230,13 @@ function sh_checksimple()
 
 function sh_umountall()
 {
-    local nconta=$(ls /dev/sda[0-9]|wc -l)
-    local i
-    for i in $(seq 1 $nconta); do
-        mensagem "Desmontando partição: $sd$i"
-        umount -f -rl $sd$i 2> /dev/null
-    done
+	local nconta=$(ls $sd[0-9]|wc -l)
+	local i
+
+	for i in $(seq 1 $nconta); do
+		mensagem "Desmontando partição: $sd$i"
+		umount -f $sd$i 2> /dev/null
+	done
 }
 
 function sh_checkpartition()
@@ -1570,30 +1255,39 @@ function sh_checkpartition()
 	return $nchoice
 }
 
-function sh_partnewbie()
+function sh_partitions_with_sfdisk()
 {
-	cinfo=`log_info_msg "$cmsg_prepare_disk $sd"`
-	msg "INFO" "$cinfo"
-	sh_umountall
-
 	local xMEMSWAP=$(free | grep Mem | awk '{ print $2}')
 	if [ $xMEMSWAP = "" ] ; then
 		xMEMSWAP = "2G"
 	fi
 
-	#flock $sd sfdisk --delete --force $sd  > /dev/null 2>&1
-	#echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
-	#| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
-	#udevadm settle > /dev/null 2>&1
+	flock $sd sfdisk --delete --force $sd  > /dev/null 2>&1
+	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
+	| flock $sd sfdisk --wipe=always --wipe-partitions=always --force --label=gpt $sd > /dev/null 2>&1
+	udevadm settle > /dev/null 2>&1
+}
 
-	parted --script $sd -- \
-	mklabel gpt					\
+function sh_partitions_with_parted()
+{
+	parted --script $sd -- 														\
+	mklabel gpt																		\
 	mkpart primary fat32      1MiB 2MiB set 1 bios on name 1 BIOS  \
 	mkpart primary fat32      2MiB 3MiB set 2 esp  on name 2 EFI   \
 	mkpart primary linux-swap 3MiB 2GB                name 3 SWAP  \
 	mkpart primary ext4       2GB 100%                name 4 ROOT  \
 	align-check optimal 1
 	udevadm settle > /dev/null 2>&1
+}
+
+function sh_partnewbie()
+{
+	cinfo=`log_info_msg "$cmsg_prepare_disk $sd"`
+	msg "INFO" "$cinfo"
+	sh_umountall
+
+	#sh_partitions_with_sfdisk
+	sh_partitions_with_parted
 	evaluate_retval
 	LDISK=1
 
@@ -1713,41 +1407,40 @@ function choosedisk()
 			esac
 
 			case "$typefmt" in
-         	$cexpert)
-            	sh_checksimple
-               cfdisk $sd
-               LDISK=1
-               local result=$( fdisk -l $sd )
-               display_result "$result" "$cmsg011"
-               ;;
-
-               $cnewbie)
-                  sh_checkdisk
-                  local nmontada=$?
-                  if [ $nmontada = 1 ]; then
-                     alerta "CHOOSEDISK" "$cmsg_nec_dismount"
-                     choosedisk
-                  fi
-                  conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
-                  local nb=$?
-                  case $nb in
-                     $D_OK)
-                         sh_partnewbie
-                         local result=$( fdisk -l $sd )
-                         display_result "$result" "$csmg013"
-                        ;;
-                  esac
-                  ;;
-            esac
-    	fi
+			$cexpert)
+				sh_checksimple
+				cfdisk $sd
+				LDISK=1
+				local result=$( fdisk -l $sd )
+				display_result "$result" "$cmsg011"
+				;;
+			$cnewbie)
+				sh_checkdisk
+				local nmontada=$?
+				if [ $nmontada = 1 ]; then
+					alerta "CHOOSEDISK" "$cmsg_nec_dismount"
+					choosedisk
+				fi
+				conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
+				local nb=$?
+				case $nb in
+            $D_OK)
+					sh_partnewbie
+					local result=$( fdisk -l $sd )
+					display_result "$result" "$csmg013"
+					;;
+				esac
+				;;
+			esac
+		fi
     	break
-    done
+	done
 }
 
 function sh_umountpartition()
 {
 	mensagem "$cmsg_umount_partition"
-	umount -rl $part 2> /dev/null
+	umount -f $part 2> /dev/null
 	LMOUNT=0
 	cd $pwd
 }
@@ -1760,27 +1453,27 @@ function sh_mountpartition()
 
 	while true
 	do
-		umount -f -rl $part 2> /dev/null
+		umount -f $part 2> /dev/null
 		mount $part $dir_install 2> /dev/null
 		if [ $? = 32 ]; then # montada?
-           	LMOUNT=1
+			LMOUNT=1
 			break
 		fi
 		if [ $? = 1 ]; then # fail?
 			conf "** MOUNT **" "$cmsg_mount_failed"
-            if [ $? = 0 ]; then
-				#loop
+			if [ $? = 0 ]; then
 				continue
 			fi
-           	LMOUNT=0
+			LMOUNT=0
 			break
 		fi
 		break
 	done
+
 	LMOUNT=1
-    if [ $LAUTOMATICA = $false ]; then
-    	mensagem "$cmsg_enter_work_dir"
-    fi
+	if [ $LAUTOMATICA = $false ]; then
+		mensagem "$cmsg_enter_work_dir"
+	fi
 	cd $dir_install
 }
 
@@ -1794,23 +1487,21 @@ function choosepartition()
 
 	if [ $LDISK -eq 0 ]; then
 		local devices=($(fdisk -l -o Device|sed -n '/sd[a-z][0-9]/p'))
-      #local partitions=($(fdisk -l|sed -n '/sd[a-z][0-9]/'p|awk '{printf "%0s [%0s]__%0s_%0s\n", $1,$5,$7,$6}'))
       local size=($(fdisk -l  | sed -n /sd[a-z][0-9]/p | awk '{printf "(%7s)\n", $5}'|sed 's/ /_/g'))
       local type=($(fdisk -l -o device,type|sed -n '/sd[a-z][0-9]/p'|awk '{printf "%-0s %0s %0s %0s %0s\n", $2, $3, $4, $5, $6}'|sed 's/[ \t]*$//'|sed 's/ /_/g'))
     else
       local devices=($(fdisk -l $sd -o device|sed -n '/sd[a-z][0-9]/p'))
-      #local partitions=($(fdisk -l $sd|sed -n '/sd[a-z][0-9]/'p|awk '{printf "%0s [%0s]__%0s_%0s\n", $1,$5,$7,$6}'))
       local size=($(fdisk -l $sd | sed -n /sd[a-z][0-9]/p | awk '{printf "(%7s)\n", $5}'|sed 's/ /_/g'))
       local type=($(fdisk -l $sd -o device,type|sed -n '/sd[a-z][0-9]/p'|awk '{printf "%-0s %0s %0s %0s %0s\n", $2, $3, $4, $5, $6}'|sed 's/[ \t]*$//'|sed 's/ /_/g'))
     fi
 
-    for i in ${devices[@]}
-    do
-        array[((n++))]=$i
-        array[((n++))]="${size[((y++))]} ${type[((x++))]}"
-    done
+	for i in ${devices[@]}
+   do
+		array[((n++))]=$i
+		array[((n++))]="${size[((y++))]} ${type[((x++))]}"
+	done
 
-	part=$(${DIALOG}															\
+	part=$(${DIALOG}														\
 			--title 			"$cparticao"					  			\
 			--backtitle	 	"$ccabec"					 				\
 			--cancel-label	"$buttonback"								\
@@ -1820,24 +1511,19 @@ function choosepartition()
 
 	exit_status=$?
 	case $exit_status in
-		$ESC)
-			LDISK=0
-			LPARTITION=0
-			#scrend 1
-			#exit 1
-			scrmain
-			;;
-		$CANCEL)
-			LDISK=0
-			LPARTITION=0
-			#scrend 0
-			scrmain
-			;;
+	$ESC)
+		LDISK=0
+		LPARTITION=0
+		scrmain
+		;;
+	$CANCEL)
+		LDISK=0
+		LPARTITION=0
+		scrmain
+		;;
 	esac
 	LDISK=1
 	LPARTITION=1
-	#sh_format
-	#sh_mountpartition
 }
 
 function sh_mkswap()
@@ -1852,12 +1538,11 @@ function sh_mkswap()
 function sh_domkfs()
 {
 	mensagem "$cmsg_Desmontando_particao: $part"
-	umount -rl $part 2> /dev/null
+	umount -f $part 2> /dev/null
 	mensagem "$cmsg_Formatando_particao: $part"
 	mkfs -t ext4 -L "$xLABEL" $part > /dev/null 2>&1
-	local nchoice=$?
-	LFORMAT=$nchoice
-	return $nchoice
+	LFORMAT=$?
+	return $LFORMAT
 }
 
 function sh_format()
@@ -1893,7 +1578,7 @@ function scrmain()
 {
 	while true
 	do
-		main=$(${DIALOG} 									\
+		main=$(${DIALOG} 								\
 			--stdout                            \
 			--backtitle 	"$ccabec"				\
 			--title 			"$cmsg001"				\
@@ -1909,13 +1594,7 @@ function scrmain()
 
 		exit_status=$?
 		case $exit_status in
-		$ESC)
-			#scrend 1
-			#exit 1
-			init
-			;;
-		$CANCEL)
-			#scrend 0
+		$ESC|$CANCEL)
 			init
 			;;
 		esac
@@ -2230,8 +1909,7 @@ function sh_checkroot()
 function sh_testlive()
 {
 	test -e $LIVE
-	local nchoice=$?
-	return $nchoice
+	return $?
 }
 
 function init()
@@ -2307,15 +1985,9 @@ function sh_packagedisp()
 
 		exit_status=$?
 		case $exit_status in
-			$ESC)
-				#scrend 1
-				#exit 1
-				#scrmain
-				;;
-			$CANCEL)
-				#scrend 0
-				#scrmain
-				;;
+		$ESC|$CANCEL)
+			scrmain
+			;;
 		esac
 }
 
@@ -2341,12 +2013,9 @@ sh_tools()
 
 			exit_status=$?
 			case $exit_status in
-				$ESC)
-					scrmain
-					;;
-				$CANCEL)
-					scrmain
-					;;
+			$ESC|$CANCEL)
+				scrmain
+				;;
 			esac
 			case $tools in
 				1) STANDALONE=$true; grubinstall;;
@@ -2587,8 +2256,8 @@ function sh_liveinstall()
 			;;
 	esac
 	LGRUB=$mbr
-
 	keymap=$(grep ^KEYMAP /etc/vconsole.conf | cut -d= -f2)
+
 	conf2 "*** KEYBOARD ***" "Current layout : $keymap" "\n\nSet new keyboard layout?"
 	if [ $? = $true ]; then
 		setkeymap
@@ -2621,8 +2290,10 @@ function sh_liveinstall()
         zeravar
         sh_tools
     fi
-
 	sh_mkswap
+	sh_stopbind
+	sh_stopbind
+	sh_checkpartition
 	sh_wgetsqfs
 	sh_fstab
 	sh_initbind
@@ -2632,8 +2303,7 @@ function sh_liveinstall()
 	fi
 	grubinstall
 	sh_stopbind
-   sh_stopbind
-   sh_stopbind
+	sh_stopbind
    zeravar
 }
 
@@ -2746,6 +2416,19 @@ function sh_confkeyboard()
 	fi
 }
 
+function sh_trapErro()
+{
+	local result
+
+	conf "*** INSTALL ***" "\nInterrupt signal receveid. Cancel install?"
+   result=$?
+   if [ $result = $true ]; then
+		kill $CPPID
+		sh_stopbind
+		exit 1
+   fi
+}
+
 sh_checkDependencies()
 {
 	local errorFound=0
@@ -2765,6 +2448,8 @@ sh_checkDependencies()
 
 sh_checkDependencies
 sh_checkroot
+configure
+trap sh_trapErro 2 15
 init
 
 :<<'LIXO'
@@ -2775,3 +2460,4 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
 proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 :'LIXO'
+

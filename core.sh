@@ -63,6 +63,64 @@ LLIST=0
 verbose=1
 declare -l BAIXA=${MENSAGEM}
 declare -u ALTA=${MENSAGEM}
+trancarstderr=2>&-
+
+# choosedisk
+: ${ARRAY_DSK_DEVICES=()}
+: ${ARRAY_DSK_DISKS=()}
+: ${ARRAY_DSK_SIZE=()}
+: ${ARRAY_DSK_MODEL=()}
+: ${ARRAY_DSK_TRAN=()}
+
+function sh_disk_info()
+{
+        ARRAY_DSK_DISKS=()
+      ARRAY_DSK_DEVICES=()
+         ARRAY_DSK_SIZE=()
+         ARRAY_DSK_TRAN=()
+        ARRAY_DSK_MODEL=()
+   while IFS='\ ' read -r dsk_type dsk_name dsk_path dsk_size dsk_tran dsk_model dsk_model1 dsk_model2
+   do
+      [[ -z $dsk_size  ]] && dsk_size="0B"
+      [[ -z $dsk_tran  ]] && dsk_tran="blk"
+      [[ -z $dsk_model ]] && dsk_model="unknown"
+        ARRAY_DSK_DISKS+=("${dsk_name}")
+      ARRAY_DSK_DEVICES+=("${dsk_path}")
+         ARRAY_DSK_SIZE+=("${dsk_size}")
+         ARRAY_DSK_TRAN+=("${dsk_tran}")
+        ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
+   done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+}
+
+sh_backup_partitions()
+{
+   if [ $# -ge 2 ]; then
+      local disk="${1}"
+      local device="${2}"
+      local cdatetime=$(sh_diahora)
+      local tmpdir="/tmp/$_APP_"
+      local filetmp="$tmpdir/${device}.$cdatetime.dump"
+
+      mkdir -p $tmpdir 2> /dev/null
+      sfdisk -d $disk > $filetmp 2> /dev/null
+      #  alerta "BACKUP DA TABELA DE PARTICOES"    \
+      #         "Dispositivo : $disk"              \
+      #         "  Backup on : ${filetmp}"         \
+      #        "$(replicate "=" 80)"               \
+      #         "$(cat $filetmp)"
+   }
+}
+
+sh_restore_partitions()
+{
+   if [ $# -ge 2 ]; then
+      local disk="${1}"
+      local filetmp="${2}"
+      if [ -e $filetmp ] ; then
+         sfdisk $disk < $filetmp 2> /dev/null
+      fi
+   fi
+}
 
 function setvarcolors(){
 	if tput setaf 1 &> /dev/null; then
@@ -101,6 +159,15 @@ function setvarcolors(){
 		pink="\033[35;1m";
 		black="\e[1;30m";
 	fi
+}
+
+function arraylen()
+{
+   for item in ${array[*]}
+   do
+      printf "   %s\n" $item
+   done
+   arraylength=${"$1"[*]}
 }
 
 function police()
@@ -352,6 +419,17 @@ function log_info_msg()
 	return 0
 }
 
+function log_info_msg2()
+{
+    echo -n -e "${@}"
+
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    echo -n -e "${logmessage}" >> ${BOOTLOG}
+
+    return 0
+}
+
 function log_warning_msg()
 {
 	#echo -n -e "${BMPREFIX}${@}"
@@ -385,6 +463,20 @@ function log_failure_msg2()
 	return 0
 }
 
+function log_success_msg()
+{
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
+
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+
+    timespec
+    echo -e "${STAMP} ${logmessage} OK" >> ${BOOTLOG}
+
+    return 0
+}
+
 function log_success_msg2()
 {
 	#echo -n -e "${BMPREFIX}${@}"
@@ -393,6 +485,18 @@ function log_success_msg2()
 	printf "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}\n"
 	#echo " OK" >> ${BOOTLOG}
 	return 0
+}
+
+function log_skip_msg()
+{
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${SKIP_PREFIX}${SET_COL}${SKIP_SUFFIX}"
+
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    echo "SKIP" >> ${BOOTLOG}
+
+    return 0
 }
 
 function log_wait_msg()
@@ -439,6 +543,11 @@ function evaluate_retval()
 		log_failure_msg2
 	fi
 	return ${error_value}
+}
+
+function is_true()
+{
+   [ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
 }
 
 function info(){
@@ -551,7 +660,18 @@ function tolower()
    echo -e "${TOLOWER}"
 }
 
-function filetolower()
+
+function tolowerA()
+{
+   $1 | tr 'A-Z' 'a-z'
+}
+
+toupperA()
+{
+	$1 | tr 'a-z' 'Z-A'
+}
+
+filetolower()
 {
 	for arquivo in $@
 	do
@@ -560,32 +680,37 @@ function filetolower()
 	done
 }
 
-function mvlower()
+mvlower()
 {
 	local filepath
 	local dirpath
 	local filename
 
 	for filepath in "$@"; do
-		# OBS: temos que preservar o path do diretório!
 		dirpath=$(dirname "$filepath")
 		filename=$(basename "$filepath")
 		mv "$filepath" "${dirpath}/${filename,,}"
 	done
 }
-#mvlower "$@"
 
-function now()
+sh_diahora()
+{
+   DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+   printf "%s\n" $DIAHORA
+}
+
+now()
 {
 	printf "%(%m-%d-%Y %H:%M:%S)T\n" $(date +%s)
 }
 
-function strzero()
+strzero()
 {
 	printf "%0*d" $2 $1
 }
 
-replicate(){
+replicate()
+{
    for counter in $(seq 1 $2);
    do
       printf "%s" $1
@@ -719,7 +844,8 @@ which2()
 	#chown -v root:root /usr/bin/which
 }
 
-function size_to_human(){
+function size_to_human()
+{
 	awk -v size="$1" '
 	BEGIN {
 		suffix[1] = "B"
@@ -881,6 +1007,11 @@ function dwup()
 	fi
 }
 
+quit()
+{
+   [ $? -ne 0 ] && { clear ; exit ;}
+}
+
 function sh_version()
 {
 	printf "$0 $_VERSION_\n"
@@ -992,7 +1123,6 @@ function colortable()
         printf "\n" ''
 	done
 }
-
 
 function DOT()
 {

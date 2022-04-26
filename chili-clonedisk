@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v3.0.0-20220423"
+declare -r _VERSION_="v3.0.0-20220426"
 readonly DEPENDENCIES=(which echo printf lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -46,6 +46,12 @@ sh_configure()
 	: ${DIAHORA=$(sh_diahora)}
 	: ${true=0}
 	: ${false=1}
+
+	# flag dialog exit status codes
+	: ${PT_BR=0}
+	: ${EN_US=1}
+	: ${DE_DE=2}
+	: ${LC_DEFAULT=${EN_US}}
 
 	# flag dialog exit status codes
 	: ${D_OK=0}
@@ -72,11 +78,11 @@ confirma()
 msg()
 {
 	if [ $grafico -eq $true ]; then
-        ${DIALOG}           \
-        --no-collapse       \
-        --title     "$1"    \
-        --infobox   "\n$2"  \
-        6 60
+   	${DIALOG}           		\
+      	--no-collapse       	\
+        	--title     "$1"    	\
+        	--infobox   "\n$2"  	\
+        	6 60
     else
         log_info_msg "$2"
     fi
@@ -108,7 +114,7 @@ info()
 	${DIALOG}  	 				   \
 		--colors                \
 		--beep                  \
-		--title 		"$cmsg002"	\
+		--title 		"$ctitle"	\
 		--backtitle	"$ccabec"	\
 		--msgbox 	"\Z1$*"		\
 		10 60
@@ -118,12 +124,12 @@ conf()
 {
 	xtitle="$1"
 	shift
-	${DIALOG}							\
-		--title 		"$xtitle" 		\
-		--backtitle	"$ccabec"		\
-		--yes-label "$yeslabel"		\
-		--no-label  "$nolabel"		\
-		--yesno 		"$*" 				\
+	${DIALOG}													\
+		--title 		"$xtitle" 								\
+		--backtitle	"$ccabec"								\
+		--yes-label "${cmsg_yeslabel[$LC_DEFAULT]}"	\
+		--no-label  "${cmsg_nolabel[$LC_DEFAULT]}"	\
+		--yesno 		"$*" 										\
 		0 0
 		return $?
 }
@@ -132,12 +138,12 @@ confmulti()
 {
 	xtitle="$1"
 	shift
-	${DIALOG}						\
-		--title 		"$xtitle"	\
-		--backtitle	"$ccabec"	\
-		--yes-label "$yeslabel"	\
-		--no-label  "$nolabel"	\
-		--yesno 		"$*"			\
+	${DIALOG}													\
+		--title 		"$xtitle"								\
+		--backtitle	"$ccabec"								\
+		--yes-label "${cmsg_yeslabel[$LC_DEFAULT]}"	\
+		--no-label  "${cmsg_nolabel[$LC_DEFAULT]}"	\
+		--yesno 		"$*"										\
 		10 100
 		return $?
 }
@@ -147,7 +153,7 @@ sh_checkdisk()
 	local nchoice=0
 	dsk=$(df -h | grep "$sddest" | awk '{print $1, $2, $3, $4, $5, $6, $7}')
 	if [ "$dsk" <> " " ]; then
-		conf "$cwarning" "\n$cmsg_all_mounted_part\n\n$dsk\n\n$cmsg_dismount"
+		conf "${cwarning[$LC_DEFAULT]}" "\n${cmsg_all_mounted_part[$LC_DEFAULT]}\n\n$dsk\n\n${cmsg_dismount[$LC_DEFAULT]}"
 		nchoice=$?
 		if [ $nchoice = 0 ]; then
 			for i in $(seq 1 10); do
@@ -163,7 +169,6 @@ choosedisk()
 	while true
 	do
 		sh_disk_info
-		local xmsg=$cmsg_disco_origem
 		local array=()
 		local i
 		local n=0
@@ -177,14 +182,15 @@ choosedisk()
 		done
 
     	sd=$(${DIALOG} 	 																			\
-    				--title 			"$xmsg"					  			  							\
-    				--backtitle	 	"$ccabec"				   									\
-					--ok-label		"$cmsg_select" 												\
-    				--cancel-label "$buttonback"													\
+    				--title 			"${cmsg_disco_origem[$LC_DEFAULT]}"						\
+    				--backtitle	 	"${ccabec}"				   									\
+					--ok-label		"${cmsg_Select[$LC_DEFAULT]}"								\
+    				--cancel-label "${cmsg_button_voltar[$LC_DEFAULT]}"					\
     				--colors																				\
     				--extra-button																		\
-    				--extra-label  "$buttonpart"													\
-    				--menu 			"\n$cmsg009" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
+    				--extra-label  "${cmsg_info_disco[$LC_DEFAULT]}"						\
+    				--menu 			"\n${cmsg_choose_disk[$LC_DEFAULT]}"					\
+    				0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in
@@ -193,16 +199,10 @@ choosedisk()
     			;;
     		3)
          	local result=$( fdisk -l $sd );
-    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+    			display_result "$result" "${csmg_particionamento_automatico[$LC_DEFAULT]}" "${cmsg_part_disk[$LC_DEFAULT]}"
     			continue
     			;;
     	esac
-
-    	if [ "$1" = "SEE" ] ; then
-    		local result=$( fdisk -l $sddest )
-    		display_result "$result" "$csmg013" "$cmsg_part_disk"
-    		continue
-    	fi
 
     	if [ $sd != "" ]; then
 			{	local item
@@ -228,7 +228,6 @@ choosediskdestin()
 	while true
 	do
 #		sh_disk_info
-		local xmsg=$cmsg_disco_destino
 		local array=()
 		local i
 		local n=0
@@ -247,13 +246,14 @@ choosediskdestin()
 		done
 
     	sddest=$(${DIALOG}	 																		\
-    				--title 			"$xmsg"	  			  			  							   \
-    				--backtitle	 	"$ccabec"					 									\
-					--ok-label		"$cmsgOK"	 													\
-    				--cancel-label "$buttonback"													\
+    				--title 			"${cmsg_disco_destino[$LC_DEFAULT]}"				   \
+    				--backtitle	 	"${ccabec}"					  									\
+					--ok-label		"${cmsg_Ok[$LC_DEFAULT]}"	 								\
+    				--cancel-label "${cmsg_button_voltar[$LC_DEFAULT]}"					\
     				--extra-button																		\
-    				--extra-label  "$buttonpart"													\
-    				--menu 			"\nSOURCE DISK: $MODEL_ORIGEM\n\n$cmsgdest" 0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
+    				--extra-label  "${cmsg_info_disco[$LC_DEFAULT]}"						\
+    				--menu 			"\nSOURCE DISK: $MODEL_ORIGEM\n\n${cmsg_dest[$LC_DEFAULT]}" \
+    				0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in
@@ -265,16 +265,10 @@ choosediskdestin()
     			;;
     		3)
          	local result=$( fdisk -l $sd );
-    			display_result "$result" "$csmg013" "$cmsg_part_disk"
+	  			display_result "$result" "${csmg_particionamento_automatico[$LC_DEFAULT]}" "${cmsg_part_disk[$LC_DEFAULT]}"
     			continue
     			;;
     	esac
-
-    	if [ "$1" = "SEE" ] ; then
-    		local result=$( fdisk -l $sddest )
-    		display_result "$result" "$csmg013" "$cmsg_part_disk"
-    		continue
-    	fi
 
     	if [ $sddest != "" ]; then
 			{	local item
@@ -291,7 +285,7 @@ choosediskdestin()
 			TRAN_DESTINO="${ARRAY_DSK_TRAN[index]}"
 
 	    	if [ $sd == $sddest ]; then
-				alerta " *** WARWING *** " "\n   \Z1$cmsgDiscoIdem \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
+				alerta " *** WARWING *** " "\n   \Z1${cmsg_disco_identico[$LC_DEFAULT]} \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
 				init
 				return
 			fi
@@ -299,7 +293,7 @@ choosediskdestin()
 			sh_checkdisk
 			local nmontada=$?
 			if [ $nmontada = 1 ]; then
-				alerta "CHOOSEDISK" "$cmsg_nec_dismount"
+				alerta "CHOOSEDISK" "${cmsg_nec_dismount[$LC_DEFAULT]}"
 			fi
 			sh_confclone
 		fi
@@ -309,7 +303,7 @@ choosediskdestin()
 
 sh_domakeclone()
 {
-	mensagem "$cmsg_Formatando_particao: $sd TO $sddest"
+	mensagem "${cmsg_formatando_particao[$LC_DEFAULT]}: $sd TO $sddest"
 	(pv -n $sd | 												\
 	dd of=$sddest bs=128k conv=notrunc,noerror,sync) 2>&1 |	\
 	${DIALOG} --gauge 										\
@@ -324,12 +318,12 @@ sh_domakeclone()
 
 sh_confclone()
 {
-	conf 	" *** WARNING *** " 								\
-			"\n$cmsgTodos_os_dados_serao_perdidos\n" 	\
-			"${MODEL_DESTINO}" 								\
-			"\n\n       SOURCE DISK: $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO" \
+	conf 	" *** WARNING *** " 													\
+			"\n${cmsgTodos_os_dados_serao_perdidos[$LC_DEFAULT]}\n"	\
+			"${MODEL_DESTINO}" 													\
+			"\n\n       SOURCE DISK: $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO"	\
 			"\n\n" 																								\
-     		"Continuar com o clone?\n"
+     		"${cmsg_continuar_com_a_clonagem[$LC_DEFAULT]}?\n"
 
 	format=$?
 	if [ $format = 0 ] ; then
@@ -338,319 +332,70 @@ sh_confclone()
 	return $format
 }
 
-pt_BR()
+sh_language()
 {
 	langmsg=(
-		'lang=("pt BR" "en_US")'
-		'cmsgErro=("ERRO" "ERROR")'
-		'buttonback=("Voltar" "Back")'
-		'buttonpart=("Info disco" "Disk info")'
-		'cmsgNaoEncontreiOComando=("não encontrei o comando" "I did not find the command")'
-		'cMsgEsseScriptPrecisaDosComandosListadosAcima=("Esse script precisa dos comandos listados acima" "This script needs the commands listed above")'
-  	 	'cmsgInstaleOuVerifique=("Instale-os e/ou verifique se estão no seu \$PATH" "Install them and/or check if they are on your \$PATH")'
-		'cmsgOK=("Ok","Ok")'
-		'cmsg000=("Sair","Exit")'
-		'cmsg_select=("Selecionar", "Select")'
+		'lang=("pt BR" \
+				 "en_US" \
+				 "de_DE")'
+		'cmsg_Error=("ERRO" \
+						 "ERROR" \
+						 "ERROR")'
+		'cmsg_button_voltar=("Voltar" \
+									"Back" \
+									"Zurückkehren")'
+		'cmsg_info_disco=("Info disco" \
+								"Disk info" \
+								"Festplatteninfo")'
+		'cmsg_Ok=(	"Ok" \
+						"Ok" \
+						"Ok")'
+		'cmsg_Exit=("Sair" \
+						"Exit" \
+						"Ausgehen")'
+		'cmsg_Select=( "Selecionar" \
+							"Select" \
+							"Auswählen")'
+		'cmsg_disco_origem=( "DISCO DE ORIGEM" \
+									"SOURCE DISK" \
+									"QUELLDISK")'
+		'cmsg_disco_destino=("DISCO DE DESTINO" \
+									"DESTINATION DISK" \
+									"ZIELDISKETTE")'
+		'cmsg_dest=("Escolha o disco de DESTINO:" \
+						"Choose destination DISK:" \
+						"Wahl der DESTINATION-Festplatte")'
+		'cmsg_yeslabel=(  "Sim" \
+								"Yes" \
+								"Ja")'
+		'cmsg_nolabel=("Não" \
+							"No" \
+							"Nein")'
+		'cmsg_disco_identico=("Disco ORIGEM e DESTINO não podem serem o mesmo!" \
+									 "SOURCE and DESTINATION disk can be the same!" 	\
+									 "SOURCE- und DESTINY-Datenträger dürfen nicht identisch sein")'
+		'cmsg_nec_dismount=("Necessário desmontar particao para reparticionar automaticamente." \
+								  "Need to dismount partition to repartition automatically." 				\
+								  "Sie müssen die Partition aushängen, um sie automatisch neu zu partitionieren.")'
+   	'cmsg_formatando_particao=("Formatando partição" \
+   										"Formatting partition" \
+   										"Partition formatieren")'
+		'cmsgTodos_os_dados_serao_perdidos=("** AVISO ** Todos os dados disco DESTINO abaixo serão perdidos!" \
+														"** NOTICE ** All DESTINATION disk data below will be lost!" 		\
+														"** WARNUNG ** Alle Daten der ZIEL-Festplatte unten gehen verloren!**")'
+  		'cmsg_continuar_com_a_clonagem=("Continuar com a clonagem" \
+  												  "Continue with the cloning" \
+  												  "Fahren Sie mit dem Klonen fort")'
+  		'cwarning=("** AVISO **" \
+						"** WARNING **" \
+  						"** NOTIZ **")'
+  		'cmsg_choose_disk=("Escolha o disco de ORIGEM:" \
+  								 "Choose the SOURCE disk:" \
+  								 "Wählen Sie die SOURCE-Festplatte")'
 	)
-
 	for xmsg in "${langmsg[@]}"; do eval $xmsg; done
-#	echo "lang      ${#lang[@]} ${lang[@]} ${lang[0]} ${lang[1]}"
-#	echo "cmsgerror ${#cmsgerror[@]} ${cmsgerror[@]} ${cmsgerror[0]} ${cmsgerror[1]}"
-
-	lang=('pt_BR' 'pt_BR')
-  	cmsgErro=('ERRO' 'ERRO')
-	buttonback="Voltar"
-	buttonpart="Info disco"
-  	cmsgNaoEncontreiOComando="não encontrei o comando "
-  	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
-   cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Ok"
-	cmsg000="Sair"
-	cmsg_select="Selecionar"
-	cmsg001=$ccabec
-	cmsg002=$ctitle
-	cmsg003="Bem-vindo ao instalador do $cdistro"
-	cmsg004="Escolha uma opção:"
-	cmsgBaixar_pacote_de_instalacao="Baixar pacote de instalacao"
-	cmsg006="Particionar Disco"
-	cmsg007="Escolha partição"
-	cmsg008="Sair do instalador"
-	cmsgquit="Sair do instalador"
-	cmsg009="Escolha o disco de ORIGEM:"
-	cmsgdest="Escolha o disco de DESTINO:"
-	cmsg010="Escolha o tipo:"
-	cmsg011="Particionamento manual usando cfdisk"
-	cmsg012="Experiente"
-	cexpert="Experiente"
-	cnewbie="Novato"
-	cmsg013="Particionamento automatico (sfdisk)"
-	cmsg014="Tem certeza?"
-	cmsg015="A versão mínima não inclui o Xorg e DE.\nVocê gostaria de baixar o $cdistro minimal?"
-	cmsg016="Você gostaria de baixar o $cdistro full?"
-	cmsg017='Download cancelado!'
-	cancelinst="Instalacao cancelada!"
-	cancelbind="Chroot cancelado!"
-	cmsgversion=$cmsg015
-	cmsg018="Baixar pacote full (X)"
-	cmsg019="Baixar pacote minimal"
-	cmsgTodos_os_dados_serao_perdidos="** AVISO ** Todos os dados disco DESTINO abaixo serão perdidos!"
-	cmsg021="Formatar partição"
-	menuquit="Sair"
-	menustep="Passo a passo"
-	yeslabel="Sim"
-	nolabel="Não"
-	cdlok1="*** DOWNLOAD *** "
-	cdlok2="\n[OK] Download concluído com sucesso."
-	cdlok3="encontrado."
-	cdlok4="\n\nIniciar a instalação agora?"
-	cshaok="\n[OK] Checksum verificado com sucesso."
-   plswait="Por favor aguarde, baixando pacote..."
-	cfinish="Instalação completa!\nReboot para iniciar com $cdistro Linux.\n\nBugs? $xemail"
-	cgrubsuccess="GRUB instalado com sucesso!"
-	ccancelgrub="Instalação do GRUB cancelada!"
-	cmsgInstalar_GRUB="Instalar GRUB"
-	cmsgAlterar_FSTAB="Alterar FSTAB"
-	cinitbind="Iniciar BIND"
-	cconfuser="Configurar usuario e senha"
-	cconfusernow="Configurar usuário e senha agora"
-	ccreatenewuser="Criar um novo usuário"
-	cGrubMsgInstall="Você gostaria de instalar o GRUB?"
-	cchooseX="Escolha o seu ambiente de Desktop"
-	cxfce4="Clássico e poderoso!"
-	ci3wm="Desktop para caras avançados B)."
-	cmsgmin="Instalação mínima, sem X"
-	cmsgfull="Instalação completa. *8.2G de disco (Xfce4 ou i3wm)"
-	cwgeterro0="Sem problemas"
-	cwgeterro1="Erro genérico"
-	cwgeterro2="Erro de parse"
-	cwgeterro3="Erro de I/IO no arquivo"
-	cwgeterro4="Falha na rede"
-	cwgeterro5="Falha na verificação do certificado SSL"
-	cwgeterro6="Falha na autenticação (usuário ou senha)"
-	cwgeterro7="Erro de protocolo"
-	cwgeterro8="Servidor enviou uma respostar de erro"
-	cerrotar0="Sucesso"
-	cerrotar1="Árvore de diretório ruim, não conseguiu extrair um arquivo solicitado, \
-   			   \narquivo de entrada igual ao arquivo de saída, falha ao abrir o arquivo de entrada, \
-			   \nnão foi possível criar um  link, tabela link  malloc  falhouSucesso"
-	cerrotar2="Erro de internacionalização que nunca deveria ocorrer, erro de checksum"
-	cerrotar5="Erro de checksum"
-	cerrotar9="(EBADF) - Erro lendo /etc/default/tar, fim de volume mal colocado"
-	cerrotar12="(ENOMEM) – falha na alocação de memória para buffer"
-	cerrotar22="(EINVAL) – invocação ruim (erros de sintaxe do arqumento),\
-                \nparâmetros ruins para opções(ENOMEM) – falha na alocação de memória para buffer"
-	cerrotar28="(ENOSPC) – arquivo muito grande para um volume"
-	cerrotar78="(ENAMETOOLONG) - cwd name muito longo"
-	cerrotar171="(ETOAST) – unidade de fitas on fire"
-	ctools="Ferramentas/Configurações"
-	cmsgtestarota="Aguarde, testando rota para o servidor $cdistro..."
-	cmsgdelsha256="Aguarde, excluindo SHA256SUM antigo..."
-	cmsgusermanager="Gerenciamento de usuários $cdistro Linux"
-	cmsgPacotes_disponiveis="Pacotes disponiveis"
-	cmsggetshasum="Aguarde, baixando sha256sum novo..."
-	cmsgdelpackageindex="Aguarde, excluindo indice antigo..."
-   cmsgdeltarball="Aguarde, excluindo tarball antigo..."
-   cmsgtestsha256sum="Aguarde, testando sha256sum"
-	cmsgadduser="Aguarde, criando usuario..."
-	cmsgaddhost="Aguarde, setando hostname..."
-   cmsgerrotar="Erro na descompatacao do pacote"
-	cmsgwaitgrub="Aguarde, instalando o GRUB no disco"
-	cmsgnoroute="Ops, sem rota para o servidor da $cdistro!\nVerifique sua internet."
-	cmsgerrodlsha1="Ops, erro no download de !\nVerifique sua internet."
-	cmsgerrodlsha2="Verifique sua internet."
-	cmsgcorrdlnew="Ops, Pacote ou SHA256 corrompido. \nBaixar novamente o pacote?"
-	cmsg_corr_rep="Ops, Pacote ou SHA256 corrompido. \nFavor repetir a operação!"
-	cmsg_erro_tar_continue="Erro na descompactação do pacote. \nDeseja ainda prosseguir?"
-	cmsg_all_ready="Tudo pronto para iniciar a instalação. Confirma?"
-   cmsg_wget_package_index="Aguarde, baixando indice dos pacotes..."
-	cmsg_nec_dismount="Necessário desmontar particao para reparticionar automaticamente."
-	cwarning="** AVISO **"
-	cmsg_alert_mount="Só para lembrar que o disco contém partições montadas."
-	cmsgA_particao_esta_montada="A partição está montada"
-	cmsg_dismount="Desmontar?"
-	cmsg_all_mounted_part="O disco selecionado contém partições montadas."
-	cmsg_umount_partition="Aguarde, Desmontando particao de trabalho."
-	cmsg_create_dir="Aguarde, criando diretorio de trabalho."
-	cmsg_mount_partition="Aguarde, Montando particao de trabalho."
-	cmsg_try_mount_partition="Particao já montada. Tentar?"
-	cmsg_mount_failed="Falha de montagem da partição. Repetir?"
-	cmsg_enter_work_dir="Aguarde, Entrando no diretorio de trabalho."
-	cmsg_mkfs_ok="Formatacao terminada com sucesso."
-	cmsg_mkfs_error="Erro na Formatacao."
-	cdisco="DISCO"
-	cmsg_disco_origem="DISCO DE ORIGEM"
-	cmsg_disco_destino="DISCO DE DESTINO"
-	cparticao="PARTIÇÃO"
-	cmsg_extracting="Aguarde, extraindo arquivos..."
-	cmsg_part_disk="Visualizar partições do disco"
-	cmsg_prepare_disk="Aguarde, preparando o disco:"
-   cmsg_install_grub_disk="Instalando GRUB no disco"
-   cmsg_Detectada_particao_EFI="Detectada partição EFI"
-   cmsg_Deseja_instalar_o_GRUB_EFI="Deseja instalar o GRUB EFI"
-   cmsg_Sim_EFI="Sim=EFI"
-   cmsg_Nao_MBR="Não=MBR"
-   cmsg_Desmontando_particao="Desmontando partição"
-   cmsg_Formatando_particao="Formatando partição"
-   cmsg_Montando_particao="Montando partição"
-   cmsg_Instalando_GRUB_EFI_na_particao="Instalando GRUB EFI na partição"
-	cmsgInstalacao_Automatica="Instalacao Automatica"
-   cmsgInstalacao_Automatica_cancelada="Instalacao Automatica cancelada"
-   cmsgErro_na_formatacao="Erro na formatação"
-   cmsgErro_no_particionamento="Erro no particionamento"
-   cmsgGerando_arquivo_configuracao_do_grub="Gerando arquivo de configuracao do grub"
-	cmsgNeste_modo_a_instalacao_sera_automatizada="Neste modo a instalação será automatizada"
-	cmsgDeseja_continuar_e_escolher_o_disco_destino="Deseja continuar e escolher o disco destino"
-	cmsgDiscoIdem="Disco ORIGEM e DESTINO não podem serem o mesmo!"
-}
-
-en_US()
-{
-	lang="en_US"
-	buttonback="Back"
-	buttonpart="Disk Info"
-  	cmsgErro="ERROR"
-  	cmsgNaoEncontreiOComando="não encontrei o comando "
-  	cmsgEsseScriptPrecisaDosComandosListadosAcima="Esse script precisa dos comandos listados acima"
-   cmsgInstaleOuVerifique="Instale-os e/ou verifique se estão no seu \$PATH"
-	cmsgOK="Ok"
-	cmsg000="Exit"
-	cmsg_select="Select"
-	cmsg001=$ccabec
-	cmsg002=$ctitle
-	cmsg003=$welcome
-	cmsg004="Choose an option:"
-	cmsgBaixar_pacote_de_instalacao="Download installation package"
-	cmsg006="Partition Disk"
-	cmsg007="Choose partition"
-	cmsg008="Quit the installer"
-	cmsgquit="Quit the installer"
-	cmsg009="Choose the SOURCE disk:"
-	cmsgdest="Choose the DESTINATION disk:"
-	cmsg010="Choose type:"
-	cmsg011="Manual partitioning using cfdisk"
-	cmsg012="Expert"
-	cexpert="Expert"
-	cnewbie="Newbie"
-	cmsg013="Automatic partitioning (sfdisk)"
-	cmsg014="Are you sure?"
-	cmsg015="The minimum version does not include Xorg and DE. \nWould you like to download $cdistro minimal?"
-	cmsg016='Would you like to download $cdistro full?'
-	cmsgversion=$cmsg015
-	cmsg017='Download canceled!'
-	cancelinst="Installation canceled!"
-	cancelbind="Chroot canceled!"
-	cmsg018="Download full package (X)"
-	cmsgTodos_os_dados_serao_perdidos="** NOTICE ** Will data will be lost!"
-	cmsg021="Format partition"
-	menuquit="Quit"
-	menustep="Step by step"
-	yeslabel="Yes"
-	nolabel="No"
-	cdlok1="*** DOWNLOAD ***"
-	cdlok2="\n[OK] Download completed successfully."
-	cdlok3="found."
-	cdlok4="\n\nStart the installation now?"
-	cshaok="\n[OK] Checksum successfully verified."
-   plswait="Please wait, Downloading package..."
-	cfinish="Install Complete!\nReboot to start with $cdistro Linux. \n\nBugs? $xemail"
-	cgrubsuccess="GRUB successfully installed!"
-	ccancelgrub="Installing grub canceled!"
-	cmsgInstalar_GRUB="Install GRUB"
-	cmsgAlterar_FSTAB="Change FSTAB"
-	cinitbind="Start BIND"
-	cconfuser="Configure user and password"
-	cconfusernow="Configure user and password now"
-	ccreatenewuser="Create a new user"
-	#cGrubMsgInstall="Would you like to install grub? \
-    #  				\n\n*Remembering that we do not yet have dual boot support. \
-    #				\nIf use dualboot, use the grub from its other distribution with:\n# update-grub"
-	cGrubMsgInstall="Would you like to install grub?"
-	cchooseX="Choose your Desktop Environment"
-	cxfce4="Classic and powerfull!"
-	ci3wm="Desktop for avanced guys B)."
-	cmsgmin="Minimum installation, not X"
-   cmsgfull="Complete installation. *8.2G disk (Xfce4 or i3wm)"
-	cwgeterro0="Sem problemas"
-	cwgeterro1="Erro genérico"
-	cwgeterro2="Erro de parse"
-	cwgeterro3="Erro de I/IO no arquivo"
-	cwgeterro4="Falha na rede"
-	cwgeterro5="Falha na verificação do certificado SSL"
-	cwgeterro6="Falha na autenticação (usuário ou senha)"
-	cwgeterro7="Erro de protocolo"
-	cwgeterro8="Servidor enviou uma respostar de erro"
-	cerrotar0="Sucesso"
-	cerrotar1="Árvore de diretório ruim, não conseguiu extrair um arquivo solicitado, \
-   			   \narquivo de entrada igual ao arquivo de saída, falha ao abrir o arquivo de entrada, \
-			   \nnão foi possível criar um  link, tabela link  malloc  falhouSucesso"
-	cerrotar2="Erro de internacionalização que nunca deveria ocorrer, erro de checksum"
-	cerrotar5="Erro de checksum"
-	cerrotar9="(EBADF) - Erro lendo /etc/default/tar, fim de volume mal colocado"
-	cerrotar12="(ENOMEM) – falha na alocação de memória para buffer"
-	cerrotar22="(EINVAL) – invocação ruim (erros de sintaxe do arqumento),\
-                \nparâmetros ruins para opções(ENOMEM) – falha na alocação de memória para buffer"
-	cerrotar28="(ENOSPC) – arquivo muito grande para um volume"
-	cerrotar78="(ENAMETOOLONG) - cwd name muito longo"
-	cerrotar171="(ETOAST) – unidade de fitas on fire"
-	ctools="Tools/Settings"
-	cmsgtestarota="Please wait, testing route to the $cdistro server..."
-	cmsgdelsha256="Please wait, deleting old SHA256SUM..."
-	cmsgusermanager="$cdistro Linux user management"
-	cmsgPacotes_disponiveis="Available packages"
-   cmsggetshasum="Please wait, download sha256sum new..."
-	cmsgdelpackageindex="Please wait, deleting old index..."
-   cmsgdeltarball="Please wait, deleting old tarball..."
-   cmsgtestsha256sum="Wait, testing sha256sum"
-	cmsgadduser="Please wait, creating user..."
-	cmsgaddhost="Please wait, setting hostname..."
-   cmsgerrotar="Error in package unpacking"
-	cmsgwaitgrub="Please wait, installing grub to disk"
-	cmsgnoroute="Oops, no route to the $cdistro server! \nCheck your internet."
-	cmsgerrodlsha1="Ops, error downloading of"
-	cmsgerrodlsha2="Check your internet."
-	cmsgcorrdlnew="Ops, corrupted package or SHA256. \nDownload the package again?"
-	cmsg_corr_rep="Ops, corrupted package or SHA256. \nPlease retry the operation!"
-	cmsg_erro_tar_continue="Error in decompressing the package. \nDo you want to continue?"
-	cmsg_all_ready="All ready to begin the installation. Do you confirm?"
-   cmsg_wget_package_index="Wait, downloading package index..."
-	cmsg_nec_dismount="Need to dismount partition to repartition automatically."
-	cwarning="** WARNING **"
-	cmsg_alert_mount="Just to remember that the disk contains mounted partitions."
-	cmsgA_particao_esta_montada="The partition is mounted"
-	cmsg_dismount="Disassemble?"
-	cmsg_all_mounted_part="The selected disk contains mounted partitions."
-	cmsg_umount_partition="Please wait, dismantling the working partition."
-	cmsg_create_dir="wait, creating working directory."
-	cmsg_mount_partition="Please wait, setting up workpart."
-	cmsg_try_mount_partition="Partition already mounted. Try?"
-	cmsg_mount_failed="Partition mount failed. Repeat?"
-	cmsg_enter_work_dir="Please wait, entering the work directory."
-	cmsg_mkfs_ok="Formation completed successfully."
-	cmsg_mkfs_error="Formatting error."
-	cdisco="DISK"
-	cmsg_disco_origem="SOURCE DISK"
-	cmsg_disco_destino="DESTINATION DISK"
-	cparticao="PARTITION"
-	cmsg_extracting="Wait, Extracting files..."
-	cmsg_part_disk="View disk partitions"
-   cmsg_prepare_disk="Wait, preparing the disk:"
-   cmsg_install_grub_disk="Installing grub on disk"
-   cmsg_Detectada_particao_EFI="Detected EFI partition"
-   cmsg_Deseja_instalar_o_GRUB_EFI="Do you want to install EFI grub"
-   cmsg_Sim_EFI="Yes=EFI"
-   cmsg_Nao_MBR="No=MBR"
-   cmsg_Desmontando_particao="Unmounting partition"
-   cmsg_Formatando_particao="Formatting partition"
-   cmsg_Montando_particao="Mounting partition"
-   cmsg_Instalando_GRUB_EFI_na_particao="Installing EFI grub on partition"
-	cmsgInstalacao_Automatica="Automatic installation"
-   cmsgInstalacao_Automatica_cancelada="Automatic installation canceled"
-   cmsgErro_na_formatacao="Error in formatting"
-   cmsgErro_no_particionamento="Partitioning error"
-   cmsgGerando_arquivo_configuracao_do_grub="Generating Grub configuration file"
-	cmsgNeste_modo_a_instalacao_sera_automatizada="In this mode an installation will be automated"
-	cmsgDeseja_continuar_e_escolher_o_disco_destino="Do you want to continue and choose the destination disk"
-	cmsgDiscoIdem="SOURCE and DESTINATION disk can be the same!"
+	#echo "lang       ${#lang[@]} ${lang[@]} ${lang[$PT_BR]} ${lang[$EN_US]}"
+	#echo "cmsg_Error ${#cmsg_Error[@]} ${cmsg_Error[@]} ${cmsg_Error[$PT_BR]} ${cmsg_Error[$EN_US]}"
 }
 
 init()
@@ -659,13 +404,15 @@ init()
 		i18=$(${DIALOG}														\
 			--stdout                                              \
 			--backtitle	 	"$ccabec"				                  \
-			--title 			"$welcome"			                    	\
-			--ok-label		"$cmsgOK"	 									\
-			--cancel-label	"$cmsg000"	 									\
-			--menu			'\nChoose the language:'					\
-	        	0 80 0                                 				\
-				1 'Português'						 							\
-	       	2 'English'							  							)
+			--title 			"$welcome"		                    		\
+			--ok-label		"${cmsg_Ok[$LC_DEFAULT]}"					\
+			--cancel-label	"${cmsg_Exit[$LC_DEFAULT]}"				\
+			--menu			"\nChoose the language:"					\
+			0 80 0                                 					\
+			1 'Português'						 								\
+	      2 'English'							  								\
+	      3 'Deustch'							  								\
+	      4 'Français'							  							)
 
 			exit_status=$?
 			case $exit_status in
@@ -676,11 +423,15 @@ init()
 			esac
 			case $i18 in
 			1)
-				pt_BR
+				LC_DEFAULT=${PT_BR}
 				choosedisk
 				;;
 			2)
-				en_US
+				LC_DEFAULT=${EN_US}
+				choosedisk
+				;;
+			3)
+				LC_DEFAULT=${DE_DE}
 				choosedisk
 				;;
 			esac
@@ -706,11 +457,11 @@ testelang()
 {
 	langmsg=(
 				'lang=("pt BR" "en_US")'
-				'cmsgerror=("ERRO" "ERROR")'
+				'cmsg_Error=("ERRO" "ERROR")'
 	)
 	for elt in "${langmsg[@]}"; do eval $elt; done
-	echo "lang      -> ${#lang[@]} ${lang[@]} ${lang[0]} ${lang[1]}"
-	echo "cmsgerror -> ${#cmsgerror[@]} ${cmsgerror[@]} ${cmsgerror[0]} ${cmsgerror[1]}"
+	echo "lang       -> ${#lang[@]} ${lang[@]} ${lang[$PT_BR]} ${lang[$EN_US]}"
+	echo "cmsg_Error -> ${#cmsg_Error[@]} ${cmsg_Error[@]} ${cmsg_Error[$PT_BR]} ${cmsg_Error[$EN_US]}"
 }
 
 usage()
@@ -729,7 +480,8 @@ fi
 #testelang
 sh_checkroot
 sh_configure
-en_US
+sh_language
+#en_US
 sh_checkDependencies ${DEPENDENCIES}
 sh_display
 

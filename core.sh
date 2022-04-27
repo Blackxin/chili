@@ -80,7 +80,7 @@ function sh_disk_info()
          ARRAY_DSK_SIZE+=("${dsk_size}")
          ARRAY_DSK_TRAN+=("${dsk_tran}")
         ARRAY_DSK_MODEL+=("${dsk_model} ${dsk_model1} ${dsk_model2}")
-   done < <(lsblk -A -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+   done < <(lsblk -a -o TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
 }
 
 sh_backup_partitions()

@@ -43,9 +43,9 @@ source "${LIBRARY}"/core.sh
 sh_configure()
 {
 	# vars bool
-	: ${DIAHORA=$(sh_diahora)}
-	: ${true=0}
-	: ${false=1}
+	DIAHORA=$(sh_diahora)
+	true=0
+	false=1
 
 	# flag languages
 	: ${PT_BR=0}
@@ -311,7 +311,7 @@ sh_domakeclone()
 	"Running cloning dd command (dd if=$sd of=$sddest bs=128k conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
 	local nchoice=$?
 
-	if [ $nchoice = $true ]; then
+	if [[ $nchoice = $true ]]; then
 		display_result "$(fdisk -l $sddest)"
    fi
 	return $nchoice
@@ -320,7 +320,7 @@ sh_domakeclone()
 sh_confclone()
 {
 	conf 	" *** WARNING *** " 													\
-			"\n${cmsgTodos_os_dados_serao_perdidos[$LC_DEFAULT]}\n"	\
+			"\n${cmsg_todos_os_dados_serao_perdidos[$LC_DEFAULT]}\n"	\
 			"${MODEL_DESTINO}" 													\
 			"\n\n       SOURCE DISK: $MODEL_ORIGEM \n  DISK DESTINATION: $MODEL_DESTINO"	\
 			"\n\n" 																								\
@@ -396,10 +396,10 @@ sh_language()
    										"Formatting partition" \
    										"Partition formatieren"	\
    										"Partition de formatage")'
-		'cmsgTodos_os_dados_serao_perdidos=("** AVISO ** Todos os dados disco DESTINO abaixo serão perdidos!" \
-														"** NOTICE ** All DESTINATION disk data below will be lost!" 		\
-														"** WARNUNG ** Alle Daten der ZIEL-Festplatte unten gehen verloren!**" \
-														"** ATTENTION ** Toutes les données du disque DESTINATION ci-dessous seront perdues !")'
+		'cmsg_todos_os_dados_serao_perdidos=("  AVISO!  Todos os dados disco DESTINO abaixo serão perdidos!" \
+														"  NOTICE!  All DESTINATION disk data below will be lost!" 		\
+														"  WARNUNG  Alle Daten der ZIEL-Festplatte unten gehen verloren!**" \
+														"  ATTENTION  Toutes les données du disque DESTINATION ci-dessous seront perdues !")'
   		'cmsg_continuar_com_a_clonagem=("Continuar com a clonagem" \
   												  "Continue with the cloning" \
   												  "Fahren Sie mit dem Klonen fort" \

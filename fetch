@@ -2802,22 +2802,20 @@ ${red}  -S,  install        ${reset}- install packages
 ${red}  -Ss, search         ${reset}- search for packages
 ${red}  -Su, upgrade        ${reset}- upgrade packages
 ${red}  -Sw, download       ${reset}- only download the binary package into cache directory
-${red}  -Sr, recreate       ${reset}- recreate list packages installed
-${red}  -Qq, total          ${reset}- total packages installed
+${red}  -Sr, recreate       ${reset}- recreate database installed packages
 ${red}  -Sa, alienpkg       ${reset}- import package from ArchLinux
-${red}  -Sl, local          ${reset}- install local package
 ${red}  -Sg, generate       ${reset}- generate info package from source
 ${red}  -C,  create         ${reset}- build package
+${red}  -Sl, local          ${reset}- install local package
+${red}  -Sc, clean          ${reset}- erase downloaded packages files
 ${red}  -Sm, meta           ${reset}- install meta packages
 ${red}  -R,  remove         ${reset}- remove packages
-${red}  -L,  list           ${reset}- list avaiable packages based on package names
 ${red}  -La, list-avaiable  ${reset}- list avaiable packages based on package names
 ${red}  -Lc, list-cache     ${reset}- list downloaded packages in cache
 ${red}  -Li, list-installed ${reset}- list installed packages
 ${red}  -Po, out-cache      ${reset}- list packages out-cache
 ${red}  -Qi, show           ${reset}- show package details
-${red}  -Sc, clean          ${reset}- erase downloaded packages files
-${red}  -Ti, recreate       ${reset}- recreate database installed packages
+${red}  -Qq, total          ${reset}- total packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy ${reset} self ${yellow}=> Update self fetch via internet
@@ -2952,15 +2950,10 @@ function parsestdin()
 	#done < /dev/stdin
 	#done < <(cat "$@")
 }
-sh_checkroot "$@"
+
 configure
 checkDependencies
 setvarcolors
-sh_checkdir "OFF"
-
-#sh_arraypkgfull
-#sh_recreatefilepackagesinstalled
-#exit 0
 
 if [[ $1 = "" ]]; then
 	die "no operation specified (use -h for help)"
@@ -2971,6 +2964,13 @@ if [[ -z $1 || $1 = @(-h|--help) || $1 = "-h" || $1 = "--help" || $1 = "help" ||
 	exit $(( $# ? 0 : 1 ))
 fi
 
+if [[ -z $1 || $1 = @(-v|--version) || $1 = "-v" || $1 = "--version" || $1 = "version" || $1 = "-version" ]]; then
+	logo
+	exit $(( $# ? 0 : 1 ))
+fi
+
+sh_checkroot "$@"
+sh_checkdir "OFF"
 #sh_arraypkgfull
 #sh_checkparametros "$@"
 #init "$@"

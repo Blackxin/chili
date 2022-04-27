@@ -47,9 +47,9 @@ sh_configure()
 	: ${DOWNLOADER="curl -L -O -C - "}
 
 	# vars bool
-	: ${true=0}
-	: ${false=1}
-	: ${grafico=$true}
+	true=0
+	false=1
+	grafico=$true
 
 	# flag dialog exit status codes
 	: ${D_OK=0}
@@ -451,15 +451,13 @@ function sh_adduser()
 			sh_mountpartition
 		fi
 
-		sh_confstartx
 		sh_initbind
 		cinfo=`log_info_msg "$cmsgadduser"`
 	   msg "INFO" "$cinfo"
-	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
 	   chroot . /bin/bash -c "useradd -m -G ${cgroups} ${cuser} -p ${cpass} > /dev/null 2>&1"
 	   chroot . /bin/bash -c "(echo $cuser:$cpass) | chpasswd -m > /dev/null 2>&1"
-#	   chroot . /bin/bash -c "cp /home/live/.xinitrc /home/$cuser > /dev/null 2>&1"
-#	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
+	   chroot . /bin/bash -c "cp /home/live/.xinitrc /home/$cuser > /dev/null 2>&1"
+	   chroot . /bin/bash -c "userdel -R live > /dev/null 2>&1"
 	   evaluate_retval
 		sh_confhost
 		sh_confkeyboard
@@ -2412,9 +2410,9 @@ function sh_trapErro()
    fi
 }
 
-sh_checkDependencies
-sh_checkroot
 sh_configure
+sh_checkroot
+sh_checkDependencies
 trap sh_trapErro 2 15
 init
 

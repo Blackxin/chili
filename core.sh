@@ -729,12 +729,24 @@ strzero()
 	printf "%0*d" $2 $1
 }
 
+# $1 - caractere
+# $2 - tamanho
 replicate()
 {
    for counter in $(seq 1 $2);
    do
       printf "%s" $1
    done
+}
+
+# $1 - linha
+# $2 - coluna
+# $3 - tamanho
+linhaHorizontal()
+{
+	printf -v Espacos %$3s
+	printf -v Traco "\e(0\x71\e(B"
+	tput cup $1 $2; echo ${Espacos// /$Traco}
 }
 
 function maxcol()
@@ -849,6 +861,7 @@ scrend()
 
 sh_checkroot()
 {
+	[[ $1 = "-Qq" ]] && return
    if [ "$(id -u)" != "0" ]; then
       printf "${red} error: You should run this script as root!\n"
       exit 1

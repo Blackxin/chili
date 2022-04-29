@@ -1,5 +1,35 @@
 #!/bin/bash
 
+image()
+{
+	# https://www.qemu.org/2021/08/22/fuse-blkexport/
+	qemu-img create -f raw foo.img 20G
+	parted -s foo.img 		\
+    	'mklabel msdos' 		\
+    	'mkpart primary ext4 2048s 100%'
+	qemu-img convert -p -f raw -O qcow2 foo.img foo.qcow2 && rm foo.img
+ 	file foo.qcow2
+	sudo kpartx -l foo.qcow2
+
+#	qemu-storage-daemon \
+#    --blockdev node-name=prot-node,driver=file,filename=foo.qcow2 \
+#    --blockdev node-name=fmt-node,driver=qcow2,file=prot-node \
+#    --export \
+#    type=fuse,id=exp0,node-name=fmt-node,mountpoint=foo.qcow2,writable=on \
+#    &
+	qemu-storage-daemon \
+  		--blockdev node-name=prot-node,driver=file,filename=foo.qcow2 \
+  		--blockdev node-name=fmt-node,driver=qcow2,file=prot-node \
+  		--export \
+  		type=fuse,id=exp0,node-name=fmt-node,mountpoint=mount-point,writable=on
+
+	file foo.qcow2
+	sudo kpartx -av foo.qcow2
+	fdisk -l foo.qcow2
+	cfdisk foo.qcow2
+
+}
+
 if [[ $# -eq 0 ]]; then
 	printf "Usage: $0 /dev/sdX\n"
 	exit 1;

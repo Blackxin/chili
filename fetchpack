@@ -42,7 +42,7 @@ declare    USE_COLOR='y'
 declare -a cachedirs=()
 declare -a candidates=() cmdopts=() candesc=()
 declare -i delete=0 dryrun=0 filecount=0 move=0 totalsaved=0
-declare -i verbose=0
+declare -i verbose=1
 declare -i ctime=0
 declare -i LTIME=0
 declare -i true=1

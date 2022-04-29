@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/04/22
+# 	Altered: 2022/04/29
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -44,9 +44,8 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.05.20220422"
-#	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
-	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
+	readonly _VERSION_="3.07.20220429"
+	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
 	export TEXTDOMAIN='fetch-scripts'
@@ -668,6 +667,7 @@ function sh_checkdir()
 	return $?
 }
 
+# -Sy
 function sh_updaterepo()
 {
 	if (( $LSELF )); then
@@ -701,8 +701,8 @@ function sh_updaterepo()
 	sh_cleaning
 	unset FOLDER_TEMP
 
-	local nfilesInReposit=$(cat $VARCACHE_SEARCH/$PACKAGES_SPLIT | wc -l)
-	local nfilesInstalled=$(cat $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | wc -l)
+	local nfilesInReposit=$(wc -l < $VARCACHE_SEARCH/$PACKAGES_SPLIT)
+	local nfilesInstalled=$(wc -l < $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT)
 	log_msg "${cyan}All list packages updated!${reset}"
 	log_msg "${blue}($(strzero $nfilesInReposit 5)) packages in the repository${reset}"
 	log_msg "${green}($(strzero $nfilesInstalled 5)) installed packages${reset}"
@@ -808,9 +808,9 @@ function sh_update()
 	sh_cleaning
 	unset FOLDER_TEMP
 
-	local nfilesInReposit=$(cat $VARCACHE_SEARCH/$PACKAGES_SPLIT | wc -l)
-	local nfilesInstalled=$(cat $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | wc -l)
-	local nfilesInCache=$(cat $VARCACHE_SEARCH/$PACKAGES_IN_CACHE | wc -l)
+	local nfilesInReposit=$(wc -l < $VARCACHE_SEARCH/$PACKAGES_SPLIT)
+	local nfilesInstalled=$(wc -l < $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT)
+	local nfilesInCache=$(wc -l < $VARCACHE_SEARCH/$PACKAGES_IN_CACHE)
 	log_msg "${cyan}All list packages updated!${reset}"
 	log_msg "${blue}($(strzero $nfilesInReposit 5)) packages in the repository${reset}"
 	log_msg "${green}($(strzero $nfilesInstalled 5)) installed packages${reset}"

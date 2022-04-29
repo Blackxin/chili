@@ -58,22 +58,7 @@ sh_configure()
 	: ${D_EXTRA=3}
 	: ${D_ITEM_HELP=4}
 	: ${D_ESC=255}
-
-	#SQFS
-	LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-	if [[ -e $LIVE ]]; then
-		export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
-		export MEDIUM=/run/archiso/airootfs
-		export LIVE
-	else
-		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
-		export MEDIUM=/lib/initramfs/system
-		export LIVE=/lib/initramfs/medium/isolinux/venomlive
-	fi
-	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
-
 	confdistro
-
 	# common vars
 	pwd=$PWD
 	: ${BOOTLOG="$HOME/bootlog-${_APP_}"}
@@ -2410,8 +2395,31 @@ function sh_trapErro()
    fi
 }
 
+sh_checklive()
+{
+	#SQFS
+	[ -d /run/archiso/bootmnt  ] || mkdir -p /run/archiso/bootmnt
+	[ -d /run/archiso/airootfs ] || mkdir -p /run/archiso/airootfs
+
+	mount /dev/sr0 /run/archiso/bootmnt
+	mount /dev/loop0 /run/archiso/airootfs
+	LIVE=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+	if [[ -e $LIVE ]]; then
+		export ROOTSQFS=/run/archiso/bootmnt/chili/x86_64/airootfs.sfs
+		export MEDIUM=/run/archiso/airootfs
+		export LIVE
+	else
+		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
+		export MEDIUM=/lib/initramfs/system
+		export LIVE=/lib/initramfs/medium/isolinux/venomlive
+	fi
+	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
+}
+
+
 sh_configure
 sh_checkroot
+sh_checklive
 sh_checkDependencies
 trap sh_trapErro 2 15
 init

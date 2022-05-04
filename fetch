@@ -1329,8 +1329,10 @@ function sh_splitpkg()
 	file=${1}
 	aPKGSPLIT=()
 
-	pkg_folder_dir=$(echo ${file%/*})							#remove arquivo deixando somente o diretorio/repo
-	pkg_fullname=$(echo ${file##*/})    						#remove diretorio deixando somente nome do pacote
+	pkg_folder_dir=${file%/*}										#remove arquivo deixando somente o diretorio/repo
+	pkg_fullname=${file##*/}			    						#remove diretorio deixando somente nome do pacote
+
+
    [[ $pkg_folder_dir == $pkg_fullname ]] && pkg_folder_dir="localhost"
 	if [[ $pkg_fullname =~ $PKG_RE ]] ; then
 		pkg_fullname="${BASH_REMATCH[0]}"
@@ -1383,16 +1385,16 @@ function sh_splitpkgIFS()
 	local re
 
 	aPKGSPLIT=()
-	pkg_folder_dir=$(echo ${file%/*})							#remove arquivo deixando somente o diretorio/repo
-	pkg_fullname=$(echo ${file##*/})    						#remove diretorio deixando somente nome do pacote
-	pkg_arch=$(echo ${pkg_fullname%.${PRG}*}) 				#remove extensao pacote (chi.zst/mz)
-	pkg_arch=$(echo ${pkg_arch%.arch1*}) 						#remove extensao pacote (chi.zst/mz)
-	pkg_arch=$(echo ${pkg_arch##*-}) 							#remove do começo até o ultimo -
+	pkg_folder_dir=${file%/*}										#remove arquivo deixando somente o diretorio/repo
+	pkg_fullname=${file##*/}			    						#remove diretorio deixando somente nome do pacote
+	pkg_arch=${pkg_fullname%.${PRG}*}			 				#remove extensao pacote (chi.zst/mz)
+	pkg_arch=${pkg_arch%.arch1*}			 						#remove extensao pacote (chi.zst/mz)
+	pkg_arch=${pkg_arch##*-}			 							#remove do começo até o ultimo -
 
-	pkg_str=$(echo ${pkg_fullname%-any.${PRG}*}) 			#remove extensao pacote (chi.zst/mz)
-	pkg_str=$(echo ${pkg_str%.${PRG}*}) 						#remove extensao pacote (chi.zst/mz)
-	pkg_str=$(echo ${pkg_str%-x86_64*}) 						#remove extensao pacote (chi.zst/mz)
-	pkg_str=$(echo ${pkg_str%.${PRG}*})  						#remove extensao pacote (chi.zst/mz)
+	pkg_str=${pkg_fullname%-any.${PRG}*} 						#remove extensao pacote (chi.zst/mz)
+	pkg_str=${pkg_str%.${PRG}*} 									#remove extensao pacote (chi.zst/mz)
+	pkg_str=${pkg_str%-x86_64*}			 						#remove extensao pacote (chi.zst/mz)
+	pkg_str=${pkg_str%.${PRG}*}  									#remove extensao pacote (chi.zst/mz)
 
 	IFS='-'
 	read -ra ADDR <<< "$pkg_str"									# str is read into an array as tokens separated by IFS
@@ -1430,8 +1432,8 @@ function sh_splitpkgawk()
 	file=${1}
 	aPKGSPLIT=()
 
-	pkg_folder_dir=$(echo ${file%/*})							#remove arquivo deixando somente o diretorio/repo
-	pkg_fullname=$(echo ${file##*/})    						#remove diretorio deixando somente nome do pacote
+	pkg_folder_dir=${file%/*}							#remove arquivo deixando somente o diretorio/repo
+	pkg_fullname=${file##*/}    						#remove diretorio deixando somente nome do pacote
 
 	arr=($(echo $pkg_fullname | awk 'match($0, /(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst/, array) {
 			print array[0]

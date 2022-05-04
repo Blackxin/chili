@@ -1,43 +1,36 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
- # core.sh - biblisearch, install, create, remove, upgrade packages compatible with:
- # ChiliOS GNU/Linux - https://github.com/vcatafesta/ChiliOS
- # ChiliOS GNU/Linux - https://chilios.com.br
- # MazonOS GNU/Linux - http://mazonos.com
- #
- # Created: 2019/04/05
- # Altered: 2022/03/07
- #
- # Copyright (c) 2019 - 2020, Vilmar Catafesta <vcatafesta@gmail.com>
- # All rights reserved.
- #
- # contains portion of software https://bananapkg.github.io/
- #
- # Redistribution and use in source and binary forms, with or without
- # modification, are permitted provided that the following conditions
- # are met:
- # 1. Redistributions of source code must retain the above copyright
- #    notice, this list of conditions and the following disclaimer.
- # 2. Redistributions in binary form must reproduce the above copyright
- #    notice, this list of conditions and the following disclaimer in the
- #    documentation and/or other materials provided with the distribution.
- # 3. The name of the copyright holders or contributors may not be used to
- #    endorse or promote products derived from this software without
- #    specific prior written permission.
- #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- # ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- # PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT
- # HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- # SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- # DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#  core.sh - lib for chili utilities like fetch, chili-install, chili-clonedisk
+#  Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#  Chili GNU/Linux - https://chililinux.com
+#  Chili GNU/Linux - https://chilios.com.br
+#  MazonOS GNU/Linux - http://mazonos.com
+#
+#  Created: 2019/04/05
+#  Altered: 2022/05/03
+#
+#  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+#  fetch uses quite a few external programs during its execution. You
+#  need to have at least the following installed for makepkg to function:
+#     awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
+#     gettext, gpg, grep, gzip, sed, tput (ncurses), xz
+#  contains portion of software https://bananapkg.github.io/
 #########################################################################
-
 # awk -F: '{print $1}' /var/cache/fetch/search/packages-split | grep ^python$
 #fatorial
 #seq -s* 6 | bc
@@ -733,11 +726,24 @@ strzero()
 # $2 - tamanho
 replicate()
 {
+	#  Repete um caractere um determinado número de vezes
+	#+ Recebe:
+	#+  Tamanho final da cadeia
+	#+  e caractere a ser repetido
+	local Var
+	printf -v Var %$2s " "  #  Coloca em $Var $1 espaços
+	echo ${Var// /$1}       #  Troca os espaços pelo caractere escolhido
+}; export -f replicate
+
+# $1 - caractere
+# $2 - tamanho
+repete()
+{
    for counter in $(seq 1 $2);
    do
       printf "%s" $1
    done
-}
+}; export -f repete
 
 # $1 - linha
 # $2 - coluna
@@ -776,7 +782,8 @@ inkey1()
 # Vilmar Catafesta <vcatafesta@gmail.com>
 function _cat()
 {
-	echo "$(<$1)"
+	#echo "$(<$1)"
+	printf "%s\n" "$(<$1)"
 }
 
 function unsetvarcolors(){
@@ -870,20 +877,23 @@ sh_checkroot()
 
 function criartemp()
 {
-	# for((i=1;i<=${1};i++)) ; do touch a-${i}.tmp ; done
-	local modo="0755"
-	echo -e "Prefixo   :"; read arquivo
-	echo -e "Extensao  :"; read ext
-	echo -e "Quantidade:"; read quantidade
-	echo -e "Modo      :"; read modo
-	echo -e "Criando os arquivos...\n";
-	variavel="0"
-	while [ $variavel -lt $quantidade ]; do
-	   arq=$arquivo$variavel
-	   touch $arq.$ext
-	   chmod $modo $arq.$ext
-	   printf "$PWD/$arq.$ext criado\n"
-	   (( variavel++ ))
+	count=0
+	printf "Prefix    <default=T>    : "; read prefix
+	printf "Extension <default=tmp>  : "; read ext
+	printf "Modo      <default=0644> : "; read mode
+	printf "Quantity  <default=10>   : "; read qtd
+
+   [[ -z $prefix  ]] && prefix="T"
+   [[ -z $ext     ]] && ext="tmp"
+   [[ -z $qtd     ]] && qtd=10
+   [[ -z $mode    ]] && mode=0644
+
+	while [ $count -lt $qtd ]; do
+   	arq=$prefix$count
+   	>| $arq.$ext
+     	[[ $mode != 0644 ]] && chmod $mode $arq.$ext
+   	printf "$PWD/$arq.$ext\n"
+   	(( count++ ))
 	done
 }
 

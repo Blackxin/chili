@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-#  chili-clonedisk - utility written in bash to clone disks
+#  chili-cloneimage - utility written in bash to write image to disk disk
 #  ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
 #  ChiliLinux GNU/Linux - https://chililinux.com
 #  ChiliLinux GNU/Linux - https://chilios.com.br
 #
-#  Created: 2019/04/05
-#  Altered: 2022/04/26
+#  Created: 2019/05/01
+#  Altered: 2022/05/01
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -24,15 +24,15 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#  chili-clonedisk uses quite a few external programs during its execution. You
+#  chili-cloneimage uses quite a few external programs during its execution. You
 #  need to have at least the following installed for makepkg to function:
 #     awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, ETC
 #########################################################################
 #set -e
 declare -r APP="${0##*/}"
-declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="v3.0.0-20220426"
+declare -r _APP_="chili-cloneimage"
+declare -r _VERSION_="v0.0.1-20220501"
 readonly DEPENDENCIES=(which echo printf lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -65,7 +65,7 @@ sh_configure()
 	# common vars
 	: ${DIALOG=${DIALOG:-"dialog"}}
 	: ${grafico=$true}
-	: ${xapp="Chili GNU/Linux CloneDisk"}
+	: ${xapp="Chili GNU/Linux CloneImage"}
 	: ${ccabec="${xapp} $_VERSION_"}
 	: ${ctitle="$cdistro Linux"}
 	: ${welcome="Welcome to the $xapp"}
@@ -498,7 +498,7 @@ sh_checkDependencies ${DEPENDENCIES}
 sh_display
 
 ##############################################################################################################
-#TEMP=$(getopt -o vnh: --long version,nocolor,help:,debugfile:,minheap:,maxheap: -n 'clonedisk' -- "$@")
+#TEMP=$(getopt -o vnh: --long version,nocolor,help:,debugfile:,minheap:,maxheap: -n 'cloneimage' -- "$@")
 #if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 if ! TEMP=$(getopt -o vnh --long version,nocolor,help -n ${0##*/} -- "$@"); then
 	usage

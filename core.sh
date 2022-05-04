@@ -878,13 +878,15 @@ function criartemp()
    [[ -z $qtd     ]] && qtd=10
    [[ -z $mode    ]] && mode=0644
 
-	while [ $count -lt $qtd ]; do
-   	arq=$prefix$count
-   	>| $arq.$ext
-     	[[ $mode != 0644 ]] && chmod $mode $arq.$ext
-   	printf "$PWD/$arq.$ext\n"
-   	(( count++ ))
-	done
+	eval echo $prefix{0..$qtd}.$ext | xargs touch;
+
+	#while [ $count -lt $qtd ]; do
+   #	arq=$prefix$count
+   #	>| $arq.$ext
+   #  	[[ $mode != 0644 ]] && chmod $mode $arq.$ext
+   # 	printf "$PWD/$arq.$ext\n"
+   #	(( count++ ))
+	#done
 }
 
 function as_root()

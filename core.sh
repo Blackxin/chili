@@ -31,13 +31,6 @@
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz
 #  contains portion of software https://bananapkg.github.io/
 #########################################################################
-# awk -F: '{print $1}' /var/cache/fetch/search/packages-split | grep ^python$
-#fatorial
-#seq -s* 6 | bc
-#cat <(echo xxx; sleep 3; echo yyy; sleep 3)
-#ls | cut -d. -sf2-  | sort | uniq -c
-#source=($pkgname-${pkgver//_/-}.tar.gz)
-
 IFS=$' \t\n'
 SAVEIFS=$IFS
 
@@ -144,7 +137,6 @@ function setvarcolors(){
 		rs=$(tput sgr0);
 		blue=$(tput setaf 33);
 		cyan=$(tput setaf 37);
-#		green=$(tput setaf 64);
 		green=$(tput setaf 2);
 		orange=$(tput setaf 166);
 		purple=$(tput setaf 125);
@@ -185,32 +177,32 @@ function arraylen()
 
 function police()
 {
-    echo "................_@@@__"
-    echo "..... ___//___?____\________"
-    echo "...../--o--POLICE------@} ...."
+	echo "................_@@@__"
+	echo "..... ___//___?____\________"
+	echo "...../--o--POLICE------@} ...."
 }
 
 function log_prefix()
 {
-    NORMAL="${reset}"            # Standard console grey
-    SUCCESS="${green}"           # Success is green
-    WARNING="${yellow}"          # Warnings are yellow
-    FAILURE="${red}"             # Failures are red
-    INFO="${cyan}"               # Information is light cyan
-    BRACKET="${blue}"            # Brackets are blue
-    BMPREFIX="     "
-    DOTPREFIX="  ${blue}::${reset} "
-    SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
-    FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
-    WARNING_PREFIX="${WARNING}  W  ${NORMAL}"
-    SKIP_PREFIX="${INFO}  S  ${NORMAL}"
-    SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
-    FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
-    WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
-    SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
-    WAIT_PREFIX="${WARNING}  R  ${NORMAL}"
-    WAIT_SUFFIX="${BRACKET}[${WARNING} WAIT ${BRACKET}]${NORMAL}"
-    FAILURE_PREFIX="${FAILURE}  X  ${NORMAL}"
+	NORMAL="${reset}"            # Standard console grey
+	SUCCESS="${green}"           # Success is green
+	WARNING="${yellow}"          # Warnings are yellow
+	FAILURE="${red}"             # Failures are red
+	INFO="${cyan}"               # Information is light cyan
+	BRACKET="${blue}"            # Brackets are blue
+	BMPREFIX="     "
+	DOTPREFIX="  ${blue}::${reset} "
+	SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
+	FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
+	WARNING_PREFIX="${WARNING}  W  ${NORMAL}"
+	SKIP_PREFIX="${INFO}  S  ${NORMAL}"
+	SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
+	FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
+	WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
+	SKIP_SUFFIX="${BRACKET}[${INFO} SKIP ${BRACKET}]${NORMAL}"
+	WAIT_PREFIX="${WARNING}  R  ${NORMAL}"
+	WAIT_SUFFIX="${BRACKET}[${WARNING} WAIT ${BRACKET}]${NORMAL}"
+	FAILURE_PREFIX="${FAILURE}  X  ${NORMAL}"
 }
 
 #hex code
@@ -255,17 +247,19 @@ CURS_ZERO="\\033[0G"
 # SUBROUTINES
 
 #Autor Julio C. Neves
-function string_rfill() {
-     local string=${1// /^}    			# Trocando eventuais espaços preexistentes
-     declare -i size=$2
-     local char=$3
-     local fillString
-     printf -v fillString %-${size}s $string
-     fillString=${fillString// /$char}
-     echo "${fillString//^/ }"        	# Restaurando espaços anteriores }
+function string_rfill()
+{
+	local string=${1// /^}    			# Trocando eventuais espaços preexistentes
+	declare -i size=$2
+	local char=$3
+	local fillString
+	printf -v fillString %-${size}s $string
+	fillString=${fillString// /$char}
+	echo "${fillString//^/ }"        	# Restaurando espaços anteriores }
 }
 
-function string_alltrim(){
+function string_alltrim()
+{
 	local cstr=$1
 	echo "${cstr//[$'\t\r\n ']}"
 }
@@ -273,18 +267,14 @@ function string_alltrim(){
 function string_len()
 {
 	local cstr=$1
-#	echo ${#cstr}
+	#echo ${#cstr}
 	printf ${#cstr}
 }
 
-function string_removespace(){
+function string_removespace()
+{
 	local string=${1// /^}    				# Trocando eventuais espaços preexistentes
 	echo "${string}"
-}
-
-function zshdw()
-{
-	sudo git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install
 }
 
 function firstletter()
@@ -320,19 +310,21 @@ function colorize()
 
 function cpad()
 {
-	# centralizar string
+	#centralizar string
 	COLS=$(tput cols)
 	printf "%*s\n" $[$COLS/2] "${1}"
 }
 
-function rpad(){
-	# justificar à direita
+function rpad()
+{
+	#justificar à direita
 	COLS=$(tput cols)
 	printf "%*s\n" $COLS "${1}"
 }
 
-function lpad(){
-	# justificar à esquerda + $2 espacos
+function lpad()
+{
+	#justificar à esquerda + $2 espacos
 	COLS=$(tput cols)
 	printf "%ds\n" ${2} "${1}"
 }
@@ -342,23 +334,24 @@ function sh_cdroot()
 	cd - >/dev/null 2>&1
 }
 
-function colorize(){
-    if tput setaf 0 &>/dev/null; then
-        ALL_OFF="$(tput sgr0)"
-        BOLD="$(tput bold)"
-        BLUE="${BOLD}$(tput setaf 4)"
-        GREEN="${BOLD}$(tput setaf 2)"
-        RED="${BOLD}$(tput setaf 1)"
-        YELLOW="${BOLD}$(tput setaf 3)"
-    else
-        ALL_OFF="\e[0m"
-        BOLD="\e[1m"
-        BLUE="${BOLD}\e[34m"
-        GREEN="${BOLD}\e[32m"
-        RED="${BOLD}\e[31m"
-        YELLOW="${BOLD}\e[33m"
-    fi
-    readonly ALL_OFF BOLD BLUE GREEN RED YELLOW
+function colorize()
+{
+	if tput setaf 0 &>/dev/null; then
+   	ALL_OFF="$(tput sgr0)"
+      BOLD="$(tput bold)"
+      BLUE="${BOLD}$(tput setaf 4)"
+      GREEN="${BOLD}$(tput setaf 2)"
+      RED="${BOLD}$(tput setaf 1)"
+      YELLOW="${BOLD}$(tput setaf 3)"
+	else
+		ALL_OFF="\e[0m"
+      BOLD="\e[1m"
+      BLUE="${BOLD}\e[34m"
+      GREEN="${BOLD}\e[32m"
+      RED="${BOLD}\e[31m"
+      YELLOW="${BOLD}\e[33m"
+	fi
+	readonly ALL_OFF BOLD BLUE GREEN RED YELLOW
 }
 
 function emailcheck()
@@ -367,15 +360,15 @@ function emailcheck()
 	email_to_check=${1}
 
 	if [ -z "${email_to_check}" ]; then
-	    echo "É necessário inserir um endereço de e-mail!"
-	    exit 2
+		echo "É necessário inserir um endereço de e-mail!"
+	   exit 2
 	else
-	    if [[ "${email_to_check}" =~ ${email_REGEX} ]]; then
-	        echo "O endereço '${email_to_check}' é válido!"
-	    else
-	        echo "O endereço '${email_to_check}' não é válido!"
-	        exit 1
-	    fi
+		if [[ "${email_to_check}" =~ ${email_REGEX} ]]; then
+	   	echo "O endereço '${email_to_check}' é válido!"
+	   else
+			echo "O endereço '${email_to_check}' não é válido!"
+			exit 1
+		fi
 	fi
 }
 
@@ -435,11 +428,9 @@ function log_info_msg()
 function log_info_msg2()
 {
     echo -n -e "${@}"
-
     # Strip non-printable characters from log file
     logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
     echo -n -e "${logmessage}" >> ${BOOTLOG}
-
     return 0
 }
 
@@ -480,13 +471,10 @@ function log_success_msg()
 {
     echo -n -e "${BMPREFIX}${@}"
     echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
-
     # Strip non-printable characters from log file
     logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-
     timespec
     echo -e "${STAMP} ${logmessage} OK" >> ${BOOTLOG}
-
     return 0
 }
 
@@ -504,11 +492,9 @@ function log_skip_msg()
 {
     echo -n -e "${BMPREFIX}${@}"
     echo -e "${CURS_ZERO}${SKIP_PREFIX}${SET_COL}${SKIP_SUFFIX}"
-
     # Strip non-printable characters from log file
     logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
     echo "SKIP" >> ${BOOTLOG}
-
     return 0
 }
 
@@ -529,7 +515,8 @@ function die()
 	exit 1
 }
 
-function runcmd(){
+function runcmd()
+{
 	if (( EUID != 0 )); then
 		msg "Privilege escalation required"
 		if sudo -v &>/dev/null && sudo -l &>/dev/null; then
@@ -563,7 +550,8 @@ function is_true()
    [ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
 }
 
-function info(){
+function info()
+{
 #	whiptail							\
 	dialog							\
 		--title     "[debug]$0"	\
@@ -577,7 +565,8 @@ function info(){
 	return $result
 }
 
-function debug(){
+function debug()
+{
 #	dialog							\
 	whiptail							\
 		--title     "[debug]$0"	\
@@ -670,13 +659,13 @@ function toupper()
 function tolower()
 {
 	declare -l TOLOWER=${@}
-   echo -e "${TOLOWER}"
+	echo -e "${TOLOWER}"
 }
 
 
 function tolowerA()
 {
-   $1 | tr 'A-Z' 'a-z'
+	$1 | tr 'A-Z' 'a-z'
 }
 
 toupperA()
@@ -708,8 +697,8 @@ mvlower()
 
 sh_diahora()
 {
-   DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-   printf "%s\n" $DIAHORA
+	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+	printf "%s\n" $DIAHORA
 }
 
 now()
@@ -786,7 +775,8 @@ function _cat()
 	printf "%s\n" "$(<$1)"
 }
 
-function unsetvarcolors(){
+function unsetvarcolors()
+{
 	bold=
 	reset=
 	black=
@@ -962,7 +952,7 @@ function len()
 	return $#
 }
 
-function seeek()
+function seek()
 {
 	count=0
 	while [ "x${wholist[count]}" != "x" ]
@@ -971,17 +961,17 @@ function seeek()
 	done
 }
 
-function ascan4(){
+function ascan4()
+{
 	true=0
 	false=1
 	array=($(ls -1 /etc/ | sort ))
 	search='passwd'
 
 	if [[ "${array[@]}" =~ "${search}" ]]; then
-	    echo "${!array[*]}"
-	    echo "${BASH_REMATCH[0]}"
+		echo "${!array[*]}"
+		echo "${BASH_REMATCH[0]}"
 	fi
-
 }
 
 function ascan3()
@@ -995,6 +985,7 @@ function ascan2()
 {
 	local myarray="$1"
 	local match="$2"
+
 	case "${myarray[@]}" in
 		*"$match"*)
 			return $true
@@ -1081,7 +1072,7 @@ function dwup()
 
 quit()
 {
-   [ $? -ne 0 ] && { clear ; exit ;}
+	[ $? -ne 0 ] && { clear ; exit ;}
 }
 
 function sh_version()
@@ -1133,18 +1124,15 @@ function swap()
     mv $TMPFILE "$2"
 }
 
-# Creates an archive (*.tar.gz) from given directory.
-function maketar() { tar cvzf "${1%%/}.tar.gz"  "${1%%/}/"; }
-
-# Create a ZIP archive of a file or folder.
-function makezip() { zip -r "${1%%/}.zip" "$1" ; }
+function maketar() { tar cvzf "${1%%/}.tar.gz"  "${1%%/}/"; } 	# Creates an archive (*.tar.gz) from given directory.
+function makezip() { zip -r "${1%%/}.zip" "$1" ; }					# Create a ZIP archive of a file or folder.
 
 function cat2()
 {
-    exec 3<> $@
-    while read line <&3
-    do {
-      echo "$line"
+	exec 3<> $@
+	while read line <&3
+	do {
+		echo "$line"
       (( Lines++ ));                   #  Incremented values of this variable
                                        #+ accessible outside loop.
                                        #  No subshell, no problem.
@@ -1220,49 +1208,53 @@ function sh_adel()
 	return $?
 }
 
-function print(){
+function print()
+{
 	[[ "$printyeah" = '1' ]] && echo -e "$@"
 }
 
-function fmt(){
+function fmt()
+{
 	printf "${pink}(${ncount}:8/${ntotalpkg}:${nfullpkg})${reset}"
 	return $?
 }
 
-function checkDependencies(){
-  local errorFound=0
+function checkDependencies()
+{
+	local errorFound=0
 
-  for command in "${DEPENDENCIES[@]}"; do
-    if ! which "$command"  &> /dev/null ; then
-      echo "ERRO: não encontrei o comando '$command'" >&2
-      errorFound=1
-    fi
-  done
+	for command in "${DEPENDENCIES[@]}"; do
+   	if ! which "$command"  &> /dev/null ; then
+      	echo "ERRO: não encontrei o comando '$command'" >&2
+      	errorFound=1
+    	fi
+  	done
 
-  if [[ "$errorFound" != "0" ]]; then
-    echo "---IMPOSSÍVEL CONTINUAR---"
-    echo "Esse script precisa dos comandos listados acima" >&2
-    echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
-    exit 1
-  fi
+	if [[ "$errorFound" != "0" ]]; then
+   	echo "---IMPOSSÍVEL CONTINUAR---"
+    	echo "Esse script precisa dos comandos listados acima" >&2
+    	echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+    	exit 1
+  	fi
 }
 
-function checkDependencies() {
-  local errorFound=0
+function checkDependencies()
+{
+	local errorFound=0
 
-  for command in "${DEPENDENCIES[@]}"; do
-    if ! which "$command"  &> /dev/null ; then
-      echo "ERRO: não encontrei o comando '$command'" >&2
-      errorFound=1
-    fi
-  done
+  	for command in "${DEPENDENCIES[@]}"; do
+   	if ! which "$command"  &> /dev/null ; then
+      	echo "ERRO: não encontrei o comando '$command'" >&2
+      	errorFound=1
+    	fi
+  	done
 
-  if [[ "$errorFound" != "0" ]]; then
-    echo "---IMPOSSÍVEL CONTINUAR---"
-    echo "Esse script precisa dos comandos listados acima" >&2
-    echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
-    exit 1
-  fi
+	if [[ "$errorFound" != "0" ]]; then
+   	echo "---IMPOSSÍVEL CONTINUAR---"
+    	echo "Esse script precisa dos comandos listados acima" >&2
+    	echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+    	exit 1
+  	fi
 }
 
 #   parseopts.sh - getopt_long-like parser
@@ -1300,7 +1292,8 @@ function checkDependencies() {
 # Returns:
 #   0: parse success
 #   1: parse failure (error message supplied)
-parseopts() {
+parseopts()
+{
 	local opt= optarg= i= shortopts=$1
 	local -a longopts=() unused_argv=()
 
@@ -1433,7 +1426,6 @@ parseopts() {
 	# add end-of-opt terminator and any leftover positional parameters
 	OPTRET+=('--' "${unused_argv[@]}" "$@")
 	unset longoptmatch
-
 	return 0
 }
 

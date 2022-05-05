@@ -867,7 +867,6 @@ sh_checkroot()
 
 function criartemp()
 {
-	count=0
 	printf "Prefix    <default=T>    : "; read prefix
 	printf "Extension <default=tmp>  : "; read ext
 	printf "Modo      <default=0644> : "; read mode
@@ -880,6 +879,7 @@ function criartemp()
 
 	eval echo $prefix{0..$qtd}.$ext | xargs touch;
 
+	#count=0
 	#while [ $count -lt $qtd ]; do
    #	arq=$prefix$count
    #	>| $arq.$ext

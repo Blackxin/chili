@@ -603,6 +603,13 @@ function _CAT()
     done
 }
 
+function _cat_()
+{
+	if [ $# -ge 1 ]; then
+		echo "$(<$1)"
+	fi
+}
+
 # Módulo para emular o grep
 # Agradecimentos a SlackJeff
 # https://github.com/slackjeff/bananapkg

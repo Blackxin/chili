@@ -67,7 +67,6 @@ echo {e..m}
 echo {a..z}
 mkdir {a..z} 2>&-   # 2>&- tranca saida de erro do mkdir, qdo ja existe o diretorio
 echo ==========================================================================
-
 #zeropad
 echo
 echo 'echo arq{01..15..2}'
@@ -112,4 +111,5 @@ echo '(cd /; ls; pwd); pwd'
 echo 'Var=5; (echo 1:$Var; Var=3; echo 2:$Var); echo 3:$var'
 Var=5; (echo 1:$Var; Var=3; echo 2:$Var); echo 3:$var
 echo ==========================================================================
-
+echo 'sed -r 's/(^[^ ]+).*/\1/' <<< "Vilmar Catafesta"'
+sed -r 's/(^[^ ]+).*/\1/' <<< "Vilmar Catafesta"

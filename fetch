@@ -2174,7 +2174,7 @@ function sh_installpkg()
 {
 	while [[ -n "$1" ]]; do
       local fullname="${1}"
-      local package=$(echo ${fullname##*/})  ## tira o path
+      local package=${fullname##*/}  				## tira o path
 		sh_doinstallpkg "$fullname" || return 1
 		local erro=${?}
 

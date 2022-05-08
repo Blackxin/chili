@@ -143,3 +143,31 @@ resp="Sim"
 [[ ${resp^^} == @(S|SIM|Y|YES) ]] && echo "positivo"
 #shopt -u extglob # off
 echo ==========================================================================
+ls * >arq
+echo 'xargs printf "%-15s%-15s%-15s%-15s%s\n" < arq'
+xargs printf "%-15s%-15s%-15s%-15s%s\n" < arq
+echo
+echo 'paste -sd "\t\t\t\t\n" < arq'
+paste -sd "\t\t\t\t\n" < arq
+echo
+echo 'paste - - - - - < arq'
+paste - - - - - < arq
+echo
+echo 'seq 10 | paste - - - - -'
+seq 10 | paste - - - - -
+echo
+echo 'echo -e "Impar\tPar" | cat - <(seq 10 | paste - -)'
+echo -e "Impar\tPar" | cat - <(seq 10 | paste - -)
+echo ==========================================================================
+#read -p "Titulo do relatorio :" Tit
+echo -e "$Tit\nCol1\tCol2\tCol3" | cat - arq.veio > arq.novo
+echo ==========================================================================
+for Termo in $(echo {1..14}/{1..8}{1..64})
+do
+	echo $Termo
+done
+echo
+echo 'echo {0..9}{0..9}'
+echo {0..9}{0..9}
+echo 'seq -w 0 99'
+seq -w 0 99

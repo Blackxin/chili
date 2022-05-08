@@ -171,3 +171,16 @@ echo 'echo {0..9}{0..9}'
 echo {0..9}{0..9}
 echo 'seq -w 0 99'
 seq -w 0 99
+echo ==========================================================================
+read -n1 -p "Sexo : (M|F|O)" Sex; echo
+[[ ${Sex^} != [MFO] ]] && echo Erro
+
+read -n1 -p "Digite uma letra :" Letra; echo
+case ${Letra^} in
+	[!A-Z]) 	echo Só se for letra;; # [![:upper;]]
+	[AEIOU]) echo Vogal;;
+	*)			echo Consoante
+esac
+
+[[ $hora == 0[0-9] || $Hora == 1[01] ]] && echo Bom dia
+((Hora >= 0 && Hora <12)) && echo Bom dia

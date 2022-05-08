@@ -111,5 +111,35 @@ echo '(cd /; ls; pwd); pwd'
 echo 'Var=5; (echo 1:$Var; Var=3; echo 2:$Var); echo 3:$var'
 Var=5; (echo 1:$Var; Var=3; echo 2:$Var); echo 3:$var
 echo ==========================================================================
-echo 'sed -r 's/(^[^ ]+).*/\1/' <<< "Vilmar Catafesta"'
+echo "sed -r 's/(^[^ ]+).*/\1/' <<< "Vilmar Catafesta""
 sed -r 's/(^[^ ]+).*/\1/' <<< "Vilmar Catafesta"
+echo ==========================================================================
+echo '#shopt -s extglob #on'
+shopt -s extglob #on
+echo '#touch abc aabc aabc azabc azbc bc zabc'
+touch abc aabc aabc azabc azbc bc zabc
+echo '#ls *bc*'
+ls *bc*
+echo '#ls ?(a)bc'
+ls ?(a)bc
+echo '#echo +(a)bc'
+echo +(a)bc
+echo '#ls *(a)bc'
+ls *(a)bc
+echo '#echo @(a|z)bc'
+echo @(a|z)bc
+echo '#ls +(a|z)bc'
+ls +(a|z)bc
+echo '#ls !(az|za)bc'
+ls !(az|za)bc
+[[ *meng+(a|o)?(o).+(gif|jpg|png) ]] && echo "É uma imagem do Flamengo"
+Fruta=Abacaxi
+[[ $Fruta == [Aa]baca+(xi|te) ]] && echo casou com $Fruta
+Fruta=Abacate
+[[ $Fruta == [Aa]baca+(xi|te) ]] && echo casou com $Fruta
+echo 'resp="Sim"'
+echo '[[ ${resp^^} == @(S|SIM|Y|YES) ]] && echo "positivo"'
+resp="Sim"
+[[ ${resp^^} == @(S|SIM|Y|YES) ]] && echo "positivo"
+#shopt -u extglob # off
+echo ==========================================================================

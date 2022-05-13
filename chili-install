@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 #  chili-install - utility written in bash to install chili/mazon distro
-#  ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
-#  ChiliLinux GNU/Linux - https://chililinux.com
-#  ChiliLinux GNU/Linux - https://chilios.com.br
+#  Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#  Chili GNU/Linux - https://chililinux.com
+#  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/04/25
+#  Altered: 2022/05/13
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-install"
-declare -r _VERSION_="v3.0.0-20220426"
+declare -r _VERSION_="v3.0.1-20220513"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -64,8 +64,8 @@ sh_configure()
 	: ${BOOTLOG="$HOME/bootlog-${_APP_}"}
 	: ${site="$chost$ptcom"}
 	: ${chostname=$calias}
-	: ${ccabec="$cdistro GNU/Linux installer ${_VERSION_}"}
-	: ${ctitle="$cdistro GNU/Linux"}
+	: ${ccabec="$cdistro install ${_VERSION_}"}
+	: ${ctitle="$cdistro install"}
 	: ${welcome="Welcome to the ${ctitle}"}
 	: ${url_release="http://${site}/releases"}
 	: ${url_distro="http://${site}/releases/"}

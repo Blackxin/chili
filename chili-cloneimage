@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 #  chili-cloneimage - utility written in bash to write image to disk disk
-#  ChiliLinux GNU/Linux - https://github.com/vcatafesta/ChiliOS
-#  ChiliLinux GNU/Linux - https://chililinux.com
-#  ChiliLinux GNU/Linux - https://chilios.com.br
+#  Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#  Chili GNU/Linux - https://chililinux.com
+#  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/05/01
 #  Altered: 2022/05/01
@@ -65,7 +65,7 @@ sh_configure()
 	# common vars
 	: ${DIALOG=${DIALOG:-"dialog"}}
 	: ${grafico=$true}
-	: ${xapp="Chili GNU/Linux CloneImage"}
+	: ${xapp="Chili CloneImage"}
 	: ${ccabec="${xapp} $_VERSION_"}
 	: ${ctitle="$cdistro Linux"}
 	: ${welcome="Welcome to the $xapp"}

@@ -27,12 +27,13 @@
 #               "${arr[@]}" "${arr[@]}" 2>&1 >/dev/tty)
 
 
-  nchoice=$(dialog 												\
-  				--stdout                        				\
-            --separate-output                			\
-            --checklist 'Choose resolucion for add:'	\
-            0 0 0                                     \
-         "${arr[@]}" "${arr[@]}" "${arr[@]}")
+  nchoice=$(dialog 													\
+  				--stdout                        					\
+            --separate-output                				\
+  				--title "Chili resolution" 						\
+            --checklist '\nChoose resolucion for add:'	\
+            0 0 0                                     	\
+         	"${arr[@]}" "${arr[@]}" "${arr[@]}")
 
    retval=$?
 	whiptail --msgbox "$retval" 0 0
@@ -51,40 +52,3 @@
 	xrandr --verbose --addmode $output $mode
 	(( ncounter++ ))
 done
-
-function  sh_setfont()
-{
-   local colddir=$PWD
-   cd /usr/share/kbd/consolefonts/
-   fonts="$(ls -1 *.gz)"
-   array=()
-   n=0
-   for i in ${fonts[@]}
-   do
-      base="${i%.psfu.gz*}"
-      base="${base%.psf.gz*}"
-      base="${base%.cp.gz*}"
-      base="${base%.fnt.gz*}"
-      base="${base%.gz*}"
-      array[((n++))]=$i
-      array[((n++))]=$i
-   done
-
-   while true
-   do
-      whiptail --title "ChiliOS setfont" \
-               --menu "Escolha uma fonte:" 0 0 0 \
-               "${array[@]}" "${array[@]}"
-
-#whiptail --msgbox "$?" 0 0
-#exit
-      retval=$?
-      if [[ $retval -eq 1 ]]; then
-         cd $colddir
-         exit
-      fi
-      echo $retval
-      setfont $1
-   done
-   cd $colddir
-}

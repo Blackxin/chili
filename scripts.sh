@@ -184,3 +184,10 @@ esac
 
 [[ $hora == 0[0-9] || $Hora == 1[01] ]] && echo Bom dia
 ((Hora >= 0 && Hora <12)) && echo Bom dia
+echo ==========================================================================
+echo 'Var="Adoro Shell"'
+Var="Adoro Shell"
+echo 'tr a-z A-Z <<< $var'
+tr a-z A-Z <<< $Var
+echo ${Var^^}
+echo : "${Var^^}"; echo $_

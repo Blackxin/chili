@@ -52,6 +52,7 @@ declare    IFS=$' \t\n'
 declare    SAVEIFS=$IFS
 declare    BOOTLOG=/tmp/fetchlog-$USER
 readonly DEPENDENCIES=(which find sed grep sort cat awk tput dialog)
+readonly	PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 	#SOEN
 
 # Expand to nothing if there are no matches
 shopt -s nullglob
@@ -78,14 +79,52 @@ source "$LIBRARY"/core.sh
 
 function sh_splitpkg()
 {
+   file=${1}
+   aPKGSPLIT=()
+
+   pkg_folder_dir=${file%/*}                             #remove arquivo deixando somente o diretorio/repo
+   pkg_fullname=${file##*/}                              #remove diretorio deixando somente nome do pacote
+
+   [[ $pkg_folder_dir == $pkg_fullname ]] && pkg_folder_dir="localhost"
+   if [[ $pkg_fullname =~ $PKG_RE ]] ; then
+      pkg_fullname="${BASH_REMATCH[0]}"
+      pkg_base="${BASH_REMATCH[1]}"
+      pkg_version_build="${BASH_REMATCH[2]}"
+      pkg_version="${BASH_REMATCH[3]}"
+      pkg_build="${BASH_REMATCH[4]}"
+      pkg_arch="${BASH_REMATCH[5]}"
+      pkg_base_version="${pkg_base}-${pkg_version_build}"
+
+      #debug "$pkg_base \n $pkg_version_build \n $pkg_version \n $pkg_build \n $pkg_arch \n $pkg_base_version \n"
+      : '
+        debug " file            : $file\n" \
+              "pkg_folder_dir  : $pkg_folder_dir\n" \
+              "pkg_fullname    : $pkg_fullname\n" \
+              "pkg_arch        : $pkg_arch\n" \
+              "pkg_base        : $pkg_base\n" \
+              "pkg_base_version: $pkg_base_version\n" \
+              "pkg_version     : $pkg_version\n" \
+              "pkg_build       : $pkg_build"
+      '
+      aPKGSPLIT=( "$pkg_folder_dir"
+                  "$pkg_fullname"
+                  "$pkg_arch"
+                  "$pkg_base"
+                  "$pkg_base_version"
+                  "$pkg_version-$pkg_build"
+                  "$pkg_build"
+                  )
+   fi
+   return $?
+}
+
+function sh_splitpkgOLD()
+{
 	file=${1}
-	#pkg_re='^([a-z-]+)(-)([0-9\\.]+)(-)([0-9])(-)(.*)(.chi.zst)$'
-	#pkg_re='([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)-(([0-9]+(\.[0-9]+)*)(-([0-9]+))?)-([^.]+).*'
-	pkg_re='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 	#SOEN
 	aPKGSPLIT=()
 
-	pkg_folder_dir=$(echo ${file%/*})							#remove arquivo deixando somente o diretorio/repo
-	pkg_fullname=$(echo ${file##*/})    						#remove diretorio deixando somente nome do pacote
+	pkg_folder_dir=${file%/*}							#remove arquivo deixando somente o diretorio/repo
+	pkg_fullname=${file##*/}    						#remove diretorio deixando somente nome do pacote
 
 	arr=($(echo $pkg_fullname | awk 'match($0, /(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst/, array) {
 			print array[0]
@@ -143,7 +182,6 @@ function init()
 	local pkgInAll=
 	local FilteredPackages=
 	local AllFilteredPackages=
-	local pkg_re='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 	#SOEN
 
 	for cachedir in "${cachedirs[@]}"
 	do
@@ -224,7 +262,7 @@ function init()
 							canddesc+=("${pkgInFullName}.desc")
 							canddesc+=("${pkgInFullName}.sha256")
 							if (( verbose >= 3 )); then
-								[[ $pkg =~ $pkg_re ]] && name=${BASH_REMATCH[1]} arch=${BASH_REMATCH[2]}
+								[[ $pkg =~ $PKG_RE ]] && name=${BASH_REMATCH[1]} arch=${BASH_REMATCH[2]}
 								if [[ -z $seen || $seenarch != "$arch" || $seen != "$name" ]]; then
 									seen=$name seenarch=$arch
 									printf '%s (%s):\n' "${name##*/}" "$arch"

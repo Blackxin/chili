@@ -69,6 +69,7 @@ sh_configure()
 	: ${ccabec="${xapp} $_VERSION_"}
 	: ${ctitle="$cdistro Linux"}
 	: ${welcome="Welcome to the $xapp"}
+	sep='\xe2\x94\x82'
 }
 
 confirma()
@@ -178,7 +179,8 @@ choosedisk()
 		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
 			array[((n++))]="$i"
-			array[((n++))]=$(printf "%-6s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
+#			array[((n++))]=$(printf "%-6s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
+			array[((n++))]=$(printf "%-6s$sep%6s$sep%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
 			((nc++))
 		done
 

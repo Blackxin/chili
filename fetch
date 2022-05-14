@@ -1332,7 +1332,6 @@ function sh_splitpkg()
 	pkg_folder_dir=${file%/*}										#remove arquivo deixando somente o diretorio/repo
 	pkg_fullname=${file##*/}			    						#remove diretorio deixando somente nome do pacote
 
-
    [[ $pkg_folder_dir == $pkg_fullname ]] && pkg_folder_dir="localhost"
 	if [[ $pkg_fullname =~ $PKG_RE ]] ; then
 		pkg_fullname="${BASH_REMATCH[0]}"
@@ -1344,7 +1343,6 @@ function sh_splitpkg()
 		pkg_base_version="${pkg_base}-${pkg_version_build}"
 
 		#debug "$pkg_base \n $pkg_version_build \n $pkg_version \n $pkg_build \n $pkg_arch \n $pkg_base_version \n"
-
 		: '
 		  debug " file            : $file\n" \
 		        "pkg_folder_dir  : $pkg_folder_dir\n" \

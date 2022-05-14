@@ -191,3 +191,12 @@ echo 'tr a-z A-Z <<< $var'
 tr a-z A-Z <<< $Var
 echo ${Var^^}
 echo : "${Var^^}"; echo $_
+echo ==========================================================================
+source /chili/core.sh
+Var="Tamanho da string"
+Vet=($Var)
+Arr=()
+echo "Tamanho   : " $(strlen "$Var")
+echo "Elementos : " "${Vet[@]}"
+echo "Elementos : " $(arraylen Vet)
+echo "Elementos : " $(arraylen2 ${Arr[*]})

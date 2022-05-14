@@ -166,15 +166,6 @@ function setvarcolors(){
 	fi
 }
 
-function arraylen()
-{
-   for item in ${array[*]}
-   do
-      printf "   %s\n" $item
-   done
-   arraylength=${"$1"[*]}
-}
-
 function police()
 {
 	echo "................_@@@__"
@@ -959,6 +950,32 @@ function join()
 function len()
 {
 	return $#
+}
+
+function strlen()
+{
+	echo ${#1}
+}
+
+arraylen()
+{
+  local vetname=$1
+  eval echo \${#$vetname[@]}
+}
+
+arraylen2()
+{
+  local vet=("$@")
+  echo ${#vet[@]}
+}
+
+function arraylen1()
+{
+   for item in ${array[*]}
+   do
+      printf "   %s\n" $item
+   done
+   arraylength=${"$1"[*]}
 }
 
 function seek()

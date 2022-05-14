@@ -27,6 +27,7 @@ chili-parted.sh
 chili-res.sh
 chili-setfont
 clonedisk
+cloneimage
 contador.sh
 core.sh
 ddtest.sh

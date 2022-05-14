@@ -55,14 +55,14 @@ sh_disk_info()
   local {NAME,PATH,SIZE,TRAN,MODEL}_
   while read line
   do
-    eval "${line//=/_=}"
+		eval "${line//=/_=}"
       ARRAY_DSK_DISKS+=( $NAME_ )
     ARRAY_DSK_DEVICES+=( $PATH_ )
        ARRAY_DSK_SIZE+=( $SIZE_ )
        ARRAY_DSK_TRAN+=( ${TRAN_:-blk} )
       ARRAY_DSK_MODEL+=( "${MODEL_:-unknown}" )
-  done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
-  declare -p ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}
+	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+	declare -p ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}
 }
 
 function sh_disk_infoOLD()

@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/05/13
+#  Altered: 2022/05/14
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-install"
-declare -r _VERSION_="v3.0.1-20220513"
+declare -r _VERSION_="v3.0.2-20220514"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -45,6 +45,7 @@ sh_configure()
 {
 	: ${DIALOG=${DIALOG:-"dialog"}}
 	: ${DOWNLOADER="curl -L -O -C - "}
+	sep='\xe2\x94\x82'
 
 	# vars bool
 	true=0
@@ -1289,7 +1290,7 @@ function choosedisk()
 		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
          array[((n++))]="$i"
-         array[((n++))]=$(printf "%-6s|%6s|%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
+         array[((n++))]=$(printf "%-6s$sep%6s$sep%-30s" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")
 			((nc++))
 		done
 

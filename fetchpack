@@ -57,6 +57,7 @@ shopt -s extglob
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 source /etc/fetch/fetch.conf &> /dev/null
 source "$LIBRARY"/core.sh
+export PKG_EXT="${PKG_EXT:='chi.zst'}"
 
 # flag's para split package
 : ${aPKGSPLIT=()}
@@ -69,10 +70,7 @@ source "$LIBRARY"/core.sh
 : ${PKG_VERSION=5}
 : ${PKG_BUILD=6}
 
-export PKG_EXT="${PKG_EXT:='chi.zst'}"
-
-
-function sh_splitpkg()
+sh_splitpkg()
 {
    file=${1}
    aPKGSPLIT=()
@@ -113,7 +111,7 @@ function sh_splitpkg()
 }
 
 #figlet
-function logo()
+logo()
 {
 	setvarcolors
 	cat <<'EOF'
@@ -130,13 +128,13 @@ EOF
 	unsetvarcolors
 }
 
-function version()
+version()
 {
 	printf "%s %s\n"	"$myname" "$myver"
 	printf "%s\n"		"Copyright (C) 2020 Vilmar Catafesta <vcatafesta@gmail.com>"
 }
 
-function mainOLD()
+mainOLD()
 {
 	local arr=
 	local cdir=
@@ -252,14 +250,14 @@ function mainOLD()
 	msg "$output (disk space saved: %s)" "$(size_to_human "$totalsaved")"
 }
 
-function cleanup()
+cleanup()
 {
 	msg "Exiting.."
 	exit
 }
 trap cleanup SIGINT SIGTERM
 
-function main()
+main()
 {
 	local nfiles=0
 	local pkg=
@@ -368,7 +366,7 @@ function main()
 	return 0
 }
 
-function usage(){
+usage(){
 	cat <<EOF
 A flexible cache cleaning utility.
 Usage: ${myname} <operation> [options] [targets...]

@@ -214,7 +214,8 @@ function sh_arraypkgfull()
 	   public_pkg_base_version+=("${fld6}")
 	   public_pkg_size+=("${fld7}")
 	   public_pkg_site+=("${fld8}")
-	done < <(cat $file_list_packages)
+#	done < <(cat $file_list_packages)
+	done < $file_list_packages
 
 	public_pkg_main=(
 		public_pkg_base[@]

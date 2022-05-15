@@ -33,7 +33,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #########################################################################
-export LC_ALL="pt_BR.utf8"
+export LC_ALL=C
+export LANG=C
 declare -r myname='fetchpack'
 declare -r myver='1.0.10-20220514'
 declare    delim=$'\n' keep=3 movedir= scanarch=
@@ -100,7 +101,7 @@ function sh_splitpkg()
               "pkg_base_version: $pkg_base_version\n" \
               "pkg_version     : $pkg_version\n" \
               "pkg_build       : $pkg_build"
-      '
+     '
       aPKGSPLIT=( "$pkg_folder_dir"
                   "$pkg_fullname"
                   "$pkg_arch"
@@ -165,7 +166,7 @@ function version()
 	printf "%s\n"		"Copyright (C) 2020 Vilmar Catafesta <vcatafesta@gmail.com>"
 }
 
-function init()
+function mainOLD()
 {
 	local arr=
 	local cdir=
@@ -210,8 +211,8 @@ function init()
 		for pkgInAll in $AllFilesPackages
 		do
 			((pkgNumber++))
-			pkgInFullName=${pkgInAll}
-			sh_splitpkg ${pkgInAll}
+			pkgInFullName=$pkgInAll
+			sh_splitpkg $pkgInAll
 			FilteredPackages=${aPKGSPLIT[$PKG_BASE]}
 			AllFilteredPackages=$(find "$PWD" -type f -iname "$FilteredPackages*.zst" | grep -E "*$FilteredPackages-([0-9])" | sort)
 			pkg=
@@ -235,11 +236,14 @@ function init()
 						break
 					fi
 
-					if [[ $FilteredPackages =~  $SearchPkg ]]; then
+					debug $FilteredPackages $SearchPkg
+					if [[ $FilteredPackages =~ $SearchPkg ]]; then
+						debug "$(vercmp $pkgInFullName $pkg)"
 						if [[ "$(vercmp $pkgInFullName $pkg)" -lt 0 ]]; then
+							debug "$pkgInFullName"
 							candidates+=("${pkgInFullName}")
-							canddesc+=("${pkgInFullName}.desc")
-							canddesc+=("${pkgInFullName}.sha256")
+  							  canddesc+=("${pkgInFullName}.desc")
+						  	  canddesc+=("${pkgInFullName}.sha256")
 							if (( verbose >= 3 )); then
 								[[ $pkg =~ $PKG_RE ]] && name=${BASH_REMATCH[1]} arch=${BASH_REMATCH[2]}
 								if [[ -z $seen || $seenarch != "$arch" || $seen != "$name" ]]; then
@@ -320,7 +324,10 @@ function main()
 		#'-[0-9]+([.][0-9]+)+'
 
 		if [ $# -lt 1 ]; then
-  			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | sort -Vr  | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++') 		#OK
+# 			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | sort -Vr  | awk -F '[0-9]+([.][0-9]+)+'  'lista[$1]++') 		#OK
+# 			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | sort -Vr  | awk -F '-[0-9]+(.[0-9]+)+'   'lista[$1]++') 		#OK
+ 			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | sort -Vr  | awk -F '-[0-9]+([.][0-9]+)+' 'lista[$1]++') 		#OK
+# 			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | sort -V  | awk -F '[0-9]+([.][0-9]+)(.+)' 'lista[$1]++') 		#OK
 		else
 			AllOldPackages=$(find "$PWD" -type f -iname "*.chi.zst" | grep $1 | sort -Vr | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++')   #OK
 		fi

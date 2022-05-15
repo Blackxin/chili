@@ -49,6 +49,34 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+sh_splitpkgawk()
+{
+   file=${1}
+   aPKGSPLIT=()
+
+   pkg_folder_dir=${file%/*}                    #remove arquivo deixando somente o diretorio/repo
+   pkg_fullname=${file##*/}                     #remove diretorio deixando somente nome do pacote
+
+   arr=($(echo $pkg_fullname | awk 'match($0, /(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst/, array) {
+         print array[0]
+         print array[1]
+         print array[2]
+         print array[3]
+         print array[4]
+         print array[5]
+         print array[6]
+         }'))
+   pkg_fullname="${arr[0]}"
+   pkg_base="${arr[1]}"
+   pkg_version_build="${arr[2]}"
+   pkg_version="${arr[3]}"
+   pkg_build="${arr[4]}"
+   pkg_arch="${arr[5]}"
+   pkg_base_version="${arr[0]}-${arr[4]}"
+   aPKGSPLIT=($pkg_folder_dir $pkg_fullname $pkg_arch $pkg_base $pkg_base_version $pkg_version $pkg_build)
+   return $?
+}
+
 sh_disk_info()
 {
   unset ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}

@@ -37,8 +37,8 @@ declare    delim=$'\n' keep=3 movedir= scanarch=
 declare    USE_COLOR='y'
 declare -a cachedirs=()
 declare -a candidates=() cmdopts=() candesc=()
-declare -i delete=0 dryrun=0 filecount=0 move=0 totalsaved=0
-declare -i verbose=1
+declare -i delete=0 dryrun=0 filecount=0 move=0 totalsaved=0 pkgcount=0
+declare -i verbose=0
 declare -i ctime=0
 declare -i LTIME=0
 declare -i true=1
@@ -72,7 +72,7 @@ export PKG_EXT="${PKG_EXT:='chi.zst'}"
 
 sh_splitpkg()
 {
-   file=${1}
+   file=$1
    aPKGSPLIT=()
 
    pkg_folder_dir=${file%/*}                             #remove arquivo deixando somente o diretorio/repo
@@ -200,7 +200,7 @@ mainOLD()
 					first="${FilteredPackages:1:1}"
 					last="${SearchPkg:1:1}"
 
-					if [[ ${last} > ${first} ]]; then
+					if [[ $last > $first ]]; then
 						break
 					fi
 
@@ -238,8 +238,7 @@ mainOLD()
 	totalsaved=$(printf '%s\0' "${candidates[@]}" | xargs -0 stat -c %s | awk '{ sum += $1 } END { print sum }')
 	set -o errexit # Exit immediately if a pipeline returns non-zero.
 
-	(( verbose )) && cmdopts+=(-v)
-	(( verbose )) && cmdopts+=(-f)
+	(( verbose )) && cmdopts+=(-v); cmdopts+=(-f)
 	if (( delete )); then
 		printf '%s\0' "${candidates[@]}" | runcmd xargs -0 rm "${cmdopts[@]}"
 		printf '%s\0' "${canddesc[@]}"   | runcmd xargs -0 rm "${cmdopts[@]}"

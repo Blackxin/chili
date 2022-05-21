@@ -3,7 +3,7 @@
 grep b <<< 'banana da terra'
 echo banana | grep b
 
-read <<< "$BASHPID $$"
+read <<< "$BASHPID $$" # mesmo shell
 echo $REPLY
 
-cat <<< "$BASHPID $$"
+cat <<< "$BASHPID $$" # outro shell?

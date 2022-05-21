@@ -231,7 +231,7 @@ mainOLD()
 	done
 
 	if (( ! ${#candidates[*]} )); then
-		die "NO packages found for pruning"
+		die "Process $nfiles: NO candidates packages found for pruning"
 	fi
 
 	pkgcount=${#candidates[*]}
@@ -317,7 +317,7 @@ main()
 	done
 
 	if (( ! ${#candidates[*]} )); then
-		log_msg "${red}NO packages found for pruning"
+		log_msg "${green}NO candidates packages found for pruning"
 		exit 0
 	fi
 

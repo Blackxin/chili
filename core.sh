@@ -49,6 +49,11 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+calc()
+{
+	awk 'BEGIN { printf "%.'${2:-0}'f\n", '"$1"'}'
+}
+
 sh_splitpkgawk()
 {
    file=${1}

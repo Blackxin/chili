@@ -44,7 +44,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.9.20220523"
+	readonly _VERSION_="3.10.20220523"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -933,9 +933,9 @@ function sh_ShortCatPkg()
 	if (( $LSHOW )); then
 		pkginstalled=$(grep ^$cpackage$SEP $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP $SEARCH_CUT)
 		if [[ -z $pkginstalled ]]; then
-			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}-${build}" "${white}${desc::40}"
+			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${white}${desc::40}"
 		else
-		printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}-${build}" "${cyan}[installed] ${white}${desc::40}"
+			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${cyan}[installed] ${white}${desc::40}"
 		fi
     	printf "${reset}"
 	fi
@@ -1508,6 +1508,7 @@ function sh_installdoinstallpkg()
 	done
 }
 
+# -Ss
 function sh_search()
 {
 	local oldverbose=$verbose

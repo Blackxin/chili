@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="3.0.20220523"
+declare -r _VERSION_="3.0.20220514"
 readonly DEPENDENCIES=(which echo printf lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib

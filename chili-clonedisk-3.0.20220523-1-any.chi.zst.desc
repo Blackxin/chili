@@ -4,14 +4,14 @@
 ######################################################################
 maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
 pkgname='chili-clonedisk'
-version='1.0-1'
+version='3.0.20220523-1'
 build='1'
 license='GPL2'
 lfs_version='10.0'
 lfs_init='SYSTEMD'
-arch='x86_64'
+arch='any'
 distro='chili'
-desc='ChiliOS linux disk cloning utility'
+desc='Chili utility to clone disks'
 size=''
-url='http://www.linuxfromscratch.org/lfs/view/systemd/'
+url='https://github.com/vcatafesta/ChiliOS/'
 dep=('')

@@ -7,7 +7,7 @@
 #  MazonOS GNU/Linux - http://mazonos.com
 #
 #  Created: 2020/10/05
-#  Altered: 2022/05/15
+#  Altered: 2022/05/23
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,7 +32,7 @@
 export LC_ALL=C
 export LANG=C
 declare -r myname='fetchpack'
-declare -r myver='1.0.10-20220514'
+declare -r myver='1.0.20220523'
 declare    delim=$'\n' keep=3 movedir= scanarch=
 declare    USE_COLOR='y'
 declare -a cachedirs=()
@@ -289,14 +289,15 @@ main()
 		#'[0-9]+([.][0-9]+)+'
 		#'-[0-9]+(.[0-9]+)+'
 		#'-[0-9]+([.][0-9]+)+'
+		#'[0-9]+([.][0-9]+)(.+)'
+		#'(([^-]+)-([0-9]+))-'
+		#'-[^-]+-[0-9]-'
+		re='(.+)-(([^-]+)-([0-9]))-([^.]+)'
 
 		if [ $# -lt 1 ]; then
-# 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr  | awk -F '[0-9]+([.][0-9]+)+'  'lista[$1]++') 		#OK
-# 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr  | awk -F '-[0-9]+(.[0-9]+)+'   'lista[$1]++') 		#OK
- 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr  | awk -F '-[0-9]+([.][0-9]+)+' 'lista[$1]++') 		#OK
-# 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -V  | awk -F '[0-9]+([.][0-9]+)(.+)' 'lista[$1]++') 		#OK
+ 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr  | awk -F '-[^-]+-[0-9]-' 'lista[$1]++')
 		else
-			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++')   #OK
+			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++')
 		fi
 
 		arrayfull=("${AllOldPackages[@]}")

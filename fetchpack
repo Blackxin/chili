@@ -297,7 +297,8 @@ main()
 		if [ $# -lt 1 ]; then
  			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr  | awk -F '-[^-]+-[0-9]-' 'lista[$1]++')
 		else
-			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++')
+#			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F '[0-9]+([.][0-9]+)+' 'lista[$1]++')
+ 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F '-[^-]+-[0-9]-' 'lista[$1]++')
 		fi
 
 		arrayfull=("${AllOldPackages[@]}")

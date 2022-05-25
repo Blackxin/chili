@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1472434724 source:c:\sci\cpp\fessorbruno\struct.cpp
+	<stdio.h>
+	<stdlib.h>
+	<iostream>
+

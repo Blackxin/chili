@@ -874,6 +874,15 @@ spinner()
 	done
 }
 
+check_deps()
+{
+	local dep deps
+   for dep; do
+   	command -v $dep &> /dev/null || deps+=($dep)
+   done
+   [[ ${deps[@]} ]] && {  echo "Faltam: ${deps[*]}"; exit 1; }
+}
+
 sh_checkDependencies()
 {
    local errorFound=0

@@ -1,10 +1,10 @@
 #!/bin/bash
-# USO2USB - write iso to pendrive
-# Copyright (c) 2019 - 2019, Vilmar Catafesta <vcatafesta@gmail.com>
+# Chili iso2usb - write iso file to pendrive
+# Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 # All rights reserved.
 #
 # Created: 2019/06/14
-# Altered: 2019/06/14
+# Altered: 2022/05/26
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,23 +31,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #########################################################################
-version="1.3.20220415"
-readonly DEPENDENCIES=(which yad dialog dd sed grep cat awk tput stat tee)
+_VERSION_="1.4.20220526"
+readonly DEPENDENCIES=(yad dialog dd sed grep cat awk fdisk blkid)
 
-function checkDependencies()
+check_deps()
 {
-  local errorFound=0
+	local errorFound=0
+   declare -a missing
 
-  for command in "${DEPENDENCIES[@]}"; do
-    if ! which "$command"  &> /dev/null ; then
-      echo "ERRO: não encontrei o comando '$command'" >&2
-      errorFound=1
-    fi
-  done
-
-  if [[ "$errorFound" != "0" ]]; then
+   for f in "${DEPENDENCIES[@]}"; do
+      [[ -z $(command -v $f) ]] && missing+=($f) && errorFound=1 && printf "ERRO: não encontrei o comando '$f'\n"
+   done
+   #[[ ${#missing[@]} -ne 0 ]]
+  	if (( $errorFound )); then
     echo "---IMPOSSÍVEL CONTINUAR---"
-    echo "Esse script precisa dos comandos listados acima" >&2
+    echo "Esse script necessita dos comandos listados acima" >&2
     echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
     exit 1
   fi
@@ -55,32 +53,42 @@ function checkDependencies()
 
 yad_message()
 {
-    msg="$1"
-    txt="<b><big>$1</big></b>"
-    yad "${comargs[@]}" --image=gtk-dialog-info --text="$txt" --button="Done":1
+	msg="$1"
+   txt="<b><big>$1</big></b>"
+	yad "${comargs[@]}" --image=gtk-dialog-info --text="$txt" --button="Done":1
 }
 
-function info(){
-	dialog				\
-	--beep				\
+info()
+{
+	dialog					\
+	--beep					\
 	--title     "$app"	\
 	--backtitle "$app"	\
-	--msgbox    "$*"	\
+	--msgbox    "$*"		\
 	10 60
 }
 
-function sh_initvar()
+sh_initvars()
 {
-	app="Chili iso2usb $version"
+	# choosedisk
+	: ${ARRAY_DSK_DEVICES=()}
+	: ${ARRAY_DSK_DISKS=()}
+	: ${ARRAY_DSK_SIZE=()}
+	: ${ARRAY_DSK_MODEL=()}
+	: ${ARRAY_DSK_TRAN=()}
+	: ${ARRAY_DSK_LABEL=()}
+	sep='\xe2\x94\x82'
+
+	app="Chili iso2usb $_VERSION_"
 	comargs=(
 		--title="$app"
 		--center
 		--width=400
 		--height=250
-	    --text-align=center
-	    --buttons-layout=center
-	    --borders=10
-	    --image=pendrive.png
+	   --text-align=center
+	   --buttons-layout=center
+	   --borders=10
+	   --image=/opt/chili-iso2usb/src/pendrive.png
 	)
 
 	declare -x COMARGS=$( printf "%q " "${comargs[@]}" )
@@ -126,17 +134,49 @@ function sh_initvar()
 		esac
 }
 
-function escolheiso()
+sh_chooseiso()
 {
-	isofile=`zenity 			\
-			--file-selection	\
+	isofile=`zenity 				\
+			--file-selection		\
 			--title="${MSG[0]}"	\
-			--filename=$HOME/	\
+			--filename=$HOME/		\
 			--file-filter=*.iso`
 	[ $? -eq 0 ] || exit 0
 }
 
-function sh_choosedisk()
+sh_disk_info()
+{
+  unset ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL,LABEL}
+  local {NAME,PATH,SIZE,TRAN,MODEL,LABEL}_
+  while read line
+  do
+      eval "${line//=/_=}"
+      ARRAY_DSK_DISKS+=( $NAME_ )
+    ARRAY_DSK_DEVICES+=( $PATH_ )
+       ARRAY_DSK_SIZE+=( $SIZE_ )
+       ARRAY_DSK_TRAN+=( ${TRAN_:-blk} )
+      ARRAY_DSK_MODEL+=( "${MODEL_:-unknown}" )
+      ARRAY_DSK_LABEL+=( "${LABEL_:-none}" )
+   done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL,LABEL | grep usb)
+}
+
+sh_choosedisk()
+{
+	sh_disk_info
+	export USBDSK=()
+	local i
+	local n=0
+	local nc=0
+
+	for blkdsk in "${ARRAY_DSK_DEVICES[@]}"
+	do
+#		USBDSK+="$(printf "%s$sep%-6s$sep%6s$sep%-30s\n" "$blkdsk" "${ARRAY_DSK_TRAN[$nc]}" "${ARRAY_DSK_SIZE[$nc]}" "${ARRAY_DSK_MODEL[$nc]}")!"
+		USBDSK+="$blkdsk ${ARRAY_DSK_TRAN[$nc]} ${ARRAY_DSK_SIZE[$nc]} ${ARRAY_DSK_MODEL[$nc]} ${ARRAY_DSK_LABEL[$nc]}!"
+		((nc++))
+	done
+}
+
+sh_choosediskOLD()
 {
 	local devices=$(ls -l /dev/disk/by-path/*-usb-* 2>/dev/null|sed -n -e 's/.*\//\/dev\//' -e /[a-z]$/p|sort -d)
 	local x
@@ -154,7 +194,7 @@ function sh_choosedisk()
 	done
 }
 
-function sh_write()
+sh_write()
 {
 	local i=0
 	local l=0
@@ -173,17 +213,16 @@ function sh_write()
 
 	if [ -f $xtemp ]; then
   		zenity --error --text="$(cat $xtemp)"
-  		rm $xtemp
-  		exit 1
+		rm $xtemp
+		exit 1
 	else
-  		sync
 		sync
   		zenity --info --text="${MSG[12]}" --title="${MSG[13]}"
   		exit 0
 	fi
 }
 
-function sh_main()
+sh_main()
 {
 	sh_choosedisk
 	while true; do
@@ -192,7 +231,7 @@ function sh_main()
 			--text="<b><big><big>Drive Properties</big></big></b>\n"
 			--button="Refresh:3"
 			--button="yad-close:1"
-			--button="Executar:2"
+			--button="Go!:2"
 			--form
 			--columns=1
 			--field="Device:":CB "$USBDSK"
@@ -202,10 +241,10 @@ function sh_main()
 		nchoice=$?
 
 		case $nchoice in
-			3) 	sh_choosedisk
+			3) sh_choosedisk
 				continue
 				;;
-			1) 	exit 0;;
+			1) exit 0;;
 			2)
 				export sd=$(echo "${result}" | cut -d"|" -f1|awk '{print $1}')
 				export isofile=$(echo "${result}" | cut -d"|" -f2)
@@ -223,7 +262,7 @@ function sh_main()
 	done
 }
 colddir=$PWD
-checkDependencies
-sh_initvar
+check_deps
+sh_initvars
 sh_main
 cd $colddir

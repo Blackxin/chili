@@ -4,17 +4,17 @@
 ######################################################################
 maintainer='Vilmar Catafesta <vcatafesta@gmail.com>'
 pkgname='chili-iso2usb'
-version=1.3-1
+version=1.4.20220526-1
 build=1
-pkgver=1.3
+pkgver=1.4.20220526-1
 pkgrel=1
 license='GPL2'
 lfs_version='11.1'
 lfs_init='SYSTEMD'
 arch='any'
 distro='chili'
-desc='Utilitario para gravar iso no pendrive'
-pkgdesc='Utilitario para gravar iso no pendrive'
+desc='Utility to write iso file to pendrive'
+pkgdesc='Utility to write iso file to pendrive'
 size=''
 url='https://chilinux.com/'
 source=('')

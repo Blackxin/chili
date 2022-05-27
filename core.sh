@@ -876,11 +876,19 @@ spinner()
 
 check_deps()
 {
-	local dep deps
-   for dep; do
-   	command -v $dep &> /dev/null || deps+=($dep)
+   local errorFound=0
+   declare -a missing
+
+   for d in "${DEPENDENCIES[@]}"; do
+      [[ -z $(command -v $d) ]] && missing+=($d) && errorFound=1 && printf "ERRO: não encontrei o comando '$d'\n"
    done
-   [[ ${deps[@]} ]] && {  echo "Faltam: ${deps[*]}"; exit 1; }
+   #[[ ${#missing[@]} -ne 0 ]]
+   if (( $errorFound )); then
+    echo "---IMPOSSÍVEL CONTINUAR---"
+    echo "Esse script precisa dos comandos listados acima" >&2
+    echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+    exit 1
+  fi
 }
 
 sh_checkDependencies()

@@ -1022,7 +1022,9 @@ sh_remove()
 	local param=$@
 	local x
 
-	LDEPS=$false; LEXACT=$true; sh_listpkgdisp "$VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT" ${param}
+	LDEPS=$false
+	LEXACT=$true
+	sh_listpkgdisp "$VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT" ${param}
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 

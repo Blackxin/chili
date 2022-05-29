@@ -1307,7 +1307,7 @@ function print()
 
 function fmt()
 {
-	printf "${pink}(${ncount}:8/${ntotalpkg}:${nfullpkg})${reset}"
+	printf "${pink}(${ncount}:7/${ntotalpkg}:${nfullpkg})${reset}"
 	return $?
 }
 

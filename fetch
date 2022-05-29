@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/05/28
+# 	Altered: 2022/05/29
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -44,7 +44,7 @@ function configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.12.20220528"
+	readonly _VERSION_="3.13.20220529"
 	readonly DEPENDENCIES=(which gpg find tar zstd curl sed grep cat awk tput dialog stat tee)
 
 	# gettext initialization
@@ -2340,7 +2340,7 @@ function sh_generatepkg()
 	fi
 
 	(( ncount++ ))
-	if (( verbose >= 2 )); then
+	if (( verbose >= 1 )); then
 		log_msg "$(fmt) Generating info for package $pkg"
 	fi
 	if [[ ! -e "info/desc" ]]; then
@@ -2383,7 +2383,7 @@ function sh_createpkg()
 		pkg=$(echo $PWD |sed 's/\// /g'|awk '{print $NF}')
 	fi
 
-	if (( verbose >= 2 )); then
+	if (( verbose >= 1 )); then
 		log_msg "$(fmt) Building package $pkg"
 	fi
 	pkg="$pkg.${PKG_EXT}"
@@ -2392,7 +2392,7 @@ function sh_createpkg()
    _VERIFY_ON "$pkg" || exit 1
 	_CREATE_PKG "$pkg" || exit 1
 	(( ncount++ ))
-	if (( verbose >= 2 )); then
+	if (( verbose >= 1 )); then
 		log_msg "$(fmt) Generating package ${yellow}$pkg"
 	fi
 }
@@ -2423,10 +2423,11 @@ function sh_alienpkg_exec()
 	local LFORCELOCAL=
 	local string=
 	local ntotalpkg=0
+	local ntotalfindpkgs=0
 	local ncount=0
 	local arraypkg=
+	local npackagesprocessed=0
 
-	verbose=2
 	if [[ -z "${param}" ]]; then
 		LALL=$true
 	fi
@@ -2453,6 +2454,7 @@ function sh_alienpkg_exec()
 
 	arraypkg=($pkg)
 	ntotalpkg=${#arraypkg[*]}
+	ntotalfindpkgs=$ntotalpkg
 	nfullpkg=${ntotalpkg}
 	LFORCELOCAL=$LFORCE
 
@@ -2476,7 +2478,6 @@ function sh_alienpkg_exec()
 				if [[ -e ${destpkgGIT} || -e ${destpkgCORE} ]]; then
 					if (( verbose >= 2 )); then
 						log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${GITDIR}/packages/${firstletter/}${reset} Use the -f option to force rebuild."
-#						log_msg "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${GITDIR}/packages/${firstletter/}${reset} Use the -f option to force rebuild."
 					fi
 					(( ntotalpkg-- ))
 					continue
@@ -2485,13 +2486,13 @@ function sh_alienpkg_exec()
 
 			destdir=$BUILDDIR/$pkgtar
 			((ncount++))
-			if (( verbose >= 2 )); then
+			if (( verbose >= 1 )); then
 				log_msg "$(fmt) Creating directory $destdir"
 			fi
 			mkdir -p $destdir 2>&-
 
 			((ncount++))
-			if (( verbose >= 2 )); then
+			if (( verbose >= 1 )); then
 				log_msg "$(fmt) Unpacking package $package at $destdir"
 			fi
 			tar --use-compress-program=zstd --force-local --extract --file $package -C $destdir >/dev/null 2>&1
@@ -2532,20 +2533,26 @@ function sh_alienpkg_exec()
 			((ncount++))
 			sh_createpkg "${pkgtar}"
 
-			if !(( $LKEEP )); then
-				((ncount++))
-				if (( verbose >= 2 )); then
-					log_msg "$(fmt) Verifying candidate package for pruning ${yellow}${GITDIR}/packages/$cPacoteSemExt"
-				fi
-				#removeoldpkgchili $cPacoteSemExt
-				fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
-#				((ncount++))
-			fi
-			if (( verbose >= 2 )); then
+			if (( verbose >= 1 )); then
 				echo
 			fi
 			(( ntotalpkg-- ))
+			(( npackagesprocessed++ ))
 		done
+
+		if (( verbose >= 1 )); then
+			log_msg "Total packages found : $ntotalfindpkgs"
+			log_msg "New packages found   : $npackagesprocessed"
+		fi
+
+		if !(( $LKEEP )); then
+			((ncount++))
+			if (( verbose >= 1 )); then
+				log_msg "Verifying candidate packages files for pruning"
+			fi
+			#removeoldpkgchili $cPacoteSemExt
+#			fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
+		fi
 	else
 		log_failure_msg "${red}error: ${orange}${x} ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
 	fi

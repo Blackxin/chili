@@ -321,9 +321,7 @@ main()
 	done
 
 	if (( ! ${#candidates[*]} )); then
-#		if (( verbose >= 2 )); then
-			log_msg "${green}NO candidates packages found for pruning"
-#		fi
+		log_msg "${green}NO candidates packages found for pruning"
 		exit 0
 	fi
 

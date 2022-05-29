@@ -185,7 +185,7 @@ clineascan()
    printf "${aPKGARRAY[0]}$SEP${aPKGARRAY[1]}$SEP${aPKGARRAY[2]}$SEP${aPKGARRAY[3]}$SEP${aPKGARRAY[4]}$SEP${aPKGARRAY[5]}$SEP${aPKGARRAY[6]}"
 }
 
-sh_arraypkgfull()
+sh_arraypkgfullOLD()
 {
 	OLDIFS=$IFS
 	local file_list_packages="$1"
@@ -234,7 +234,7 @@ sh_arraypkgfull()
 	IFS=$OLDIFS
 }
 
-sh_arraypkgfullOLD()
+sh_arraypkgfull()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages=$VARCACHE_SEARCH/$PACKAGES_SPLIT
@@ -315,24 +315,28 @@ sh_ascanpkg()
 	return $true
 }
 
-sh_cabec()
+sh_cabec() #$1 nfiles
 {
-	local nfiles=$1
-	printf "${reset}%5s(${pink}%04d${reset})${green} sts package%47sversion%8s%11ssize fullbasename\n" "" "${nfiles}"
-	echo -n
+	printf "(${pink}%04d)${green} sts package%47sversion%8s%11ssize fullbasename\n" $1
 }
 
 sh_write()
 {
-   status=$4
-	strstatus='         '
-   [[ -z $status ]] && status=" A "
 	local pkgsearch=$1
 	local pkgfile=$2
 	local pkgCheckNumber=$3
+	local strstatus='         '
+   local status=$4
+   [[ -z $status ]] && status=' A '
 	sh_ascanpkg "$pkgsearch" "$pkgfile"
-	[[ $status = 'I' ]] && strstatus='installed'
-	printf "${green}%s(%04d) ${cyan} $status  ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n" "     " "$pkgCheckNumber" "${aPKGARRAY[0]}" "${aPKGARRAY[1]}" "$(size_to_human ${aPKGARRAY[6]})" "${aPKGARRAY[3]}"
+	[[ $status = ' I ' ]] && strstatus='installed'
+	printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
+			 ""		 																												\
+			 "$pkgCheckNumber" 																									\
+			 "${aPKGARRAY[0]}"																									\
+			 "${aPKGARRAY[1]}"																									\
+			 "$(size_to_human ${aPKGARRAY[6]})"																				\
+			 "${aPKGARRAY[3]}"
 }
 
 sh_footer()
@@ -349,21 +353,21 @@ sh_list()
 	local arr
 	local s
 	local x
-	local status='A'
+	local status=' A '
 	local	SEARCH_CUT='-f1'
-	pkg=
+	local pkg
 
 	sh_checkdir "OFF"
 	LLIST=$true
 
-	if (( $LLIST )); then
+	if (( LLIST )); then
 		if (( verbose >= 2 )); then
 			log_msg "Reading package lists in the repository"
 		fi
 	fi
 
 	for s in ${param[@]}; do
-		cListSearch="$cListSearch $(echo ${s})"
+		cListSearch+="$s "
 	done
 
 	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
@@ -376,20 +380,19 @@ sh_list()
 	else
 		for x in ${cListSearch}; do
 			if (( $LEXACT )); then
-				pkg="$pkg $(grep ^$x$SEP $VARCACHE_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1)"
+				pkg+="$(grep ^$x$SEP $VARCACHE_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1) "
 			else
-				pkg="$pkg $(grep $x $VARCACHE_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1)"
+				pkg+="$(grep $x $VARCACHE_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1) "
 			fi
 		done
 	fi
 
 	arr=(${pkg[*]})
 	nfiles=${#arr[*]}
-	param="$@"
 
-	if (( $LLIST )); then
+	if (( LLIST )); then
 		pkgCheckNumber=0
-		if [[ $nfiles -gt 0 ]]; then
+		if (( nfiles )); then
 			sh_arraypkgfull
 			if (( verbose )); then
 				sh_cabec $nfiles
@@ -398,14 +401,12 @@ sh_list()
 			for i in $pkg; do
 				((pkgCheckNumber++))
 				if (( verbose )); then
-					pkginstalled=$(grep ^$i$SEP $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP $SEARCH_CUT)
-					sh_splitpkg ${pkginstalled}
-					if [[ -n "$pkginstalled" && "$i" = "$pkginstalled" ]]; then
-						status='I'
+					if grep -q ^$i$SEP $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT; then
+						status=' I '
 					else
-						status='A'
+						status=' A '
 					fi
-					[[ $LLIST = $true ]] && sh_write $i "0" $pkgCheckNumber $status
+					[[ $LLIST = $true ]] && sh_write $i '0' $pkgCheckNumber "$status"
 				fi
 			done
 		fi
@@ -422,6 +423,7 @@ sh_listinstalled()
 	local cListSearch
 	local ntotalpkg=0
 	local arr
+	local arrd
 
 	if (( verbose )); then
 		log_msg "Listing installed packages"
@@ -459,10 +461,6 @@ sh_listpkgdisp()
 	public_pkg=
 	public_pkg_deps=
 	public_size=()
-
-#	for s in ${param[@]}; do
-#		public_ListSearch="$public_ListSearch $(echo ${s})"
-#	done
 	public_ListSearch=$param
 
 	if [[ "$SPLITPOS" == "" ]]; then
@@ -516,25 +514,18 @@ sh_listpkgdisp()
 		done
 	fi
 
-  	arr=(${public_pkg[*]})
-  	ncontapkg=${#arr[*]}
-	public_ntotal_pkg_listed=$ncontapkg
-
 	if [[ "${#public_pkg}" -gt 0 ]]; then # pacote?
 		if (( $LDEPS )); then
 			sh_getdeps $LDEPS
 		fi
-      arr=(${public_pkg[*]})
-      ncontapkg=${#arr[*]}
+
+  		arr=(${public_pkg[*]})
+	  	arrd=(${public_pkg_deps[*]})
+		ncontapkg=$((${#arr[*]} + ${#arrd[*]}))
 		public_ntotal_pkg_listed=$ncontapkg
 
-		if (( ncontapkg )); then
-			if (( verbose )); then
-				sh_cabec $ncontapkg
-			fi
-		fi
-
 		if (( verbose )); then
+			sh_cabec $ncontapkg
 			pkgNumber=0
 			for i in ${public_pkg[*]}
 			do
@@ -547,8 +538,6 @@ sh_listpkgdisp()
 				sh_write $i "$SPLITPOS" $pkgNumber "dep"
   			done
 		fi
-	#else
-	#	log_msg "($ncontapkg) package(s) found."
 	fi
 	sh_cdroot
 	return $public_ntotal_pkg_listed
@@ -572,7 +561,6 @@ sh_selfupdate()
 {
 	local param=$@
 
-#	sh_checkparametros ${param}
 	if !(( $LAUTO )) || !(( $LFORCE)); then
 		echo
 		conf "Update ${0##*/} from internet?"
@@ -990,7 +978,7 @@ sh_show()
 	sh_cdroot
 }
 
-_PRE_REMOVE()
+sh_pre_remove()
 {
 	(
 	local packname="$1"
@@ -1026,7 +1014,7 @@ _PRE_REMOVE()
 
 	[[ "$inc" -gt '0' ]] && { log_failure_msg2 "NOT FOUND ${packname}"; return 1 ;}
 	)
-	_SUBSHELL_STATUS
+	sh_subshell_status
 }
 
 sh_remove()
@@ -1069,7 +1057,7 @@ sh_removepkg()
 {
 	shift
 	while [[ -n "$1" ]]; do
-		_PRE_REMOVE "$1" || return 1
+		sh_pre_remove "$1" || return 1
 		retval=${?}
 		sh_splitpkg "$1"
 		_pkginstalled=($(echo $VARCACHE_INSTALLED/${1}*| sed 's|/| |g'|awk '{print $5}'|sed 's/.'${PRG}'//g'))
@@ -1200,7 +1188,7 @@ sh_getdeps()
 sh_wgetresponse()
 {
 	local i="$1"
-	local cfile=$(echo ${i##*/})
+	local cfile=${i##*/}
 	local cfullfilename=$VARCACHE_ARCHIVES/$cfile
 	export response
 
@@ -1443,7 +1431,7 @@ sh_install()
 
 		if !(( $LAUTO )); then
 			echo
-			read -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
+			read -e -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
 			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
 				return
 			fi
@@ -1618,7 +1606,7 @@ sh_installmeta()
 	if (( $public_ntotal_pkg_meta )); then
 		if !(( $LAUTO )); then
 			echo
-			read -p "$(DOT)continue installation? [Y/n]" LDOWNLOAD
+			read -e -p "$(DOT)continue installation? [Y/n]" LDOWNLOAD
 			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
 				return
 			fi
@@ -1653,7 +1641,7 @@ sh_installmeta()
 
 			if !(( $LAUTO )); then
 				echo
-				read -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
+				read -e -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
 				if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
 					return
 				fi
@@ -1714,13 +1702,19 @@ sh_recreatefilepackagesinstalled()
 	return $nfiles
 }
 
+sh_linecount()
+{
+	awk 'END {print NR}' $1
+}
+
 # -Qq
 sh_totalpackagesinstalled()
 {
 	if (( verbose >= 2 )); then
 		awk -F "," '{print $1}' $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
 	else
-		awk 'END {print NR}' $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
+#		awk 'END {print NR}' $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
+		sh_linecount $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT
 	fi
 }
 
@@ -1738,12 +1732,14 @@ sh_listforinstall()
 	local arr
 
 	[[ -e $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT ]] || printf '' > "$VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT"
-	public_ntotal_pkg_installed=$(grep ^ $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | wc -l)
+#	public_ntotal_pkg_installed=$(grep ^ $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT | wc -l)
+	public_ntotal_pkg_installed=$(sh_linecount $VARCACHE_SEARCH/$PACKAGES_INSTALLED_SPLIT)
 	public_ntotal_pkg_listed=$public_ntotal_pkg_installed
 	public_pkg=
 
 	for s in ${param[@]}; do
-		cListSearch="$cListSearch $(echo ${s})"
+#		cListSearch="$cListSearch $(echo ${s})"
+		cListSearch+="$s "
 	done
 
 	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
@@ -1796,7 +1792,7 @@ sh_listforinstall()
 	return $pkgNumber
 }
 
-_LIST_ARCHIVES_DIRECTORIES()
+sh_list_archives_directories()
 {
 	local packname="${1}.list"
 	local LIST_CLEAN_DIRECTORIES
@@ -1870,12 +1866,12 @@ _LIST_ARCHIVES_DIRECTORIES()
 	done < "${VARLIB_LIST}/${packname}"
 }
 
-_SUBSHELL_STATUS()
+sh_subshell_status()
 {
 	[[ "$?" -ne '0' ]] && return 1 || return 0
 }
 
-_MANAGE_SCRIPTS_AND_ARCHIVES()
+sh_manage_scripts_and_archives()
 {
 
 #	sh_splitpkg "${1}"
@@ -1924,7 +1920,7 @@ _MANAGE_SCRIPTS_AND_ARCHIVES()
 	return 0
 }
 
-_CREATE_LIST()
+sh_create_list()
 {
 	local packname=$1
 
@@ -1935,7 +1931,7 @@ _CREATE_LIST()
 	return 0
 }
 
-_INPUT_NULL_PARAMETER()
+sh_input_null_parameter()
 {
 	pkg=$1
 
@@ -1950,7 +1946,7 @@ _INPUT_NULL_PARAMETER()
 	return 0
 }
 
-_NAME_FORMAT_PKG()
+sh_name_format_pkg()
 {
 	local packname="$1"
 
@@ -2063,11 +2059,11 @@ sh_doinstallpkg()
 			--touch 								\
 			--file "${packname}" -C / | tee -a ${VARLIB_LIST}/"${name_version_build}.list" || return 1
 
-	_CREATE_LIST "$1" || return 1
-	_MANAGE_SCRIPTS_AND_ARCHIVES "${packname}" || return 1
-	_LIST_ARCHIVES_DIRECTORIES "${name_version_build}"
+	sh_create_list "$1" || return 1
+	sh_manage_scripts_and_archives "${packname}" || return 1
+	sh_list_archive_directories "${name_version_build}"
 	)
-	_SUBSHELL_STATUS
+	sh_subshell_status
 }
 
 # -Sl
@@ -2240,7 +2236,7 @@ _GPG_SIGN()
 	return 0
 }
 
-_VERIFY_ON()
+sh_verify_on()
 {
 	local package=$1
    local dir_info='info'
@@ -2299,10 +2295,10 @@ _VERIFY_ON()
       	fi
    	fi
    done
-	_SUBSHELL_STATUS
+	sh_subshell_status
 }
 
-_CREATE_PKG()
+sh_create_pkg()
 {
 	local package=$1
 	local ext_desc='desc'
@@ -2388,9 +2384,9 @@ sh_createpkg()
 	fi
 	pkg="$pkg.${PKG_EXT}"
 	sh_generatepkg "$pkg"
-   _NAME_FORMAT_PKG "$pkg" || exit 1
-   _VERIFY_ON "$pkg" || exit 1
-	_CREATE_PKG "$pkg" || exit 1
+   sh_name_format_pkg "$pkg" || exit 1
+   sh_verify_on "$pkg" || exit 1
+	sh_create_pkg "$pkg" || exit 1
 	(( ncount++ ))
 	if (( verbose >= 1 )); then
 		log_msg "$(fmt) Generating package ${yellow}$pkg"

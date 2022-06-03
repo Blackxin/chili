@@ -77,6 +77,7 @@ configure()
 	VARCACHE_ARCHIVES="/var/cache/${APP}/archives"
 	VARCACHE_INSTALLED="/var/cache/${APP}/installed"
 	VARCACHE_SEARCH="/var/cache/${APP}/search"
+	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 
    FOLDERS='folders.csv'
    FOLDERS_METAPACKAGES='folders_metapackages.csv'
@@ -133,9 +134,9 @@ GITSITE='0'
 #PKG_SITE='https://github.com/vcatafesta/ChiliOS/tree/master'		# for use set GITSITE=1
 PKG_SITE='https://chililinux.com'					    					# for use set GITSITE=0
 #PKG_SITE='https://chilios.com.br'											# for use set GITSITE=0
-#PKG_SITE='http://chililinux.org'					     					# for use set GITSITE=0
-#PKG_SITE='http://chililinux.online'				  	   				# for use set GITSITE=0
-#PKG_SITE='http://sybernet.com.br'				  	   					# for use set GITSITE=0
+#PKG_SITE='https://chililinux.org'					     					# for use set GITSITE=0
+#PKG_SITE='https://chililinux.online'				  	   				# for use set GITSITE=0
+#PKG_SITE='https://sybernet.com.br'				  	   					# for use set GITSITE=0
 #PKG_SITE='http://localhost'													# for use set GITSITE=0
 #PKG_SITE='http://mazonos.com'												# for use set GITSITE=0
 
@@ -796,8 +797,8 @@ sh_update()
 	done
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
-	sh_recreatefilepackagesinstalled
-   sh_FilesInCache
+	#sh_recreatefilepackagesinstalled
+	sh_FilesInCache
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -2406,9 +2407,6 @@ sh_alienpkg_main()
 
 sh_alienpkg_initvars()
 {
-	unset BUILDDIR
-	unset size
-	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 	PKGS=$@
 	BUILDDIR="${PKGCORE:=${CACHEDIR}/archives}"
 	[[ -n ${BUILDDIR} ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null

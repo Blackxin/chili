@@ -304,15 +304,13 @@ main()
 
 			candidates+=($pkgInAll)
 			candesc+=($pkgInAll.desc)
-#		done < <(printf '%s\n' "$AllOldPackages")
-		done <<< "$AllOldPackages"
-#		done <<< $(printf '%s\n' "$AllOldPackages")
+		done <<< "$AllOldPackages"  #done < <(printf '%s\n' "$AllOldPackages") #done <<< $(printf '%s\n' "$AllOldPackages")
 		popd >/dev/null 2>&1
 	done
 
 	if (( ! ${#candidates[*]} )); then
 		log_msg "${green}NO candidates packages found for pruning"
-		exit 0
+		exit
 	fi
 
 	if (( verbose >= 2 )); then
@@ -320,9 +318,7 @@ main()
 		while read -r pkg; do
 			(( pkgNumber++ ))
 			printf "  $(DOT)${white}found package ${purple}(%04d) ${green}%42s\n" $pkgNumber $pkg
-#		done < <(printf '%s\n' "${candidates[@]}")
-#		done <<< "${candidates[@]}"
-		done <<< $(printf '%s\n' "${candidates[@]}")
+		done <<< $(printf '%s\n' "${candidates[@]}") #done < <(printf '%s\n' "${candidates[@]}") #done <<< "${candidates[@]}"
 	fi
 
 	pkgcount=$((${#candidates[*]} + ${#candesc[*]}))
@@ -440,7 +436,6 @@ fi
 if [[ -z $cachedirs ]]; then
 	cachedirs=("${GITDIR:=/var/cache/fetch/archives}")
 	cachedirs+=("/var/cache/fetch/archives")
-	#cachedirs+=("/mnt/c/github/ChiliOS/packages")
 fi
 
 # sanity checks

@@ -34,6 +34,8 @@
 IFS=$' \t\n'
 SAVEIFS=$IFS
 
+ERR_ERROR=1
+ERR_OK=0
 true=1
 false=0
 LINSTALLED=2
@@ -48,6 +50,28 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_SIZE=()}
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
+
+sh_linecount()
+{
+   awk 'END {print NR}' $1
+}
+
+# echo $(lenarray "${Var[@]}")
+# echo $(lenarray "$Var")
+lenarray()
+{
+   local new=($1)
+   echo "${#new[@]}"
+}
+
+lenarraystr()
+{
+   local new=$1
+   local count=0
+
+   read -ra ADDR <<< "$new"
+   echo "${#ADDR[@]}"
+}
 
 calc()
 {

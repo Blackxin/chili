@@ -1703,7 +1703,8 @@ sh_recreatefilepackagesinstalled()
 		log_wait_msg "Checking installed packages"
 	fi
 	>| "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" &> /dev/null
-	local aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f)
+#	local aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f)
+	local aCache=$(printf '%s\n' $CACHEDIR_DESC/* | awk -F '.*desc$' 'list[$1]++')
 	local nfiles=$(lenarray "$aCache")
    local index=1
    local pkgNumber=0
@@ -1714,6 +1715,7 @@ sh_recreatefilepackagesinstalled()
 		fi
 
    	for item in $aCache; do
+#   	while read -r item; do
 			[[ -z $item ]] && continue;
          source $item
          local cfullname="$pkgname-$version-$arch.${PKG_EXT}"
@@ -1732,7 +1734,9 @@ sh_recreatefilepackagesinstalled()
 			echo "${cline}" >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
  			echo "${cline}" >| $CACHEDIR_INSTALLED/$cfileinstalled
 #			mv $item $CACHEDIR_DESC/$cfileinstalled.desc  &> /dev/null    #consertar nome pacotes antigos
+#   	done <<< "$aCache"
    	done
+
 #		sort $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT | uniq >/tmp/$PACKAGES_INSTALLED_SPLIT
 #		cp /tmp/$PACKAGES_INSTALLED_SPLIT $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
 #		rm -f /tmp/$PACKAGES_INSTALLED_SPLIT

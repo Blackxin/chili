@@ -57,10 +57,11 @@ timetoseconds(){
 	local argv=($*)
 	local s=${!#}
 	local exp=1
+	local base=60
 
 	while [[ $(( ${#argv[*]} -1 )) -ge 1 ]]; do
 		unset argv[-1]
-		s=$(( s + ${argv[${#argv[*]} -1]} * 60**exp ))
+		s=$(( s + ${argv[${#argv[*]} -1]} * base**exp ))
 		((exp++))
 	done
 	echo $s

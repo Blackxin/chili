@@ -51,6 +51,22 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+timetoseconds(){
+	[[ $1 && $# -le 3 ]] || { echo "Número incorreto de argumentos!"; exit 1; }
+
+	local argv=($*)
+	local s=${!#}
+	local exp=1
+	local base=60
+
+	while [[ $(( ${#argv[*]} -1 )) -ge 1 ]]; do
+		unset argv[-1]
+		s=$(( s + ${argv[${#argv[*]} -1]} * base**exp ))
+		((exp++))
+	done
+	echo $s
+}
+
 sh_linecount()
 {
    awk 'END {print NR}' $1

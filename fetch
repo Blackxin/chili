@@ -1,3 +1,4 @@
+#teste
 #!/usr/bin/env bash
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
@@ -7,7 +8,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/05/29
+# 	Altered: 2022/06/07
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -44,7 +45,7 @@ configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.13.20220529"
+	readonly _VERSION_="3.20.20220607"
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
 	unset CDPATH
 	unset GREP_OPTIONS
@@ -62,9 +63,10 @@ configure()
 
 	# default
 	export PKG_EXT SEP SITE GITSITE RAW APP
-	export CACHEDIR CACHEDIR_ARCHIVES CACHEDIR_INSTALLED CACHEDIR_SEARCH
+	export CACHEDIR CACHEDIR_ARCHIVES CACHEDIR_SEARCH
 	export DESCME CACHEDIR_LIST CACHEDIR_DESC CACHEDIR_REMO
 	export ALIEN_CACHE_DIR ALIEN_VARLIB
+	export VARLIB_FETCH
 	SEP=','
 	PKG_EXT="${PKG_EXT:='chi.zst'}"
 	SITE="${PKG_SITE:=http://chililinux.com}"
@@ -73,7 +75,6 @@ configure()
 	APP="fetch"	# APP="${0##*/}"
 	CACHEDIR="${CACHEDIR:=/var/cache/$APP}"
 	CACHEDIR_ARCHIVES="$CACHEDIR/archives"
-	CACHEDIR_INSTALLED="$CACHEDIR/installed"
 	CACHEDIR_SEARCH="$CACHEDIR/search"
 	CACHEDIR_LIST="$CACHEDIR/list"
 	CACHEDIR_DESC="$CACHEDIR/desc"
@@ -81,6 +82,7 @@ configure()
 	DESCME='info/desc'
 	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
 	ALIEN_VARLIB="/var/lib/pacman/local"
+	VARLIB_FETCH="/var/lib/$APP"
 
 	#temporary
 	TMP_DIR_ROOT="$(mktemp -d -u)"
@@ -96,14 +98,17 @@ configure()
 	if [[ "$PKG_EXT" = "chi.zst" ]]; then
 		#PKG_RE='^([a-z-]+)(-)([0-9\\.]+)(-)([0-9])(-)(.*)(.chi.zst)$'
 		#PKG_RE='([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)-(([0-9]+(\.[0-9]+)*)(-([0-9]+))?)-([^.]+).*'
-		#PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 	#SOEN
-		PKG_RE='(.+)-(([^-]+)-([0-9]))-([^.]+)\.chi\.zst' 	   #VC
+		#PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 				#SOEN
+#		PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst'    			#VC
+		PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)$'   			#VC
+		PKG_RE_LYNX='(?!.*\/)(.*)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)$'
 		PKG_RE_FULL1='(?:")(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst(?="><a)'
 		PKG_RE_FULL2='(?:e">)(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi)(\.zst)(?=<\/a)'
 		GREP_RE='.chi\.zst\"'
 	else
 		#PKG_RE='(.+)-(([^-]+)-([0-9]+))\.mz' 						#SOEN
 		PKG_RE='(.+)-(([^-]+)-([0-9]))\.mz' 						#VC
+		PKG_RE_LYNX='(?!.*\/)(.+)-(([^-]+)-([0-9]))\.mz$'		#VC
 		GREP_RE='.mz\"'
 	fi
 }
@@ -223,7 +228,7 @@ sh_arraypkgfull()
 	IFS=$OLDIFS
 }
 
-sh_arraypkgfullOLD()
+sh_arraypkgfullAWK()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages=$CACHEDIR_SEARCH/$PACKAGES_SPLIT
@@ -631,18 +636,18 @@ sh_checkdir()
 	if (( verbose >= 2 )); then
 		log_msg "Checking job directories"
 		log_info_msg "$CACHEDIR_ARCHIVES" ; [[ -d $CACHEDIR_ARCHIVES  ]] && evaluate_retval || { mkdir -p $CACHEDIR_ARCHIVES  >/dev/null 2>&1; evaluate_retval; }
-		log_info_msg "$CACHEDIR_INSTALLED"; [[ -d $CACHEDIR_INSTALLED ]] && evaluate_retval || { mkdir -p $CACHEDIR_INSTALLED >/dev/null 2>&1; evaluate_retval; }
 		log_info_msg "$CACHEDIR_SEARCH"   ; [[ -d $CACHEDIR_SEARCH    ]] && evaluate_retval || { mkdir -p $CACHEDIR_SEARCH    >/dev/null 2>&1; evaluate_retval; }
 		log_info_msg "$CACHEDIR_LIST"     ; [[ -d $CACHEDIR_LIST      ]] && evaluate_retval || { mkdir -p $CACHEDIR_LIST      >/dev/null 2>&1; evaluate_retval; }
 		log_info_msg "$CACHEDIR_DESC"     ; [[ -d $CACHEDIR_DESC      ]] && evaluate_retval || { mkdir -p $CACHEDIR_DESC      >/dev/null 2>&1; evaluate_retval; }
 		log_info_msg "$CACHEDIR_REMO"     ; [[ -d $CACHEDIR_REMO      ]] && evaluate_retval || { mkdir -p $CACHEDIR_REMO      >/dev/null 2>&1; evaluate_retval; }
+		log_info_msg "$VARLIB_FETCH"      ; [[ -d $VARLIB_FETCH       ]] && evaluate_retval || { mkdir -p $VARLIB_FETCH       >/dev/null 2>&1; evaluate_retval; }
 	else
 		[[ -d $CACHEDIR_ARCHIVES  ]] || mkdir -p $CACHEDIR_ARCHIVES  >/dev/null 2>&1
-		[[ -d $CACHEDIR_INSTALLED ]] || mkdir -p $CACHEDIR_INSTALLED >/dev/null 2>&1
 		[[ -d $CACHEDIR_SEARCH    ]] || mkdir -p $CACHEDIR_SEARCH    >/dev/null 2>&1
 		[[ -d $CACHEDIR_LIST      ]] || mkdir -p $CACHEDIR_LIST      >/dev/null 2>&1
 		[[ -d $CACHEDIR_DESC      ]] || mkdir -p $CACHEDIR_DESC      >/dev/null 2>&1
 		[[ -d $CACHEDIR_REMO      ]] || mkdir -p $CACHEDIR_REMO      >/dev/null 2>&1
+		[[ -d $VARLIB_FETCH       ]] || mkdir -p $VARLIB_FETCH       >/dev/null 2>&1
 	fi
 	[[ -e $CACHEDIR_SEARCH/$PACKAGES_SPLIT           ]] || >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
 	[[ -e $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT ]] || >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
@@ -696,6 +701,134 @@ sh_updaterepo()
 
 sh_update()
 {
+	local Folders
+	local FoldersInRepo
+	local PackagesInFolders
+	local MetaPkgInFolders
+	local MetaInFolder
+	local nFiles=0
+	local cstrvalue
+
+	if (( $LSELF )); then
+		sh_selfupdate "$@"
+		return $?
+	fi
+
+	#internet?
+	sh_checknet; [[ $? = $false ]] || { return 1;}
+
+	local response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/")
+	if [[ $response -eq 404 ]]; then
+		log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/"
+		exit 1
+	fi
+
+	pushd $CACHEDIR_SEARCH/ &>/dev/null
+	sh_backup
+
+	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
+	printf '' >| $CACHEDIR_SEARCH/$FOLDERS
+	printf '' >| $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+	printf '' >| $CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES
+	printf '' >| $CACHEDIR_SEARCH/$METAPACKAGES
+
+#	local HTTP_SERVER="$(string_alltrim $(curl --compressed -s -k --insecure --head -w '%{http_code}\n' --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
+#	debug "${HTTP_SERVER}"
+#	debug "$(string_len "${HTTP_SERVER}")"
+	log_msg "${pink}Updating folders from ${SITE}${reset}"
+
+#	FoldersInRepo=$(lynx -listonly -nonumbers -dump -justify "${SITE}/packages/" | grep -P -o '(?!.*\/.+).+(?=\/)' | tee ${CACHEDIR_SEARCH}/$FOLDERS)
+	FoldersInRepo=$(lynx -listonly -nonumbers -dump -justify "${SITE}/packages/" | grep -P -o '.*packages\/\K.*?(?=\/)' | tee ${CACHEDIR_SEARCH}/$FOLDERS)
+
+#	case ${HTTP_SERVER} in
+#		Apache|nginx)
+#			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' | tee ${CACHEDIR_SEARCH}/$FOLDERS)
+#			;;
+#		LiteSpeed|cloudflare)
+#			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o 'packages\/[a-z]+'|sed 's/packages\///g' | tee ${CACHEDIR_SEARCH}/$FOLDERS)
+#			;;
+#		GitHub.com)
+#			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' | tee ${CACHEDIR_SEARCH}/$FOLDERS)
+#			;;
+#	esac
+
+	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
+	#spinner & SPINNERPID=$!
+
+#	lynx --nonumbers -dump -justify http://localhost/packages/a/ | grep -Po '(?!.*\/)(.*)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)'
+
+	for Folders in ${FoldersInRepo}; do
+#		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
+#		response=$(curl --compressed --insecure -s -w "%{http_code}\n" -k --url "${SITE}/packages/${Folders}/" --output $FOLDER_TEMP)
+#		case ${HTTP_SERVER} in
+#			Apache|nginx)
+#				if [[ $Folders != "meta" ]]; then
+#				   PackagesInFolders=($(grep -E -o '>'$PKG_RE'<' $FOLDER_TEMP | sed 's/>//g; s/<//g'))
+#				else
+#					MetaPkgInFolders=($(grep -E '.meta\"' $FOLDER_TEMP | cut -d'"' -f2 ))
+#				fi
+#				SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $5}' ))
+#				;;
+#			LiteSpeed|GitHub.com|cloudflare)
+#				if [[ $Folders != "meta" ]]; then
+#					PackagesInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".${PKG_EXT}$"| awk '{print $NF}')
+#				else
+#					MetaPkgInFolders=$(cat $FOLDER_TEMP | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".meta$" | awk '{print $NF}')
+#				fi
+#				SizePkgInFolders=($(grep -E $GREP_RE $FOLDER_TEMP | awk '{print $9}' | cut -d'"' -f2))
+#				;;
+#		esac
+
+		if [[ $Folders != "meta" ]]; then
+			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
+#			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" |	grep File | awk '{print $2}')
+		else
+			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
+		fi
+		SizePkgInFolders=$(lynx -nonumbers -dump "$SITE/packages/$Folders/" | grep File | awk '{print $5}')
+		nFiles=$(lenarray "$PackagesInFolders")
+
+		local count=0
+		if [[ $Folders != "meta" ]]; then
+			for pkgInFolder in ${PackagesInFolders[@]}; do
+				sh_splitpkg ${pkgInFolder}
+				cline=$(clinesplit)
+#				pkg_size=${SizePkgInFolders[$count]}
+#				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+				echo $cline >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+				((count++))
+			done
+		else
+			for MetaInFolder in ${MetaPkgInFolders[@]}; do
+				echo "${Folders}/${MetaInFolder}" >> $FOLDERS_METAPACKAGES
+				echo "${MetaInFolder}"            >> $METAPACKAGES
+				((count++))
+			done
+		fi
+		cstrvalue=$(strzero ${count} 5)
+		log_success_msg2 "  Updating... (${blue}${cstrvalue}${reset}) packages in ${Folders}"
+	done
+#	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
+
+	#sh_recreatefilepackagesinstalled
+	sh_FilesInCache
+	sh_cleaning
+	unset FOLDER_TEMP
+
+	local nfilesInReposit=$(wc -l < $CACHEDIR_SEARCH/$PACKAGES_SPLIT)
+	local nfilesInstalled=$(wc -l < $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT)
+	local nfilesInCache=$(wc -l < $CACHEDIR_SEARCH/$PACKAGES_IN_CACHE)
+	log_msg "${cyan}All list packages updated!${reset}"
+	log_msg "${blue}($(strzero $nfilesInReposit 5)) packages in the repository${reset}"
+	log_msg "${green}($(strzero $nfilesInstalled 5)) installed packages${reset}"
+	log_msg "${green}($(strzero $nfilesInCache 5)) packages in cache $CACHEDIR_ARCHIVES${reset}"
+	echo
+	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
+	popd &>/dev/null
+}
+
+sh_updateOLD()
+{
 	if (( $LSELF )); then
 		sh_selfupdate "$@"
 		return $?
@@ -738,6 +871,8 @@ sh_update()
 	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
 	#spinner & SPINNERPID=$!
 	local Folders
+
+#	lynx --nonumbers -dump -justify http://localhost/packages/a/ | grep -Po '(?!.*\/)(.*)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)'
 
 	for Folders in ${FoldersInRepo}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
@@ -1030,7 +1165,6 @@ sh_removepkg()
 
 	if [[ $retval -eq $ERR_OK ]] ; then
 		sed -i  '/'$cPkgBaseVersion'/d' $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
-		rm -f $CACHEDIR_INSTALLED/$cPkgBaseVersiong &>/dev/null
 	fi
 	return $ERR_OK
 }
@@ -1689,57 +1823,67 @@ sh_installmeta()
 	fi
 }
 
+sh_recreateFilesFromArch()
+{
+	local item
+
+	log_msg "Fixing packages installed by pacman"
+	pushd /var/lib/pacman/local/ &> /dev/null
+	local aCache=$(printf '%s\n' *)
+	local nfiles=$(lenarray "$aCache")
+	popd &> /dev/null
+
+   if (( $nfiles )); then
+   	for item in $aCache; do
+   		[[ $item == 'ALPM_DB_VERSION' || $item == ',,,,' || -z $item ]] && continue;
+			[[ -f $CACHEDIR_DESC/$item.desc ]] || >| $CACHEDIR_DESC/$item.desc &> /dev/null
+   	done
+   fi
+	return $nfiles
+}
+
 # -Sr
 sh_recreatefilepackagesinstalled()
 {
-	local re='(.+)-(([^-]+)-([0-9]))(\.desc)'
+#	local re='(.+)-(([^-]+)-([0-9]))+(\.desc)'
+	local re='(.+)-(([^-]+)-([0-9]))+[.](desc)$'
 	local item
-
-	log_msg "Recreating installed packages list"
-	sh_arraypkgfull
-
-	if (( verbose >= 2 )); then
-		log_wait_msg "Reading lists of installed packages"
-		log_wait_msg "Checking installed packages"
-	fi
-	>| "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" &> /dev/null
-	local aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f)
-	local nfiles=$(lenarray "$aCache")
-   local index=1
+	local package
    local pkgNumber=0
 
+	log_msg "Recreating installed packages list"
+	sh_recreateFilesFromArch
+	log_msg "Reading lists of installed packages"
+
+	>| "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" &> /dev/null
+#1	local aCache=$(printf '%s\n' $CACHEDIR_DESC/* | awk -F "$re" 'list[$1]++')
+#2	local aCache=$(grep -Po "$re" < <(printf '%s\n' $CACHEDIR_DESC/*) )
+	local aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f | sort -V)
+	local nfiles=$(lenarray "$aCache")
+
    if (( $nfiles )); then
+		log_msg "Checking installed packages"
+		sh_arraypkgfull
 		if (( verbose >= 2 )); then
 			sh_cabec $nfiles
 		fi
 
    	for item in $aCache; do
 			[[ -z $item ]] && continue;
-         source $item
-         local cfullname="$pkgname-$version-$arch.${PKG_EXT}"
-         sh_splitpkg $cfullname
-         cline=$(clinesplit)
-			cfileinstalled=${item%.desc*}
-			cfileinstalled=${cfileinstalled%.${PKG_EXT}*}
-			cfileinstalled=${cfileinstalled##*/}             ## tira o path
-
-			[[ -z $cfileinstalled ]] && continue;
+ 	     	package=${item##*/}
+			package=${package%.desc*}
+   		sh_ascanpkg $package '5'
+	      cline=$(clineascan)
+ 		   cbase=${aPKGARRAY[0]}
 
 			if (( verbose >= 2 )); then
-				sh_write $cfileinstalled '5' $((++pkgNumber))
+				sh_write $cbase '0' $((++pkgNumber))
 			fi
 
-			echo "${cline}" >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
- 			echo "${cline}" >| $CACHEDIR_INSTALLED/$cfileinstalled
-#			mv $item $CACHEDIR_DESC/$cfileinstalled.desc  &> /dev/null    #consertar nome pacotes antigos
+			echo $cline >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
    	done
-#		sort $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT | uniq >/tmp/$PACKAGES_INSTALLED_SPLIT
-#		cp /tmp/$PACKAGES_INSTALLED_SPLIT $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
-#		rm -f /tmp/$PACKAGES_INSTALLED_SPLIT
-		if (( verbose >= 2 )); then
-   	   printf "${yellow}($nfiles) ${cyan}packages installed\n"
-	   fi
    fi
+   log_msg "${yellow}($nfiles) ${cyan}packages installed\n"
 	return $nfiles
 }
 
@@ -2171,8 +2315,6 @@ sh_installpkg()
 			local _pkg=${aPKGSPLIT[$PKG_BASE_VERSION]}
 			cline=$(clinesplit)
 			if !(( $erro )); then
-				>| $CACHEDIR_INSTALLED/$_pkg
-				echo "${cline}" >> $CACHEDIR_INSTALLED/$_pkg
 				sed -i '/'${_pkg}'/d' $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
 				echo "${cline}" >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
 			fi

@@ -19,6 +19,16 @@
 	   (( n++ ))
 	done
 
+	nchoice=0
+	modeline=$(cvt ${arr[$nchoice]} | grep Modeline | sed 's/Modeline //')
+	mode=$(echo "${modeline}" | awk '{print $1}')
+   printf "${modeline}\n"
+	printf "${mode}\n"
+	xrandr --verbose --newmode ${modeline}
+	xrandr --verbose --addmode $output $mode
+	(( ncounter++ ))
+	exit
+
 	while true
    do
 #   nchoice=$( whiptail \
@@ -36,14 +46,15 @@
          	"${arr[@]}" "${arr[@]}" "${arr[@]}")
 
    retval=$?
-	whiptail --msgbox "$retval" 0 0
-   if [[ $retval -eq 1 ]]; then
-   	exit
-   fi
+#	whiptail --msgbox "$retval" 0 0
+#   if [[ $retval -eq 1 ]]; then
+#   	exit
+#   fi
 
 #	modeline=$(cvt "${hmode[ncounter]}" "${vmode[ncounter]}" | grep Modeline | sed 's/Modeline //')
 #	mode=$(echo "${modeline}" | awk '{print $1}')
 
+	nchoice=1
 	modeline=$(cvt "$nchoice}" | grep Modeline | sed 's/Modeline //')
 	mode=$(echo "${modeline}" | awk '{print $1}')
    printf "${modeline}\n"

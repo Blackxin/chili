@@ -1,4 +1,3 @@
-#teste
 #!/usr/bin/env bash
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
@@ -708,6 +707,11 @@ sh_update()
 	local MetaInFolder
 	local nFiles=0
 	local cstrvalue
+	local dw=($CACHEDIR_SEARCH/$FOLDERS
+             $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+             $CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES
+             $CACHEDIR_SEARCH/$METAPACKAGES
+            )
 
 	if (( $LSELF )); then
 		sh_selfupdate "$@"
@@ -727,10 +731,9 @@ sh_update()
 	sh_backup
 
 	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
-	printf '' >| $CACHEDIR_SEARCH/$FOLDERS
-	printf '' >| $CACHEDIR_SEARCH/$PACKAGES_SPLIT
-	printf '' >| $CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES
-	printf '' >| $CACHEDIR_SEARCH/$METAPACKAGES
+   for i in "${dw[@]}"; do
+      >| $i
+   done
 
 #	local HTTP_SERVER="$(string_alltrim $(curl --compressed -s -k --insecure --head -w '%{http_code}\n' --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}') | cut -d/ -f1)"
 #	debug "${HTTP_SERVER}"
@@ -779,6 +782,9 @@ sh_update()
 #				;;
 #		esac
 
+#		regex='.*alt="File">(.*)</a>.*<td data-sort.*>(.*)</td><td data-sort.*>(.*)</td>.*'
+#		wget https://chiliLinux.com/packages/a/ -qO - | sed -nE "s;$regex;\1 - \2 - \3;p"
+
 		if [[ $Folders != "meta" ]]; then
 			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" |	grep File | awk '{print $2}')
@@ -792,10 +798,10 @@ sh_update()
 		if [[ $Folders != "meta" ]]; then
 			for pkgInFolder in ${PackagesInFolders[@]}; do
 				sh_splitpkg ${pkgInFolder}
-				cline=$(clinesplit)
-#				pkg_size=${SizePkgInFolders[$count]}
-#				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
-				echo $cline >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+				pkg_size=${SizePkgInFolders[$count]}
+#				cline=$(clinesplit)
+#				echo $cline >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
 				((count++))
 			done
 		else
@@ -805,7 +811,7 @@ sh_update()
 				((count++))
 			done
 		fi
-		cstrvalue=$(strzero ${count} 5)
+		cstrvalue=$(strzero $count 5)
 		log_success_msg2 "  Updating... (${blue}${cstrvalue}${reset}) packages in ${Folders}"
 	done
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}

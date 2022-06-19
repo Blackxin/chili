@@ -1198,7 +1198,7 @@ function ex()
 	fi
 }
 
-function limpa()
+limpa()
 {
 	#!/bin/bash
 	#source /lib/lsb/init-functions

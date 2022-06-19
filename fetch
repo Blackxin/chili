@@ -45,7 +45,7 @@ configure()
 	export LC_ALL=C
 	export LANG=C
 	readonly _VERSION_="3.20.20220607"
-	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee)
+	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee lynx)
 	unset CDPATH
 	unset GREP_OPTIONS
 

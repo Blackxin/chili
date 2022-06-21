@@ -390,6 +390,21 @@ function firstletter()
 	printf "$firstletter\n"
 }
 
+function kbytestobytes()
+{
+	str=$1
+	declare -i len=$((${#str}))
+	declare -i bytes=0
+	lastletter=${str:0-1}
+	if [[ $lastletter == 'k' ]]; then
+		bytes=${str:0:$len-1}
+		bytes=$(($bytes * 1024))
+	else
+		bytes=$1
+	fi
+	printf "$bytes\n"
+}
+
 function colorize()
 {
 	if tput setaf 0 &>/dev/null; then
@@ -1032,6 +1047,30 @@ which2()
 	#EOF
 	#chmod -v 755 /usr/bin/which
 	#chown -v root:root /usr/bin/which
+}
+
+function human_to_size()
+{
+	awk -v size="$1" '
+	BEGIN {
+		suffix[1] = "B"
+		suffix[2] = "KiB"
+		suffix[3] = "MiB"
+		suffix[4] = "GiB"
+		suffix[5] = "TiB"
+		suffix[6] = "PiB"
+		suffix[7] = "EiB"
+		count = 1
+
+		while (size > 1024) {
+			size /= 1024
+			count++
+		}
+
+		sizestr = sprintf("%.2f", size)
+		sub(/\.?0+$/, "", sizestr)
+		printf("%s %s", sizestr, suffix[count])
+	}'
 }
 
 function size_to_human()

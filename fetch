@@ -784,21 +784,23 @@ sh_update()
 
 #		regex='.*alt="File">(.*)</a>.*<td data-sort.*>(.*)</td><td data-sort.*>(.*)</td>.*'
 #		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?:[<].*[>])(\d{4}-\d{2}-\d{2})(?:\s)(..:..)(?:.*\s+)(\d+[[:alpha:]])'
-		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?=<\/a>.*)'
+#		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?=<\/a>.*)'
 #		wget https://chiliLinux.com/packages/a/ -qO - | sed -nE "s;$regex;\1 - \2 - \3;p"
+		regex='^.*>(.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).*[ ]([0-9]+k?)(.*)'
 
 		if [[ $Folders != "meta" ]]; then
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" |	grep File | awk '{print $2}')
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
 #			PackagesInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex"))
-			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
+#			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
+			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\1-\2-\5\6;p"))
 		else
 			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
 		fi
-		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?:[<].*[>])(\d{4}-\d{2}-\d{2})(?:\s)(..:..)(?:.*\s+)(\d+[[:alpha:]])'
 #		SizePkgInFolders=$(lynx -nonumbers -dump "$SITE/packages/$Folders/" | grep File | awk '{print $5}')
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex" | awk '{print $5*1024}'))
-		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex" | awk '{print $5*1024}'))
+#		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex" | awk '{print $5*1024}'))
+		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\9;p"))
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$regex;\3;p"))
 		nFiles=$(lenarray "$PackagesInFolders")
 
@@ -806,7 +808,7 @@ sh_update()
 		if [[ $Folders != "meta" ]]; then
 			for pkgInFolder in ${PackagesInFolders[@]}; do
 				sh_splitpkg ${pkgInFolder}
-				pkg_size=${SizePkgInFolders[$count]}
+				pkg_size=$(kbytestobytes ${SizePkgInFolders[$count]})
 #				cline=$(clinesplit)
 #				echo $cline >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
 				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT

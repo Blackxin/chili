@@ -783,17 +783,22 @@ sh_update()
 #		esac
 
 #		regex='.*alt="File">(.*)</a>.*<td data-sort.*>(.*)</td><td data-sort.*>(.*)</td>.*'
-		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?:[<].*[>])(\d{4}-\d{2}-\d{2})(?:\s)(..:..)(?:.*\s+)(\d+[[:alpha:]])'
+#		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?:[<].*[>])(\d{4}-\d{2}-\d{2})(?:\s)(..:..)(?:.*\s+)(\d+[[:alpha:]])'
+		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?=<\/a>.*)'
 #		wget https://chiliLinux.com/packages/a/ -qO - | sed -nE "s;$regex;\1 - \2 - \3;p"
 
 		if [[ $Folders != "meta" ]]; then
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" |	grep File | awk '{print $2}')
-			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
+#			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
+#			PackagesInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex"))
+			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
 		else
 			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
 		fi
+		regex='^.*>\K(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)(?:[<].*[>])(\d{4}-\d{2}-\d{2})(?:\s)(..:..)(?:.*\s+)(\d+[[:alpha:]])'
 #		SizePkgInFolders=$(lynx -nonumbers -dump "$SITE/packages/$Folders/" | grep File | awk '{print $5}')
-		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex" | awk '{print $5*1024}'))
+#		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex" | awk '{print $5*1024}'))
+		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex" | awk '{print $5*1024}'))
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$regex;\3;p"))
 		nFiles=$(lenarray "$PackagesInFolders")
 

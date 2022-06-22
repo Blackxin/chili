@@ -409,6 +409,17 @@ right()
    echo ${cString:$i:$nLen}
 }
 
+#Returns size of a string
+# Syntax
+# len <cString> --> <nLength>
+# nlen=$(len $(right 'vcatafesta' 3))
+# echo $nlen              # 3
+len()
+{
+   local cString=$1
+   echo ${#cString}
+}
+
 function kbytestobytes()
 {
 	str=$1

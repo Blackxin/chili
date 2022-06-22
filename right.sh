@@ -19,6 +19,24 @@ right()
 	echo ${cString:$i:$nLen}
 }
 
-right 'vcatafesta' 1
-right 'vcatafesta' 15
-right 'vcatafesta' -1
+#Returns size of a string
+# Syntax
+# len <cString> --> <nLength>
+
+len()
+{
+	local cString=$1
+	echo ${#cString}
+}
+
+#examples
+right 'vcatafesta' 1 	# a
+right 'vcatafesta' 15 	# vcatafesta
+right 'vcatafesta' -1 	# vcatafesta
+
+cstr=$(right 'vcatafesta' 3)
+echo $cstr 					# sta
+
+nlen=$(len $(right 'vcatafesta' 3))
+echo $nlen 					# 3
+

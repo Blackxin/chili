@@ -1892,7 +1892,7 @@ sh_recreatefilepackagesinstalled()
 			package=${package%.desc*}
    		sh_ascanpkg $package '5'
 	      cline=$(clineascan)
- 		   cbase=${aPKGARRAY[0]}
+# 		   cbase=${aPKGARRAY[0]}
 
 			if (( verbose >= 2 )); then
 				sh_write $cbase '0' $((++pkgNumber))

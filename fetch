@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/06/07
+# 	Altered: 2022/06/22
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -44,7 +44,7 @@ configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.20.20220607"
+	readonly _VERSION_="3.22.20220622"
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee lynx)
 	unset CDPATH
 	unset GREP_OPTIONS
@@ -761,8 +761,8 @@ sh_update()
 #	lynx --nonumbers -dump -justify http://localhost/packages/a/ | grep -Po '(?!.*\/)(.*)-(([^-]+)-([0-9]+))-([^.]+)(\.chi\.zst)'
 
 	for Folders in ${FoldersInRepo}; do
-#		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
-#		response=$(curl --compressed --insecure -s -w "%{http_code}\n" -k --url "${SITE}/packages/${Folders}/" --output $FOLDER_TEMP)
+		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
+		response=$(curl --compressed --insecure -s -w "%{http_code}\n" -k --url "${SITE}/packages/${Folders}/" --output $FOLDER_TEMP)
 #		case ${HTTP_SERVER} in
 #			Apache|nginx)
 #				if [[ $Folders != "meta" ]]; then
@@ -793,15 +793,17 @@ sh_update()
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
 #			PackagesInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex"))
 #			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
-			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\1-\2-\5\6;p"))
+#ok		PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\1-\2-\5\6;p"))
+			PackagesInFolders=($(sed -nE "s;$regex;\1-\2-\5\6;p" $FOLDER_TEMP))
 		else
 			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
 		fi
 #		SizePkgInFolders=$(lynx -nonumbers -dump "$SITE/packages/$Folders/" | grep File | awk '{print $5}')
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex" | awk '{print $5*1024}'))
 #		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex" | awk '{print $5*1024}'))
-		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\9;p"))
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$regex;\3;p"))
+#ok	SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\9;p"))
+		SizePkgInFolders=($(sed -nE "s;$regex;\9;p" $FOLDER_TEMP))
 		nFiles=$(lenarray "$PackagesInFolders")
 
 		local count=0

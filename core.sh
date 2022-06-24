@@ -156,7 +156,8 @@ sh_disk_info()
        ARRAY_DSK_SIZE+=( $SIZE_ )
        ARRAY_DSK_TRAN+=( ${TRAN_:-blk} )
       ARRAY_DSK_MODEL+=( "${MODEL_:-unknown}" )
-	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+#	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
+	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk|loop)')
 #	declare -p ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}
 }
 

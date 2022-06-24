@@ -1,6 +1,6 @@
 #!/bin/bash
 
-image()
+chili-image()
 {
 	# https://www.qemu.org/2021/08/22/fuse-blkexport/
 	qemu-img create -f raw foo.img 20G
@@ -28,6 +28,12 @@ image()
 	fdisk -l foo.qcow2
 	cfdisk foo.qcow2
 
+}
+
+chili-mapdevice()
+{
+	#losetup -P /dev/loop20 $1
+	kpartx -av $1 # kpartx -av file.img
 }
 
 if [[ $# -eq 0 ]]; then

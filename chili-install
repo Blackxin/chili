@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/05/23
+#  Altered: 2022/05/26
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-install"
-declare -r _VERSION_="3.0.20220523"
+declare -r _VERSION_="3.1.20220626"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -92,8 +92,8 @@ sh_configure()
 	: ${LMOUNT=0}
 	: ${xUUIDSWAP=""}
 	: ${xPARTSWAP=""}
-	: ${xPARTEFI=""}
-	: ${LGRUB="EFI"}
+	: ${xPARTEFI=''}
+	: ${LGRUB="BIOS"}
 	: ${lEFI=$false}
 	: ${LAUTOMATICA=$false}
 
@@ -656,7 +656,7 @@ function sh_initbind()
 	[ -d $dir_install/sys      ] || mkdir -p $dir_install/sys > /dev/null 2>&1
 	[ -d $dir_install/dev      ] || mkdir -p $dir_install/dev > /dev/null 2>&1
 	[ -d $dir_install/run      ] || mkdir -p $dir_install/run > /dev/null 2>&1
-	[ -d $dir_install/boot/EFI ] || mkdir -p $dir_install/boot/EFI > /dev/null 2>&1
+	[ -d $dir_install/boot/efi ] || mkdir -p $dir_install/boot/efi > /dev/null 2>&1
 
 	mensagem "mount $xproc"; mount $xproc > /dev/null 2>&1 ; [ $? = 0 ] || lproc="FAIL"; lresultbind=$false
 	mensagem "mount $xsys" ; mount $xsys > /dev/null 2>&1  ;	[ $? = 0 ] || lsys="FAIL"; lresultbind=$false
@@ -716,11 +716,10 @@ function sh_bind()
 
 function sh_efi()
 {
-	local result=$(fdisk $sd -l | grep EFI | cut -c1-11)
-	xPARTEFI=$result
+	xPARTEFI=$(fdisk $sd -l | grep EFI | cut -c1-11)
    lEFI=$false
 
-	if [ "$result" != "" ] ; then
+	if [[ -n "$xPARTEFI" ]] ; then
    	lEFI=$true
 	fi
 }
@@ -729,33 +728,34 @@ function sh_grubBIOS()
 {
     cinfo=`log_info_msg "$cmsg_install_grub_disk: $sd"`
     msg "INFO" "$cinfo"
-    chroot . /bin/bash -c "grub-install $sd" > /dev/null 2>&1
+    #chroot . /bin/bash -c "grub-install $sd" > /dev/null 2>&1
+    chroot $dir_install /bin/bash -c "grub-install --target=i386-pc $sd --recheck" > /dev/null 2>&1
     evaluate_retval
     return $?
 }
 
 function sh_grubEFI()
 {
-    cinfo=`log_info_msg "$cmsg_Desmontando_particao: $sd"`
+    cinfo=`log_info_msg "$cmsg_Desmontando_particao: $xPARTEFI"`
     msg "INFO" "$cinfo"
     umount -f $xPARTEFI 2> /dev/null
     evaluate_retval
 
-    cinfo=`log_info_msg "$cmsg_Formatando_particao: $sd"`
+    cinfo=`log_info_msg "$cmsg_Formatando_particao: $xPARTEFI"`
     msg "INFO" "$cinfo"
-    mkfs.fat -F32 $xPARTEFI 2> /dev/null
+    mkfs.vfat -F32 $xPARTEFI 2> /dev/null
     evaluate_retval
 
-    cinfo=`log_info_msg "$cmsg_Montando_particao: $sd"`
+    cinfo=`log_info_msg "$cmsg_Montando_particao: $xPARTEFI"`
     msg "INFO" "$cinfo"
-    mount $xPARTEFI $dir_install/boot/EFI 2> /dev/null
+    mount $xPARTEFI $dir_install/boot/efi 2> /dev/null
     evaluate_retval
 
-    cinfo=`log_info_msg "$cmsg_Instalando_GRUB_EFI_na_particao: $sd"`
+    cinfo=`log_info_msg "$cmsg_Instalando_GRUB_EFI_na_particao: $dir_install/boot/efi"`
     msg "INFO" "$cinfo"
-    chroot . /bin/bash -c "grub-install     \
+    chroot $dir_install /bin/bash -c "grub-install     \
         --target=x86_64-efi                 \
-        --efi-directory=/boot/EFI           \
+        --efi-directory=/boot/efi           \
         --bootloader-id=$cnick              \
         --recheck">/dev/null 2>&1
     evaluate_retval
@@ -804,30 +804,36 @@ function grubinstall()
 
 		sh_bind $true
 		mensagem "$cmsgwaitgrub: \n\n$sd"
-      sh_efi
 
-      if [ $lEFI = $true ]; then
+		if efivar --list >/dev/null; then
+	      sh_efi
+	   else
+	   	lEFI=$false
+	   fi
+
+		if [ $lEFI = $true ]; then
       	local nChoiceEFI=$true
-        	if [ $LAUTOMATICA = $false ]; then
-                conf "** EFI **"                                \
-                    "$cmsg_Detectada_particao_EFI: $xPARTEFI    \
-                    \n$cmsg_Deseja_instalar_o_GRUB_EFI?         \
-                    \n\n$cmsg_Sim_EFI \n$cmsg_Nao_MBR"
-                nChoiceEFI=$?
-            fi
-            if [ $nChoiceEFI = $true ] ; then
-                if [ CEFI = "EFI" ]; then
-                    sh_grubEFI
-                else
-                    sh_grubBIOS
-                fi
+			if [ $LAUTOMATICA = $false ]; then
+         	conf "** EFI **"                                \
+            		"$cmsg_Detectada_particao_EFI: $xPARTEFI    \
+                	\n$cmsg_Deseja_instalar_o_GRUB_EFI?         \
+                 	\n\n$cmsg_Sim_EFI \n$cmsg_Nao_MBR"
+				nChoiceEFI=$?
+			fi
+			if [ $nChoiceEFI = $true ] ; then
+         	if [[ $LGRUB == "EFI" ]] ; then
+            	sh_grubEFI
             else
-                sh_grubBIOS
+              	sh_grubBIOS
             fi
-        else
-            sh_grubBIOS
-        fi
-        sh_grubmkconfig
+			else
+				sh_grubBIOS
+			fi
+		else
+			sh_grubBIOS
+		fi
+
+		sh_grubmkconfig
     	if [ $LAUTOMATICA = $false ]; then
     	    alerta "*** GRUB *** " "$sd" "\n\n$cgrubsuccess"
         fi
@@ -1244,10 +1250,10 @@ function sh_partitions_with_parted()
 {
 	parted --script $sd -- 														\
 	mklabel gpt																		\
-	mkpart primary fat32      1MiB 2MiB set 1 bios on name 1 BIOS  \
-	mkpart primary fat32      2MiB 3MiB set 2 esp  on name 2 EFI   \
-	mkpart primary linux-swap 3MiB 2GB                name 3 SWAP  \
-	mkpart primary ext4       2GB 100%                name 4 ROOT  \
+	mkpart primary fat32      1MiB   100MiB set 1 bios on name 1 BIOS  \
+	mkpart primary fat32      100MiB 200MiB set 2 esp  on name 2 EFI   \
+	mkpart primary linux-swap 200MiB 2GB                  name 3 SWAP  \
+	mkpart primary ext4       2GB 100%                    name 4 ROOT  \
 	align-check optimal 1
 	udevadm settle > /dev/null 2>&1
 }
@@ -2416,7 +2422,6 @@ sh_checklive()
 	fi
 	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 }
-
 
 sh_configure
 sh_checkroot

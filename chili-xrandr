@@ -1,4 +1,18 @@
 #!/bin/bash
+
+umc 2560 1080 50 --rbt
+# 2560x1080x49.94 @ 55.239kHz
+#Modeline "2560x1080x49.94"  150.250000  2560 2608 2640 2720  1080 1083 1087 1106  +HSync -VSync
+xrandr --verbose --newmode "2560x1080x49.94"  150.250000  2560 2608 2640 2720  1080 1083 1087 1106  +HSync -VSync
+xrandr --verbose --addmode HDMI-1 "2560x1080x49.94"
+
+umc 2560 1050 50 --rbt
+# 2560x1050x49.93 @ 53.676kHz
+#Modeline "2560x1050x49.93"  146.000000  2560 2608 2640 2720  1050 1053 1057 1075  +HSync -VSync
+xrandr --verbose --newmode "2560x1050x49.93"  146.000000  2560 2608 2640 2720  1050 1053 1057 1075  +HSync -VSync
+xrandr --verbose --addmode HDMI-1 "2560x1050x49.93"
+exit
+
 	source /usr/share/fetch/core.sh
 
 	#output='VGA-1'

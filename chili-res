@@ -1,0 +1,60 @@
+#!/bin/bash
+	source /usr/share/fetch/core.sh
+
+	#output='VGA-1'
+	#output='DVI-1'
+	#output='HDMI-1'
+	#output=$(xrandr | grep " connected " | awk '{ print$1 }') 			#conectado
+
+	output=($(xrandr | grep "connected " | awk '{ print$1 }'))        #todos
+	hmode=(2560 1920 1680)
+ 	vmode=(1080 1080 1050)
+	refresh=(33 44 60)
+	amodeline=()
+	ncounter=0
+	arr=()
+   sep='\xe2\x94\x82'
+
+	for y in "${output[@]}"
+	do
+		nc=0
+		for x in "${hmode[@]}"
+		do
+			#arr+=("$x 44" "$output")
+   	  	arr[((n++))]="$x ${vmode[$nc]} ${refresh[$nc]}"
+#	    	arr[((n++))]=$(printf "%-7s$sep%-30s" "${output[$nc]}" "$(cvt "${hmode[nc]}" "${vmode[nc]}" "${refresh[$nc]}")")
+	    	arr[((n++))]=$(printf "%-7s$sep%-30s" "$y" "$(cvt "${hmode[nc]}" "${vmode[nc]}" "${refresh[$nc]}")")
+   	  	((n++))
+	     	((nc++))
+		done
+	done
+
+	while true
+   do
+  	nchoice=$(dialog													\
+  				--title "Chili resolution" 						\
+            --menu '\nChoose resolucion for add:'			\
+            0 0 0                                     	\
+         	"${arr[@]}" 2>&1 >/dev/tty)
+
+   nExit=$?
+   if (( $nExit )); then
+   	exit
+   fi
+
+#	modeline=$(cvt "${hmode[ncounter]}" "${vmode[ncounter]}" | grep Modeline | sed 's/Modeline //')
+#	mode=$(echo "${modeline}" | awk '{print $1}')
+
+#	umc="Modeline “2560x1080x53.92” 162.500000 2560 2608 2640 2720 1080 1083 1087 1108 +HSync -VSync"
+#	modeline=$(echo "$umc" | grep Modeline | sed 's/Modeline //')
+
+	echo "$nchoice"
+	modeline=$(cvt -v $nchoice | grep Modeline | sed 's/Modeline //')
+	mode=$(echo "${modeline}" | awk '{print $1}')
+   printf "${modeline}\n"
+	printf "${mode}\n"
+	xrandr --verbose --newmode ${modeline}
+	xrandr --verbose --addmode $output $mode
+	(( ncounter++ ))
+	inkey 5
+done

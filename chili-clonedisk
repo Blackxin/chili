@@ -192,7 +192,7 @@ choosedisk()
     				--extra-button																		\
     				--extra-label  "${cmsg_info_disco[$LC_DEFAULT]}"						\
     				--menu 			"\n${cmsg_choose_disk[$LC_DEFAULT]}"					\
-    				0 0 0 "${array[@]}" "${array[@]}" "${array[@]}" 2>&1 >/dev/tty 	)
+    				0 0 0 "${array[@]}" 2>&1 >/dev/tty 	)
 
     	exit_status=$?
     	case $exit_status in

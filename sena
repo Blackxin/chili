@@ -1,47 +1,81 @@
 #!/usr/bin/env bash
+#  sena - aplicativo para gerar numeros aleatorios da sena
+#
+#  Created: 2022/02/15
+#  Altered: 2022/07/04
+#
+#  Copyright (c) 2022-2022, Benedito Ramos <diramos@uol.com.br>
+#  Copyright (c) 2022-2022, Vilmar Catafesta <vcatafesta@gmail.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
+#  sena uses quite a few external programs during its execution. You
+#  need to have at least the following installed for makepkg to function:
+#     awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
+#     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
+#########################################################################
 #global
-filejogos='jogos.txt'
-filejogosformatado='jogosformatado.txt'
-fileresult='resultadosena.txt'
+cpath=$PWD
+filejogos="$cpath/jogos.txt"
+filejogosformatado="$cpath/jogosformatado.txt"
+fileresult="$cpath/resultadosena.txt"
 
 sh_playsena()
 {
 	>| $filejogos
 	>| $filejogosformatado
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
+ 	[[ qtddezenas -gt 15 ]] && qtddezenas=15
+ 	[[ qtddezenas -lt  6 ]] && qtddezenas=6
+
 	declare -i qtdjogos=$1
+	declare -i resto=$(( qtddezenas % 2 ))
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
-	declare -i dezezenasasereremexcluidas=$(shuf -i 1-$qtddezenas -n 1)
+	declare -i outrametade=$metadeqtddezenas
 	declare -i n=0
+
+ 	if [[ resto -gt 0 ]] ; then
+		((metadeqtddezenas++))
+	fi
 
 	while [[ n -lt qtdjogos ]]; do
 		[[ $n -lt 10 ]] && var="Jogo "0"$n: " || var="Jogo $n: "
 	  	jogos1a30=$(shuf  -i  1-30 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
-	  	jogos31a60=$(shuf -i 31-60 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
+	  	jogos31a60=$(shuf -i 31-60 -n $outrametade      | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
 	  	#echo $jogos1a30 $jogos31a60 # 09 11 14 35 37 50
 	   line="$jogos1a30$jogos31a60"
 
-		if grep -q -o "$line" $fileresult; then  # jogo existe no BD? descarta!
-			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
-			continue
+  	 	if [[ qtddezenas -le 6 ]] ; then
+			if grep -q -o "$line" $fileresult; then  # jogo existe no BD? descarta!
+				printf 'Jogo (%04d) Dezenas (%02d): %s -> foi descartado\n' "$n" $qtddezenas "$line"
+				continue
+			fi
 		fi
 
 		if grep -q -o "$line" $filejogos; then  # jogo existe? descarta!
-			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
+			printf 'Jogo (%04d) Dezenas (%02d): %s -> foi descartado\n' "$n" $qtddezenas "$line"
 			continue
 		fi
 
 		((n++))
-		printf 'Jogo (%04d) Dezenas : %s -> foi aceito\n' "$n" "$line"
+		printf 'Jogo (%04d) Dezenas (%02d): %s -> foi aceito\n' "$n" $qtddezenas "$line"
 		echo $line >> $filejogos
 		echo "$var $line" >> $filejogosformatado
 	done
-	#done >> $filejogosformatado
-	#awk '{$1="";$2=""; print $0}' $filejogosformatado | sed 's/^ \+//' > $filejogos
-	sort $filejogos > temp.txt; cp temp.txt $filejogos
-	[[ -e temp.txt ]] && rm temp.txt
-	#cat $filejogos
+	filetmp=$(mktemp)
+	sort $filejogos > $filetmp; cp $filetmp $filejogos
 	#chown www-data $filejogos
 	#chgrp www-data $filejogos
 }
@@ -111,8 +145,8 @@ usage:
    sena -h | --help           # este help
    sena 3                     # jogar 3 jogos
    sena 10                    # jogar 10 jogos
-   sena 10 4                  # jogar 10 jogos com 4 dezenas
-   sena 5 6                   # jogar 5 jogos com 6 dezenas
+   sena 10 6                  # jogar 10 jogos com 6 dezenas
+   sena 5 15                  # jogar 5 jogos com 15 dezenas
    sena -c | --compare        # comparar jogos
    sena -U | --update         # atualizar BD
 EOF

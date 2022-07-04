@@ -40,8 +40,8 @@ sh_playsena()
 	bytes=$(stat -c %s $fileresult)
    [[ $bytes -eq 0 ]] && die "erro: necessario atualizar o BD. Use sena --update"
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
-
- 	[[ qtddezenas -gt 15 ]] && qtddezenas=15
+ 	[[ qtddezenas -gt 15 ]] && die "erro: maximo de dezenas jogadas é 15"
+ 	[[ qtddezenas -lt  6 ]] && die "erro: minimo de dezenas jogadas é 6"
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
 

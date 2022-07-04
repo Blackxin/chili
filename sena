@@ -31,17 +31,22 @@ cpath=/tmp
 filejogos="$cpath/jogos.txt"
 filejogosformatado="$cpath/jogosformatado.txt"
 fileresult="$cpath/resultadosena.txt"
+reset="\e[0m";
+red="\e[1;31m";
+green="\e[1;32m";
+red="\e[1;31m";
 
 sh_playsena()
 {
 	>| $filejogos
 	>| $filejogosformatado
 	[[ ! -e $fileresult ]] && >| $fileresult
-	bytes=$(stat -c %s $fileresult)
-   [[ $bytes -eq 0 ]] && die "erro: necessario atualizar o BD. Use sena --update"
+
+	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && die "erro: necessario atualizar o BD. Use sena --update"
+	sh_resultadosena
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
- 	[[ qtddezenas -gt 15 ]] && die "erro: maximo de dezenas jogadas é 15"
- 	[[ qtddezenas -lt  6 ]] && die "erro: minimo de dezenas jogadas é 6"
+ 	[[ qtddezenas -gt 15 ]] && die "erro: máximo de dezenas jogadas é: 15"
+ 	[[ qtddezenas -lt  6 ]] && die "erro: minímo de dezenas jogadas é: 6"
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
 
@@ -87,10 +92,16 @@ sh_playsena()
 
 die()
 {
-	red="\e[1;31m";
    local msg=$1; shift
-   printf "${red}$msg" >&2
+   printf "${red}$msg\n" >&2
    exit 1
+}
+
+msg()
+{
+   local msg=$1; shift
+   printf "${green}$msg${reset}\n" >&2
+   return
 }
 
 sh_compare()
@@ -122,13 +133,11 @@ sh_resultadosena()
 	echo "Ultimo Sorteio: $numUltSortGrav"
 
 	if [[ $numUltSort -eq $numUltSortGrav ]] ; then
-		echo "BD já atualizado!"
-		echo "Nenhum registro novo encontrado."
-		sleep 2
-		exit 1
+		msg "BD já atualizado!"
+		msg "Nenhum registro novo encontrado."
 	else
-		echo "Registro novo encontrado!"
-		echo "Atualizando Banco de Dados. Aguarde."
+		msg "Registro novo encontrado!"
+		msg "Atualizando Banco de Dados. Aguarde."
 		sleep 2
 		for (( contLinha=$numUltSortGrav+1; contLinha<=$numUltSort; contLinha++ ))
 		do

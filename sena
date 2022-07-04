@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
+#global
 filejogos='jogos.txt'
 filejogosformatado='jogosformatado.txt'
 fileresult='resultadosena.txt'
 
-sh_sena()
+sh_playsena()
 {
 	>| $filejogos
 	>| $filejogosformatado
@@ -128,5 +129,5 @@ elif [[ $1 = @(-U|-u|--update) ]]; then
    sh_resultadosena
    exit $(( $# ? 0 : 1 ))
 elif test $# -ge 1; then
-	sh_sena $@
+	sh_playsena $@
 fi

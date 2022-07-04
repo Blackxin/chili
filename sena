@@ -71,8 +71,8 @@ sh_resultadosena()
 	#### COLETANDO O NUMERO DO ULTIMO SORTEIO GRAVADO NO BD
 	numUltSortGrav=$(cat $fileresult | tail -1 | awk -F"-" '{print $1}')
 	#### COLETANDO DADOS DOS DOS RESULTADOS NAO INCLUÍDOS NO BD
-	echo $numUltSort
-	echo $numUltSortGrav
+	echo "Sorteios      : $numUltSort"
+	echo "Ultimo Sorteio: $numUltSortGrav"
 
 	if [[ $numUltSort -eq $numUltSortGrav ]] ; then
 		echo "BD já atualizado!"

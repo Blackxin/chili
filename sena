@@ -158,12 +158,12 @@ sh_compare()
 
 sh_resultadosena()
 {
-	sh_checknet; [[ $? = 0 ]] || return 1
-	[[ ! -e $fileresult ]] && >| $fileresult
-
 	#### REMOVENDO ARQUIVOS TEMPORARIOS
 	rm /tmp/UltSort.txt 2> /dev/null
 	rm /tmp/UltSortAtualiza.txt 2> /dev/null
+
+	sh_checknet; [[ $? = 0 ]] || return 1
+	[[ ! -e $fileresult ]] && >| $fileresult
 
 	#### COLETANDO DADOS DO ULTIMO RESULTADO DA MEGASENA PULICADO PELA API DA CAIXA
 	wget $SITE --no-check-certificate -qO- > /tmp/UltSort.txt

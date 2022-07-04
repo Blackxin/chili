@@ -42,7 +42,7 @@ sh_playsena()
 	>| $filejogosformatado
 	[[ ! -e $fileresult ]] && >| $fileresult
 
-	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && die "erro: necessario atualizar o BD. Use sena --update"
+	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && { sh_usage; die "erro: necessario atualizar o BD. Use sena --update";}
 	sh_resultadosena
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
  	[[ qtddezenas -gt 15 ]] && die "erro: máximo de dezenas jogadas é: 15"
@@ -93,7 +93,7 @@ sh_playsena()
 die()
 {
    local msg=$1; shift
-   printf "${red}$msg\n" >&2
+   printf "${red}$msg${reset}\n" >&2
    exit 1
 }
 

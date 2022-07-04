@@ -38,8 +38,10 @@ sh_playsena()
 	>| $filejogosformatado
 	[[ ! -e $fileresult ]] && >| $fileresult
 	bytes=$(stat -c %s $fileresult)
-   [[ $bytes -eq 0 ]] && { echo "erro: necessario atualizar o BD. Use sena --update"; exit 1; }
+   [[ $bytes -eq 0 ]] && die "erro: necessario atualizar o BD. Use sena --update"
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
+
+ 	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
 
@@ -81,6 +83,14 @@ sh_playsena()
 	sort $filejogos > $filetmp; cp $filetmp $filejogos
 	#chown www-data $filejogos
 	#chgrp www-data $filejogos
+}
+
+die()
+{
+	red="\e[1;31m";
+   local msg=$1; shift
+   printf "${red}$msg" >&2
+   exit 1
 }
 
 sh_compare()

@@ -35,22 +35,21 @@ reset="\e[0m";
 red="\e[1;31m";
 green="\e[1;32m";
 red="\e[1;31m";
+SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
 
 sh_playsena()
 {
 	>| $filejogos
 	>| $filejogosformatado
 	[[ ! -e $fileresult ]] && >| $fileresult
-
-	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && { sh_usage; die "erro: necessario atualizar o BD. Use sena --update";}
-	sh_resultadosena
+	declare -i qtdjogos=$1
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
+ 	[[ qtdjogos   -lt 1  ]] && die "erro: minímo de 1 jogo brother!"
  	[[ qtddezenas -gt 15 ]] && die "erro: máximo de dezenas jogadas é: 15"
  	[[ qtddezenas -lt  6 ]] && die "erro: minímo de dezenas jogadas é: 6"
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
-
-	declare -i qtdjogos=$1
+	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && { sh_usage; die "erro: necessario atualizar o BD. Use sena --update";} || sh_resultadosena
 	declare -i resto=$(( qtddezenas % 2 ))
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
 	declare -i outrametade=$metadeqtddezenas
@@ -104,6 +103,14 @@ msg()
    return
 }
 
+sh_checknet()
+{
+   # have internet?
+   msg "${green}Testing internet from ${SITE}"
+   curl --insecure $SITE >/dev/null 2>&1 || die "No route to server ($SITE) - ABORTED."
+   return $?
+}
+
 sh_compare()
 {
 	while read -r i; do
@@ -117,6 +124,7 @@ sh_compare()
 
 sh_resultadosena()
 {
+	sh_checknet
 	[[ ! -e $fileresult ]] && >| $fileresult
 
 	#### REMOVENDO ARQUIVOS TEMPORARIOS
@@ -129,8 +137,8 @@ sh_resultadosena()
 	#### COLETANDO O NUMERO DO ULTIMO SORTEIO GRAVADO NO BD
 	numUltSortGrav=$(cat $fileresult | tail -1 | awk -F"-" '{print $1}')
 	#### COLETANDO DADOS DOS DOS RESULTADOS NAO INCLUÍDOS NO BD
-	echo "Sorteios      : $numUltSort"
-	echo "Ultimo Sorteio: $numUltSortGrav"
+	echo "Sorteios pela CAIXA  : $numUltSort"
+	echo "Ultimo Sorteio no BD : $numUltSortGrav"
 
 	if [[ $numUltSort -eq $numUltSortGrav ]] ; then
 		msg "BD já atualizado!"

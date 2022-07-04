@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+sh_sena()
+{
+	>| jogos.txt
+	>| jogosformatado.txt
+
+	declare -i qtdjogos=$1
+#	qtddezenas=$2
+#	declare -i metadeqtddezenas=$(echo "$qtddezenas"/2 | bc)
+	declare -i qtddezenas=6
+	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
+	declare -i dezezenasasereremexcluidas=$(shuf -i 1-$qtddezenas -n 1)
+	declare -i n=1
+
+	while (( n <= qtdjogos ))
+	do
+		[[ $n -lt 10 ]] && var="Jogo "0"$n: " || var="Jogo $n: "
+	  	jogos1a30=$(shuf  -i  1-30 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
+	  	jogos31a60=$(shuf -i 31-60 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
+	  	#echo $jogos1a30 $jogos31a60 # 09 11 14 35 37 50
+	   line="$jogos1a30$jogos31a60"
+
+		if grep -o "$line" novoarquivo.txt; then  # jogo existe no BD? descarta!
+			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
+			continue
+		fi
+
+		if grep -o "$line" jogos.txt; then  # jogo existe? descarta!
+			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
+			continue
+		fi
+
+		((n++))
+		printf 'Jogo (%04d) Dezenas : %s -> foi aceito\n' "$n" "$line"
+		echo $line >> jogos.txt
+		echo "$var $line" >> jogosformatado.txt
+	done
+	#done >> jogosformatado.txt
+	#awk '{$1="";$2=""; print $0}' jogosformatado.txt | sed 's/^ \+//' > jogos.txt
+	#sort jogosformatado.txt > temp.txt; cp temp.txt jogosformatado.txt
+	sort jogos.txt          > temp.txt;	cp temp.txt jogos.txt
+	[[ -e temp.txt ]] && rm temp.txt
+	#cat jogos.txt
+	#chown www-data jogos.txt
+	#chgrp www-data jogos.txt
+}
+
+sh_compara()
+{
+	dezenas=$(cat jogos.txt)
+
+	for i in "${dezenas[@]}"
+	do
+		printf "$i\n"
+		if grep -o "$i" novoarquivo.txt; then
+			printf "Já tem\n"
+		fi
+	done
+}
+
+if test $# -ge 1; then
+	sh_sena $@
+	sh_compara
+else
+	cat <<EOF
+usage:
+   sena 3
+   sena 10
+EOF
+fi

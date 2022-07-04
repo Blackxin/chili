@@ -8,16 +8,13 @@ sh_sena()
 {
 	>| $filejogos
 	>| $filejogosformatado
+   [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
 	declare -i qtdjogos=$1
-#	qtddezenas=$2
-#	declare -i metadeqtddezenas=$(echo "$qtddezenas"/2 | bc)
-	declare -i qtddezenas=6
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
 	declare -i dezezenasasereremexcluidas=$(shuf -i 1-$qtddezenas -n 1)
-	declare -i n=1
+	declare -i n=0
 
-	while (( n <= qtdjogos ))
-	do
+	while [[ n -lt qtdjogos ]]; do
 		[[ $n -lt 10 ]] && var="Jogo "0"$n: " || var="Jogo $n: "
 	  	jogos1a30=$(shuf  -i  1-30 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
 	  	jogos31a60=$(shuf -i 31-60 -n $metadeqtddezenas | tr -d ',e' | tr -s ' ' | sed 's/ / \n/g' | sort -n | while read a; do printf '%02d ' $a ; done)
@@ -114,7 +111,8 @@ usage:
    sena -h | --help           # este help
    sena 3                     # jogar 3 jogos
    sena 10                    # jogar 10 jogos
-   sena 100                   # jogar 100 jogos
+   sena 10 4                  # jogar 10 jogos com 4 dezenas
+   sena 5 6                   # jogar 5 jogos com 6 dezenas
    sena -c | --compare        # comparar jogos
    sena -u | -U | --update    # atualizar BD
 EOF

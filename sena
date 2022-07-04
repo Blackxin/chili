@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
+filejogos='jogos.txt'
+filejogosformatado='jogosformatado.txt'
+fileresult='resultadosena.txt'
+
 sh_sena()
 {
-	>| jogos.txt
-	>| jogosformatado.txt
-
+	>| $filejogos
+	>| $filejogosformatado
 	declare -i qtdjogos=$1
 #	qtddezenas=$2
 #	declare -i metadeqtddezenas=$(echo "$qtddezenas"/2 | bc)
@@ -21,50 +24,44 @@ sh_sena()
 	  	#echo $jogos1a30 $jogos31a60 # 09 11 14 35 37 50
 	   line="$jogos1a30$jogos31a60"
 
-		if grep -o "$line" resultadosena.txt; then  # jogo existe no BD? descarta!
+		if grep -q -o "$line" $fileresult; then  # jogo existe no BD? descarta!
 			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
 			continue
 		fi
 
-		if grep -o "$line" jogos.txt; then  # jogo existe? descarta!
+		if grep -q -o "$line" $filejogos; then  # jogo existe? descarta!
 			printf 'Jogo (%04d) Dezenas : %s -> foi descartado\n' "$n" "$line"
 			continue
 		fi
 
 		((n++))
 		printf 'Jogo (%04d) Dezenas : %s -> foi aceito\n' "$n" "$line"
-		echo $line >> jogos.txt
-		echo "$var $line" >> jogosformatado.txt
+		echo $line >> $filejogos
+		echo "$var $line" >> $filejogosformatado
 	done
-	#done >> jogosformatado.txt
-	#awk '{$1="";$2=""; print $0}' jogosformatado.txt | sed 's/^ \+//' > jogos.txt
-	#sort jogosformatado.txt > temp.txt; cp temp.txt jogosformatado.txt
-	sort jogos.txt          > temp.txt;	cp temp.txt jogos.txt
+	#done >> $filejogosformatado
+	#awk '{$1="";$2=""; print $0}' $filejogosformatado | sed 's/^ \+//' > $filejogos
+	sort $filejogos > temp.txt; cp temp.txt $filejogos
 	[[ -e temp.txt ]] && rm temp.txt
-	#cat jogos.txt
-	#chown www-data jogos.txt
-	#chgrp www-data jogos.txt
+	#cat $filejogos
+	#chown www-data $filejogos
+	#chgrp www-data $filejogos
 }
 
 sh_compare()
 {
-	dezenas=$(cat jogos.txt)
-
-	info "${dezenas[@]}"
-
-	for i in "${dezenas[@]}"
-	do
-		printf "$i - OK não encontrado no BD\n"
-		if grep -o "$i" resultadosena.txt; then
-			printf "Já tem\n"
+	while read -r i; do
+		if grep -q -o "$i" $fileresult; then
+			echo "$i - FAIL Já tem no BD"
+		else
+			echo "$i - OK não encontrado no BD"
 		fi
-	done
+	done < $filejogos
 }
 
 sh_resultadosena()
 {
 	clear
-	fileresult='resultadosena.txt'
 	[[ ! -e $fileresult ]] && >| $fileresult
 
 	#### REMOVENDO ARQUIVOS TEMPORARIOS

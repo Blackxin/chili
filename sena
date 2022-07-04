@@ -108,8 +108,13 @@ sh_checknet()
 {
    # have internet?
    msg "${green}Testing internet from ${SITE}"
-   curl --insecure $SITE >/dev/null 2>&1 || die "No route to server ($SITE) - ABORTED."
-   return $?
+ 	curl --insecure $SITE >/dev/null 2>&1 ||
+   {
+      retorno=$?
+	   msg "No route to server ($SITE) - Rodando com BD velho mesmo"
+   }
+   retorno=$?
+	return $retorno
 }
 
 sh_compare()
@@ -125,7 +130,7 @@ sh_compare()
 
 sh_resultadosena()
 {
-	sh_checknet
+	sh_checknet; [[ $? = 0 ]] || return 1
 	[[ ! -e $fileresult ]] && >| $fileresult
 
 	#### REMOVENDO ARQUIVOS TEMPORARIOS

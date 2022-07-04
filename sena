@@ -27,7 +27,7 @@
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
 #global
-cpath=$PWD
+cpath=/tmp
 filejogos="$cpath/jogos.txt"
 filejogosformatado="$cpath/jogosformatado.txt"
 fileresult="$cpath/resultadosena.txt"
@@ -36,6 +36,9 @@ sh_playsena()
 {
 	>| $filejogos
 	>| $filejogosformatado
+	[[ ! -e $fileresult ]] && >| $fileresult
+	bytes=$(stat -c %s $fileresult)
+   [[ $bytes -eq 0 ]] && { echo "erro: necessario atualizar o BD. Use sena --update"; exit 1; }
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6

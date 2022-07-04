@@ -36,6 +36,7 @@ red="\e[1;31m";
 green="\e[1;32m";
 red="\e[1;31m";
 SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
+_VERSION='1.0.20220704'
 
 sh_playsena()
 {
@@ -171,6 +172,7 @@ sh_resultadosena()
 sh_usage()
 {
 	cat <<EOF
+sena $_VERSION
 usage:
    sena -h | --help           # este help
    sena 3                     # jogar 3 jogos
@@ -182,7 +184,7 @@ usage:
 EOF
 }
 
-if [[ -z $1 || $1 = @(-h|--help) ]]; then
+if [[ -z $1 || $1 = @(-h|--help|--version|-V) ]]; then
    sh_usage
    exit $(( $# ? 0 : 1 ))
 elif [[ $1 = @(-c|--compare) ]]; then

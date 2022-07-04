@@ -59,7 +59,6 @@ sh_compare()
 
 sh_resultadosena()
 {
-	clear
 	[[ ! -e $fileresult ]] && >| $fileresult
 
 	#### REMOVENDO ARQUIVOS TEMPORARIOS
@@ -115,17 +114,17 @@ usage:
    sena 10 4                  # jogar 10 jogos com 4 dezenas
    sena 5 6                   # jogar 5 jogos com 6 dezenas
    sena -c | --compare        # comparar jogos
-   sena -u | -U | --update    # atualizar BD
+   sena -U | --update         # atualizar BD
 EOF
 }
 
-if [[ -z $1 || $1 = @(-h|--help) || $1 = "-h" || $1 = "--help" || $1 = "help" || $1 = "-help" ]]; then
+if [[ -z $1 || $1 = @(-h|--help) ]]; then
    sh_usage
    exit $(( $# ? 0 : 1 ))
 elif [[ $1 = @(-c|--compare) ]]; then
    sh_compare
    exit $(( $# ? 0 : 1 ))
-elif [[ $1 = @(-U|-u|--update) ]]; then
+elif [[ $1 = @(-U|--update) ]]; then
    sh_resultadosena
    exit $(( $# ? 0 : 1 ))
 elif test $# -ge 1; then

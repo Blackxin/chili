@@ -38,10 +38,8 @@ red="\e[1;31m";
 pink="\033[35;1m";
 orange="\e[1;33m";
 SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
-_VERSION='1.10.20220704'
+_VERSION='1.12.20220704'
 DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat)
-
-source /chili/core.sh
 
 sh_playsena()
 {
@@ -56,7 +54,7 @@ sh_playsena()
  	[[ qtddezenas -lt  6 ]] && { erro "erro: mínimo de dezenas jogadas é: 6"; sh_usage; exit 1;}
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
-	bytes=$(stat -c %s $fileresult); [[ $bytes -eq 0 ]] && { sh_usage; die "erro: necessário atualizar o BD. Use sena --update";} || sh_resultadosena
+	bytes=$(filesize $fileresult); [[ $bytes -eq 0 ]] && { sh_usage; die "erro: necessário atualizar o BD. Use sena --update";} || sh_resultadosena
 	declare -i resto=$(( qtddezenas % 2 ))
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
 	declare -i outrametade=$metadeqtddezenas
@@ -147,8 +145,18 @@ check_deps()
 	fi
 }
 
+filesize()
+{
+	local bytes=$(stat -c %s $1)
+	echo $bytes
+}
+
 sh_compare()
 {
+	[[ ! -e $filejogos ]] && { erro "erro: nenhum jogo realizado ainda para comparação."; sh_usage; exit 1;}
+	nsize=$(filesize $filejogos)
+	[[ $nsize -eq 0    ]] && { erro "erro: nenhum jogo realizado ainda para comparação."; sh_usage; exit 1;}
+
 	while read -r i; do
 		if grep -q -o "$i" $fileresult; then
 			echo "$i - FAIL Já tem no BD"
@@ -220,7 +228,6 @@ comment
 			valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
 	    	varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
 	    	echo $varLinhaInteira |& tee -a $fileresult
-	    	info "$varLinhaInteira"
 		done
 		msg "OK. Banco de Dados atualizado!"
 	fi

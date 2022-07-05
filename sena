@@ -41,6 +41,8 @@ SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
 _VERSION='1.10.20220704'
 DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat)
 
+source /chili/core.sh
+
 sh_playsena()
 {
 	>| $filejogos
@@ -186,7 +188,6 @@ sh_resultadosena()
 		printf "Sorteios registrados no BD : ${orange}$numUltSortGrav${reset}\n"
 		msg "${falta} novo(s) registro(s) encontrado(s)!"
 		msg "Atualizando Banco de Dados. Aguarde..."
-		sleep 2
 		for (( contLinha=$numUltSortGrav+1; contLinha<=$numUltSort; contLinha++ ))
 		do
 :<<'comment'
@@ -219,6 +220,7 @@ comment
 			valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
 	    	varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
 	    	echo $varLinhaInteira |& tee -a $fileresult
+	    	info "$varLinhaInteira"
 		done
 		msg "OK. Banco de Dados atualizado!"
 	fi

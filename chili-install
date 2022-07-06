@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/07/04
+#  Altered: 2022/07/06
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,7 +32,7 @@
 #set -e
 declare -r APP="${0##*/}"
 declare -r _APP_="chili-install"
-declare -r _VERSION_="3.4.20220704"
+declare -r _VERSION_="3.5.20220706"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -729,7 +729,6 @@ function sh_grubBIOS()
 {
     cinfo=`log_info_msg "$cmsg_install_grub_disk: $sd"`
     msg "INFO" "$cinfo"
-    #chroot . /bin/bash -c "grub-install $sd" > /dev/null 2>&1
     chroot $dir_install /bin/bash -c "grub-install --target=i386-pc $sd --recheck" > /dev/null 2>&1
     evaluate_retval
     return $?
@@ -754,11 +753,11 @@ function sh_grubEFI()
 
     cinfo=`log_info_msg "$cmsg_Instalando_GRUB_EFI_na_particao: $dir_install/boot/efi"`
     msg "INFO" "$cinfo"
-    chroot $dir_install /bin/bash -c "grub-install	\
-        --target=x86_64-efi                 			\
-        --efi-directory=/boot/efi           			\
-        --bootloader-id=$cnick              			\
-        --recheck --removable">/dev/null 2>&1
+    chroot $dir_install /bin/bash -c "grub-install		\
+    		--target=x86_64-efi                 			\
+        	--efi-directory=/boot/efi           			\
+        	--bootloader-id=$cnick              			\
+        	--recheck">/dev/null 2>&1
     evaluate_retval
 
     # Caminho de inicialização padrão/reserva
@@ -830,16 +829,10 @@ function grubinstall()
 			if [ $nChoiceEFI = $true ] ; then
          	if [[ $LGRUB == "EFI" ]] ; then
             	sh_grubEFI
-            else
-              	sh_grubBIOS
             fi
-			else
-				sh_grubBIOS
 			fi
-		else
-			sh_grubBIOS
 		fi
-
+		sh_grubBIOS # UEFI, também instalar BIOS
 		sh_grubmkconfig
     	if [ $LAUTOMATICA = $false ]; then
     	    alerta "*** GRUB *** " "$sd" "\n\n$cgrubsuccess"

@@ -51,6 +51,17 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+sh_val()
+{
+   if [[ ${1} =~ ^([0-9]+)$ ]];then
+      echo "N"
+   elif [[ ${1} =~ ^([[:alpha:]]+)$ ]];then
+      echo "C"
+   else
+      echo "U"
+   fi
+}
+
 sh_wgeturl()
 {
 	URL_LIST="urls.txt"

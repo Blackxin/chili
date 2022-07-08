@@ -51,6 +51,13 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+containsElement () {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
+
 sh_val()
 {
    if [[ ${1} =~ ^([0-9]+)$ ]];then
@@ -1229,8 +1236,10 @@ function ascan2()
 	return $false
 }
 
-function ascan()
-{
+#array=("something to search for" "a string" "test2000")
+#ascan "a string" "${array[@]}"
+#echo $? # 0
+function ascan() {
   local e match="$1"
   shift
   for e; do [[ "$e" == "$match" ]] && return $true; done

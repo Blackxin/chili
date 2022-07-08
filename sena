@@ -2,7 +2,7 @@
 #  sena - aplicativo para gerar numeros aleatorios da sena
 #
 #  Created: 2022/02/15
-#  Altered: 2022/07/07
+#  Altered: 2022/07/08
 #
 #  Copyright (c) 2022-2022, Benedito Ramos <diramos@uol.com.br>
 #  Copyright (c) 2022-2022, Vilmar Catafesta <vcatafesta@gmail.com>
@@ -27,26 +27,28 @@
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
 #global
-cpath=$PWD
-filejogos="$cpath/jogos.txt"
-filejogosformatado="$cpath/jogosformatado.txt"
-fileresult="$cpath/resultadosena.txt"
+CPATH=$PWD
+filejogos="$CPATH/jogos.txt"
+filejogosformatado="$CPATH/jogosformatado.txt"
+fileresult="$CPATH/resultadosena.txt"
 fileUltSorteio='/tmp/UltSorteio.txt'
 fileUltSorteioAtualizado='/tmp/UltSorteioAtualizado.txt'
 SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
-_VERSION_='1.20.20220707'
-DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat)
+_VERSION_='1.50.20220708'
+DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat tput)
 true=1
 false=0
+IFS=$' \t\n'
+SAVEIFS=$IFS
 
 sh_playsena()
 {
 	declare -i qtdjogos=$1
-   [[ $# -gt 2 ]] && { erro "erro: parâmetros em excesso. (use -h for help)"; exit 1;}
+   [[ $# -gt 2 ]] && die "erro: parâmetros em excesso. (use -h for help)"
    [[ $# -eq 2 ]] && declare -i qtddezenas=$2 || declare -i qtddezenas=6
- 	[[ qtdjogos   -lt 1  ]] && { erro "erro: mínimo de 1 jogo brother! (use -h for help)"; exit 1;}
- 	[[ qtddezenas -gt 15 ]] && { erro "erro: máximo de dezenas jogadas é: 15. (use -h for help)"; exit 1;}
- 	[[ qtddezenas -lt  6 ]] && { erro "erro: mínimo de dezenas jogadas é: 6. (use -h for help)"; exit 1;}
+ 	[[ qtdjogos   -lt 1  ]] && die "erro: mínimo de 1 jogo brother! (use -h for help)"
+ 	[[ qtddezenas -gt 15 ]] && die "erro: máximo de dezenas jogadas é: 15. (use -h for help)"
+ 	[[ qtddezenas -lt  6 ]] && die "erro: mínimo de dezenas jogadas é: 6. (use -h for help)"
  	[[ qtddezenas -gt 15 ]] && qtddezenas=15
  	[[ qtddezenas -lt  6 ]] && qtddezenas=6
 
@@ -55,14 +57,16 @@ sh_playsena()
 		conf "${red}:: ${reset}Existe um arquivo de jogos, deseja substitui-lo?"
    	LCONF=$?
 	   if !(( $LCONF )); then
+			msg "Detalhes do arquivo de jogos feito"
+			stat $filejogos
 			msg "Exibindo os ultimos jogos feitos"
-			cat $filejogosformatado
+			cat $filejogos
 			exit
 	   fi
    fi
 
 	[[ ! -e $fileresult ]] && >| $fileresult
-	bytes=$(filesize $fileresult); [[ $bytes -eq 0 ]] && { erro "erro: necessário atualizar o BD. (use -h for help)"; exit 1;} || sh_resultadosena
+	bytes=$(filesize $fileresult); [[ $bytes -eq 0 ]] && die "erro: necessário atualizar o BD. (use -h for help)" || sh_resultadosena
 	declare -i resto=$(( qtddezenas % 2 ))
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
 	declare -i outrametade=$metadeqtddezenas
@@ -71,7 +75,6 @@ sh_playsena()
 
    if (( $LCONF )); then
 		>| $filejogos
-		>| $filejogosformatado
 	else
 		njogosregistrados=$(sh_linecount $filejogosformatado)
 	fi
@@ -88,13 +91,13 @@ sh_playsena()
 
   	 	if [[ qtddezenas -eq 6 ]] ; then
 			if grep -q -o "$line" $fileresult; then  # jogo existe no BD? descarta!
-	  			printf "Jogo ${red}#%04d${reset} ${orange}%02d${reset} dezenas geradas: $pink%s${red}-> foi descartado${reset}\n" "$n" $qtddezenas "$line"
+	  			printf "Jogo ${red}#%04d${reset} ${orange}%02d${reset} dezenas geradas: $pink%s${red}-> foi descartado, já existe no BD!${reset}\n" "$n" $qtddezenas "$line"
 				continue
 			fi
 		fi
 
 		if grep -q -o "$line" $filejogos; then  # jogo existe? descarta!
-  			printf "Jogo ${red}#%04d${reset} ${orange}%02d${reset} dezenas geradas: $pink%s${red}-> foi descartado${reset}\n" "$n" $qtddezenas "$line"
+  			printf "Jogo ${red}#%04d${reset} ${orange}%02d${reset} dezenas geradas: $pink%s${red}-> foi descartado, já existe no jogo atual!${reset}\n" "$n" $qtddezenas "$line"
 			continue
 		fi
 
@@ -103,7 +106,7 @@ sh_playsena()
 		printf "Jogo ${red}#%04d${reset} ${orange}%02d${reset} dezenas geradas: $pink%s${green}-> foi aceito${reset}\n" "$n" $qtddezenas "$line"
 		echo $line >> $filejogos
 		[[ $njogosregistrados -lt 10 ]] && var="Jogo "0"$njogosregistrados: " || var="Jogo $njogosregistrados: "
-		echo "$var $line" >> $filejogosformatado
+		echo "$(date +"%d/%m/%Y %T") $var $line" >> $filejogosformatado
 	done
 	filetmp=$(mktemp)
 	sort $filejogos > $filetmp; cp $filetmp $filejogos; rm $filetmp 2> /dev/null
@@ -188,7 +191,6 @@ setvarcolors(){
    fi
 }
 
-
 check_deps()
 {
    local errorFound=0
@@ -199,7 +201,7 @@ check_deps()
    done
    #[[ ${#missing[@]} -ne 0 ]]
    if (( $errorFound )); then
-   	erro "---IMPOSSÍVEL CONTINUAR---"
+   	erro "#### IMPOSSÍVEL CONTINUAR ####"
     	msg "Esse script precisa dos comandos listados acima" >&2
     	msg "Instale-os e/ou verifique se estão no seu \$PATH" >&2
     	exit 1
@@ -216,7 +218,9 @@ conf()
 {
    read -p "$1 [S/n]"
    [[ ${REPLY^} == "" ]] && return $true
-   [[ ${REPLY^} == N ]] && return $false || return $true
+   [[ ${REPLY^} == "S" ]] && return $true
+   [[ ${REPLY^} == N ]] && return $false
+   die "erro: resposta deve ser S ou N"
 }
 
 sh_compare()
@@ -225,6 +229,7 @@ sh_compare()
 	nsize=$(filesize $filejogos)
 	[[ $nsize -eq 0    ]] && { erro "erro: nenhum jogo realizado ainda para comparação. (use -h for help)"; exit 1;}
 
+:<<'comment'
 	while read -r i; do
 		if grep -q -o "$i" $fileresult; then
 			echo "$i - ${red}FALHA ↓ Já existe no BD"${reset}
@@ -232,46 +237,74 @@ sh_compare()
 			echo "$i - ${green}OK ↑ não encontrado no BD"${reset}
 		fi
 	done < $filejogos
+comment
+
+	IFS=$'\n'
+	local re='[0-9]{2}[ ]?'
+	local aResult=($(awk -F'-' '{ print $3 }' $fileresult))
+	#local aJogos=($(awk -F "$re" 'lista[$1]++' $filejogos))
+	local aJogos=($(awk '{print " "$0}' $filejogos))
+	local n=1
+	local value
+
+:<<'comment'
+	info "${aJogos[*]}"
+	echo
+	echo "${aJogos[0]}"
+	echo "${aJogos[1]}"
+comment
+
+	for value in ${aJogos[*]}
+	do
+	   #info "$value"
+	   if [[ ! "${aResult[*]}" =~ "${value}" ]]; then
+	      printf "Jogo (${pink}$n${rs}) $value - ${green}OK ↑ não encontrado no BD${reset}\n"
+	   else
+	      printf "Jogo (${pink}$n${rs}) $value - ${red}FALHA ↓ Já existe no BD${reset}\n"
+	   fi
+	   ((n++))
+	done
+	IFS=$SAVEIFS
 }
 
 sh_atualizaBD()
 {
 	contLinha=$1
-
-#		for (( contLinha=$numUltSorteioGravado+1; contLinha<=$numUltSorteio; contLinha++ ))
-#		do
-			wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado
-			listaDezenas=$(sed -n '/listaDezenas/,/],/p' $fileUltSorteioAtualizado | sed 's/[^0-9]//g' | sed -e "s/\r//g" | awk -F"-" '{print $1}')
-			listaDezenas=$(echo $listaDezenas | cut -c1-18)
-			dataApuracao=$(grep '"dataApuracao":' $fileUltSorteioAtualizado | awk '{print $2}' | sed 's/\"//g' | sed 's/\,//g' | sed -e "s/\r//g" )
-			valorEstimadoProximoConcurso=$(grep '"valorEstimadoProximoConcurso":' $fileUltSorteioAtualizado | awk -F"-" '{print $2}' | sed 's/\,//g')
-			dadosSena=$(sed -n '/"faixa": 1/,/},/p' $fileUltSorteioAtualizado)
-			dadosQuina=$(sed -n '/"faixa": 2/,/},/p' $fileUltSorteioAtualizado)
-			dadosQuadra=$(sed -n '/"faixa": 3/,/},/p' $fileUltSorteioAtualizado)
-			numGanhadoresSena=$(echo $dadosSena | awk -F'"' '{ print $5 }' | sed 's/://g' | sed 's/,//g')
-			valorPremioSena=$(echo $dadosSena | awk -F'"' '{print $7}' | sed 's/://g' | sed 's/,//g')
-			valorPremioSena=$(awk '{printf "%.2f\n" ,$1}' <<< "$valorPremioSena")
-			valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
-	    	varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
-	    	echo $varLinhaInteira |& tee -a $fileresult
-#		done
+	wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado
+	listaDezenas=$(sed -n '/listaDezenas/,/],/p' $fileUltSorteioAtualizado | sed 's/[^0-9]//g' | sed -e "s/\r//g" | awk -F"-" '{print $1}')
+	listaDezenas=$(echo $listaDezenas | cut -c1-18)
+	dataApuracao=$(grep '"dataApuracao":' $fileUltSorteioAtualizado | awk '{print $2}' | sed 's/\"//g' | sed 's/\,//g' | sed -e "s/\r//g" )
+	valorEstimadoProximoConcurso=$(grep '"valorEstimadoProximoConcurso":' $fileUltSorteioAtualizado | awk -F"-" '{print $2}' | sed 's/\,//g')
+	dadosSena=$(sed -n '/"faixa": 1/,/},/p' $fileUltSorteioAtualizado)
+	dadosQuina=$(sed -n '/"faixa": 2/,/},/p' $fileUltSorteioAtualizado)
+	dadosQuadra=$(sed -n '/"faixa": 3/,/},/p' $fileUltSorteioAtualizado)
+	numGanhadoresSena=$(echo $dadosSena | awk -F'"' '{ print $5 }' | sed 's/://g' | sed 's/,//g')
+	valorPremioSena=$(echo $dadosSena | awk -F'"' '{print $7}' | sed 's/://g' | sed 's/,//g')
+	valorPremioSena=$(awk '{printf "%.2f\n" ,$1}' <<< "$valorPremioSena")
+	valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+  	varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
+  	echo $varLinhaInteira |& tee -a $fileresult
 }
 
 sh_checkresultadosfaltantes()
 {
 	local -i numUltSorteioGravado=$1
 	local -i n=0
+	local value
+	local array
 
 	msg "Checando a integridade do BD. Aguarde..."
-	for i in $(seq $numUltSorteioGravado)
+	local array=($(awk '{ print $1 }' $fileresult))
+
+	for value in $(seq $numUltSorteioGravado)
 	do
-		if ! grep -q -o "^$i " $fileresult; then  # jogo não existe no BD?
+   	if [[ ! " ${array[*]} " =~ " ${value} " ]]; then
 			if !(( $n )); then
 				msg "Atualizando Banco de Dados. Aguarde..."
 			fi
 			((n++))
-			sh_atualizaBD "$i"
-		fi
+			sh_atualizaBD "$value"
+	   fi
 	done
 }
 
@@ -286,29 +319,22 @@ sh_resultadosena()
 
 	#### COLETANDO DADOS DO ULTIMO RESULTADO DA MEGASENA PULICADO PELA API DA CAIXA
 	wget $SITE --no-check-certificate -qO- > $fileUltSorteio
-	#declare -i numUltSorteio=$(grep '"numero":' $fileUltSorteio | awk '{print $2}' | sed 's/\,//g' | sed '/^$/d' | sed -e "s/\r//g")
 	declare -i numUltSorteio=$(awk '/["]numero["]:/ {print $2}' $fileUltSorteio | sed 's/\,//g' | sed '/^$/d' | sed -e "s/\r//g")
 
 	#### COLETANDO O NUMERO DO ULTIMO SORTEIO GRAVADO NO BD
-#	declare -i numUltSorteioGravado=$(tail -1 $fileresult | awk -F"-" '{print $1}')
 	declare -i numUltSorteioGravado=$(awk 'END {print NR}' $fileresult)
-	#### COLETANDO DADOS DOS DOS RESULTADOS NAO INCLUÍDOS NO BD
 
-#	if [[ $numUltSorteio -eq $numUltSorteioGravado ]] ; then
-#		printf "Sorteios feitos pela CAIXA : ${green}$numUltSorteio${reset}\n"
-#		printf "Sorteios registrados no BD : ${green}$numUltSorteioGravado${reset}\n"
-#		msg "Nenhum registro novo encontrado. BD está atualizado!"
-#	else
-		declare -i falta=$(( numUltSorteio - numUltSorteioGravado ))
-		printf "Sorteios feitos pela CAIXA : ${red}$numUltSorteio${reset}\n"
-		printf "Sorteios registrados no BD : ${orange}$numUltSorteioGravado${reset}\n"
-		msg "${falta} novo(s) registro(s) encontrado(s)!"
-		sh_checkresultadosfaltantes $numUltSorteio
-		sort -g -u $fileresult > $fileresult.sort
-		cp $fileresult.sort $fileresult
-		rm -f $fileresult.sort
-		msg "OK. Banco de Dados atualizado!"
-#	fi
+	#### COLETANDO DADOS DOS DOS RESULTADOS NAO INCLUÍDOS NO BD
+	declare -i falta=$(( numUltSorteio - numUltSorteioGravado ))
+	printf "Sorteios feitos pela CAIXA : ${red}$numUltSorteio${reset}\n"
+	printf "Sorteios registrados no BD : ${orange}$numUltSorteioGravado${reset}\n"
+	msg "${falta} novo(s) registro(s) encontrado(s)!"
+	sh_checkresultadosfaltantes $numUltSorteio
+	sort -g -u $fileresult > $fileresult.sort
+	cp $fileresult.sort $fileresult
+	rm -f $fileresult.sort
+	msg "OK. Banco de Dados atualizado!"
+
 	#### REMOVENDO ARQUIVOS TEMPORARIOS
 	rm $fileUltSorteio 2> /dev/null
 	rm $fileUltSorteioAtualizado 2> /dev/null
@@ -341,6 +367,12 @@ sh_val()
 	fi
 }
 
+sh_listarjogos()
+{
+	[[ ! -e $filejogosformatado ]] && die "erro: arquivo log de jogos ainda não existe. Faça alguns jogos primeiro. (use -h for help)"
+	more $filejogosformatado
+}
+
 sh_usage()
 {
 	cat <<EOF
@@ -352,6 +384,7 @@ ${orange}uso:${reset}
    sena ${pink}-j 5 15${cyan}             # jogar 05 jogos com 15 (max) dezenas${reset}
    sena ${pink}-h|--help${cyan}           # este help${reset}
    sena ${pink}-c|--compare${cyan}        # comparar jogos${reset}
+   sena ${pink}-l|--log${cyan}            # list log de jogos${reset}
    sena ${pink}-U|--update${cyan}         # atualizar BD${reset}
    sena ${pink}-V|--version${cyan}        # mostra versão atual${reset}
 EOF
@@ -364,14 +397,15 @@ init()
       case "${1}" in
 		   -h|--help) sh_usage; exit $(( $# ? 0 : 1 ));;
    		-c|--compare) sh_compare; exit $(( $# ? 0 : 1 ));;
+   		-l|--log) sh_listarjogos; exit $(( $# ? 0 : 1 ));;
    		-U|--update) sh_resultadosena; exit $(( $# ? 0 : 1 ));;
    		-V|--version) sh_logo; exit $(( $# ? 0 : 1 ));;
    		-j|--jogo)
 				shift;
-   			[[ $# -lt 1 ]] && { erro "erro: requer argumento/parâmetro. (use -h for help)"; exit 1;}
-				ctype1=$(sh_val $1);	[[ $ctype1 != "N" ]] && { erro "erro: primeiro parâmetro deve ser numérico. (use -h for help)"; exit 1;}
+   			[[ $# -lt 1 ]] && die "erro: requer argumento/parâmetro. (use -h for help)";
+				ctype1=$(sh_val $1);	[[ $ctype1 != "N" ]] && die "erro: primeiro parâmetro deve ser numérico. (use -h for help)";
    			if test $# -eq 2; then
-   				ctype2=$(sh_val $2);	[[ $ctype2 != "N" ]] && { erro "erro: segundo parâmetro deve ser numérico. (use -h for help)"; exit 1;}
+   				ctype2=$(sh_val $2);	[[ $ctype2 != "N" ]] && die "erro: segundo parâmetro deve ser numérico. (use -h for help)";
 	  			fi
  				sh_playsena "$@"
  				exit $(( $# ? 0 : 1 ))
@@ -382,8 +416,7 @@ init()
    done
 }
 
-check_deps
 setvarcolors
+check_deps
 [[ -z $1 ]] && { sh_usage; exit $(( $# ? 0 : 1 ));}
 init $@
-

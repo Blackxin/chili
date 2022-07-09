@@ -206,21 +206,16 @@ choosedisk()
     			;;
     	esac
 
-    	if [ $sd != "" ]; then
-			{	local item
+	   if [ $sd != "" ]; then
+         {  local item
             index=0
             for item in ${ARRAY_DSK_DEVICES[*]}
             do
-            	[ $item = $sd ] && { break; }
+               [ $item = $sd ] && { break; }
                ((index++))
             done
-			}
-			DEVICE_ORIGEM="${ARRAY_DSK_DISKS[index]}"
-			MODEL_ORIGEM="$sd [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
-			TRAN_ORIGEM="${ARRAY_DSK_TRAN[index]}"
-			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
-			choosediskdestin
-    	fi
+         }
+      fi
     	break
     done
 }

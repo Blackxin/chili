@@ -6,7 +6,6 @@ for((Cor=0; Cor <= 7; Cor++))
 	{
 		tput $Modo
 		tput setaf $Cor
-		echo $Cor=Normal
-		echo $Cor=Bold
+		echo $Cor=Normal, Bold
 	}
 }

@@ -94,6 +94,7 @@ sh_playsena()
 	[[ ! -e "$fileresult" ]] && :>| "$fileresult"
 	[[ $(sh_filesize "$fileresult") -eq 0 ]] && die "ERRO: necessário atualizar o BD. (use -h for help)"
 	sh_update
+
 	declare -i resto=$(( qtddezenas % 2 ))
 	declare -i metadeqtddezenas=$(( qtddezenas / 2 ))
 	declare -i outrametade="$metadeqtddezenas"
@@ -283,8 +284,8 @@ sh_compare()
 {
    local -i qtddezenas
 
-	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado para comparação. (use -h for help)"
-	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado para comparação. (use -h for help)"
+	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado para comparar. (use -h for help)"
+	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado para comparar. (use -h for help)"
 
 	IFS=$'\n'
 	#local re='[0-9]{2}[ ]?'
@@ -322,8 +323,8 @@ vilmar
 sh_compareREAD()
 {
 	local i
-	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado ainda para comparação. (use -h for help)"
-	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado ainda para comparação. (use -h for help)"
+	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado ainda para comparar. (use -h for help)"
+	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado ainda para comparar. (use -h for help)"
 
 	while read -r i; do
 		if grep -q -o "$i" "$fileresult"; then
@@ -340,8 +341,8 @@ sh_compareGREP()
 	local reR='([0-9]{2}[[:space:]]+)((?1))+'
 	local reJ='([0-9]{2}[[:space:]]?)((?1))+'
 
-	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado ainda para comparação. (use -h for help)"
-	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado ainda para comparação. (use -h for help)"
+	[[ ! -e "$filejogos"                 ]] && die "ERRO: nenhum jogo realizado ainda para comparar. (use -h for help)"
+	[[ $(sh_filesize "$filejogos") -eq 0 ]] && die "ERRO: nenhum jogo realizado ainda para comparar. (use -h for help)"
 
 	msg "Fazendo chegagem das jogadas. Aguarde..."
 	if ! value=$(grep -s -o -f "$filejogos" "$fileresult"); then
@@ -352,6 +353,25 @@ sh_compareGREP()
 }
 
 sh_atualizaBD()
+{
+	contLinha=$1
+   wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado
+	listaDezenas=$(sed -n '/listaDezenas/,/],/p' $fileUltSorteioAtualizado | sed 's/[^0-9]//g' | sed -e "s/\r//g" | awk -F"-" '{print $1}')
+   listaDezenas=$(echo $listaDezenas | cut -c1-18)
+   dataApuracao=$(grep '"dataApuracao":' $fileUltSorteioAtualizado | awk '{print $2}' | sed 's/\"//g' | sed 's/\,//g' | sed -e "s/\r//g" )
+   valorEstimadoProximoConcurso=$(grep '"valorEstimadoProximoConcurso":' $fileUltSorteioAtualizado | awk -F"-" '{print $2}' | sed 's/\,//g')
+   dadosSena=$(sed -n '/"faixa": 1/,/},/p' $fileUltSorteioAtualizado)
+   dadosQuina=$(sed -n '/"faixa": 2/,/},/p' $fileUltSorteioAtualizado)
+   dadosQuadra=$(sed -n '/"faixa": 3/,/},/p' $fileUltSorteioAtualizado)
+   numGanhadoresSena=$(echo $dadosSena | awk -F'"' '{ print $5 }' | sed 's/://g' | sed 's/,//g')
+   valorPremioSena=$(echo $dadosSena | awk -F'"' '{print $7}' | sed 's/://g' | sed 's/,//g')
+   valorPremioSena=$(awk '{printf "%.2f\n" ,$1}' <<< "$valorPremioSena")
+   valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+   varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
+   echo $varLinhaInteira |& tee -a $fileresult
+}
+
+sh_atualizaBDOLD()
 {
 	contLinha=$1
    wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado
@@ -567,3 +587,4 @@ check_deps
 sh_ascii-lines
 [[ -z $1 ]] && { sh_usage; exit $(( $# ? 0 : 1 ));}
 init "$@"
+# '["]listaDezenas["]:\s*[[]\s+["]\K([0-9]{2})(["],?\s+["])((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))'

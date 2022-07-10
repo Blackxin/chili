@@ -43,6 +43,7 @@ SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 
 sh_configure()
 {
+	sh_ascii-lines
 	: ${DIALOG=${DIALOG:-"dialog"}}
 	: ${DOWNLOADER="curl -L -O -C - "}
 	sep='\xe2\x94\x82'

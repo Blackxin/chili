@@ -51,6 +51,39 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+sh_filedatetimestat(){ stat -c %w "$1"; }
+sh_filedatetime(){ date -r "$1" +"%d/%m/%Y %T";}
+sh_filedate(){ date -r "$1" +"%d/%m/%Y";}
+sh_filetime(){ date -r "$1" +"%T"; }
+sh_datetime(){ date +"%d/%m/%Y %T"; }
+sh_time(){ date +"%T"; }
+sh_date(){ date +"%d/%m/%Y"; }
+sh_filesize(){ stat -c %s "$1"; }
+sh_linecount(){ awk 'END {print NR}' "$1"; }
+alltrim(){ echo "${1// /}"; } # remover todos espacos da string
+len(){ echo "${#1}"; }
+
+sh_ascii-lines()
+{
+   if [[ "$LANG" =~ 'UTF-8' ]]
+   then
+      export NCURSES_NO_UTF8_ACS=0
+   else
+      export NCURSES_NO_UTF8_ACS=1
+   fi
+}
+
+sh_val()
+{
+   if [[ ${1} =~ ^([0-9]+)$ ]];then
+      echo "N"
+   elif [[ ${1} =~ ^([[:alpha:]]+)$ ]];then
+      echo "C"
+   else
+      echo "U"
+   fi
+}
+
 containsElement () {
   local e match="$1"
   shift

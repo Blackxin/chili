@@ -42,6 +42,7 @@ source "${LIBRARY}"/core.sh
 
 sh_configure()
 {
+	sh_ascii-lines
 	# vars bool
 	DIAHORA=$(sh_diahora)
 	true=0

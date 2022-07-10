@@ -367,6 +367,11 @@ CURS_ZERO="\\033[0G"
 
 # SUBROUTINES
 
+alltrim()
+{
+	echo "${1// /}"                  # removendo todos os espacos da string
+}
+
 #Autor Julio C. Neves
 function string_rfill()
 {

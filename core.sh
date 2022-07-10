@@ -51,6 +51,31 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+#comparar dois arquivos e ver as diferencas
+# awk 'NR == FNR {file1[$1]++; next} !($0 in file1)' file1 file2
+#file1
+#m1
+#m2
+#m3
+
+#file2
+#m2
+#m4
+#m5
+
+#awk 'NR == FNR {file1[$0]++; next} !($0 in file1)' file1 file2
+#m4
+#m5
+
+#awk 'NR == FNR {file1[$0]++; next} ($0 in file1)' file1 file2
+#m2
+
+#hat's awk command to get 'm1 and m3' ??  as in file1 and not in file2? 
+#m1
+#m3
+
+
+
 sh_filedatetimestat(){ stat -c %w "$1"; }
 sh_filedatetime(){ date -r "$1" +"%d/%m/%Y %T";}
 sh_filedate(){ date -r "$1" +"%d/%m/%Y";}

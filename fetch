@@ -3023,3 +3023,8 @@ fi
 
 #converter .desc para pacotes instalado
 #for i in *.desc; do echo $i; var=(${i/%-any.chi.zst.desc/.desc}); cp $i $var;done
+# '["]listaDezenas["]:\s*[[]\s+["]\K([0-9]{2})(["],?\s+["])((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))'
+# wget https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/ --no-check-certificate -qO - | jq -r '.numero'
+# jq -r '.listaDezenas[1]' temp
+# grep -Po '"descricaoFaixa":.*?[^\\]",' temp
+# cat temp | python -c "import json,sys;obj=json.load(sys.stdin);print(obj['listaDezenas']);"

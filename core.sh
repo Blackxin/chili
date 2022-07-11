@@ -74,8 +74,6 @@ trancarstderr=2>&-
 #m1
 #m3
 
-
-
 sh_filedatetimestat(){ stat -c %w "$1"; }
 sh_filedatetime(){ date -r "$1" +"%d/%m/%Y %T";}
 sh_filedate(){ date -r "$1" +"%d/%m/%Y";}

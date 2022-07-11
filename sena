@@ -29,8 +29,8 @@
 #global
 
 #system
-_VERSION_='2.3.20220710'
-DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat tput stat dialog find)
+_VERSION_='2.22.20220710'
+DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat tput stat dialog find jq)
 
 #paths/files/urls
 #CPATH=/opt/sena
@@ -41,6 +41,7 @@ fileresult="$CPATH/resultadosena.txt"
 fileUltSorteio='/tmp/UltSorteio.txt'
 fileUltSorteioAtualizado='/tmp/UltSorteioAtualizado.txt'
 SITE='https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/'
+URL_GITHUB_RESULTADOSENA='https://github.com/vcatafesta/sena/raw/main/resultadosena.txt'
 
 #conf adicionais
 IFS=$' \t\n'
@@ -52,6 +53,7 @@ true=1
 false=0
 
 # flag dialog exit status codes
+: "${DIALOG=dialog}"
 : "${D_OK=0}"
 : "${D_CANCEL=1}"
 : "${D_HELP=2}"
@@ -80,7 +82,7 @@ sh_playsena()
 	if [[ -e $filejogos ]]; then
 		cfiledatahora=$(sh_filedatetime "$filejogos")
 		njogos=$(sh_linecount "$filejogos")
-		sh_conf "${red}:: ${reset}Existe arquivo de jogos gerado em: ${yellow}$cfiledatahora${reset} com ${bold}${red}($njogos)${reset} palpites. Deseja substitui-lo?"
+		sh_conf "$(DOT)Existe arquivo de jogos gerado em: ${yellow}$cfiledatahora${reset} com ${bold}${red}($njogos)${reset} palpites. Deseja substitui-lo?"
    	LCONF=$?
 	   if ! (( LCONF )); then
 			msg "1 - Detalhes do arquivo de palpites"
@@ -92,7 +94,7 @@ sh_playsena()
    fi
 
 	[[ ! -e "$fileresult" ]] && :>| "$fileresult"
-	[[ $(sh_filesize "$fileresult") -eq 0 ]] && die "ERRO: necessário atualizar o BD. (use -h for help)"
+	[[ $(sh_filesize "$fileresult") -eq 0 ]] && erro "ERRO: necessário atualizar o BD. Prosseguindo..."
 	sh_update
 
 	declare -i resto=$(( qtddezenas % 2 ))
@@ -159,6 +161,11 @@ sh_linecount(){ awk 'END {print NR}' "$1"; }
 alltrim(){ echo "${1// /}"; } # remover todos espacos da string
 len(){ echo "${#1}"; }
 
+DOT()
+{
+	printf '%s' "${blue}:: ${reset}"
+}
+
 sh_ascii-lines()
 {
 	if [[ "$LANG" =~ 'UTF-8' ]]
@@ -190,21 +197,21 @@ replicate()
 die()
 {
 	local msg=$1; shift
-	printf '%s\n' "${bold}${red}$msg${reset}" >&2
+	printf '%s\n' "$(DOT)${bold}${red}$msg${reset}" >&2
 	exit 1
 }
 
 msg()
 {
 	local msg=$1; shift
-	printf '%s\n' "${green}$msg${reset}" >&2
+	printf '%s\n' "$(DOT)${green}$msg${reset}" >&2
 	return
 }
 
 erro()
 {
    local msg=$1; shift
-   printf '%s\n' "${bold}${yellow}$msg${reset}" >&2
+   printf '%s\n' "$(DOT)${bold}${yellow}$msg${reset}" >&2
    return
 }
 
@@ -352,54 +359,57 @@ sh_compareGREP()
 	fi
 }
 
-sh_atualizaBDjq()
-{
-	contLinha=$1
-   #wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado 						# mais lento
-   curl --compressed --insecure -s --url "$SITE$contLinha" --output $fileUltSorteioAtualizado		# mais rápido
-	listaDezenas=$(jq -r '.listaDezenas[range(0;6)]' $fileUltSorteioAtualizado)
-   dataApuracao=$(jq -r '.dataApuracao' $fileUltSorteioAtualizado)
-   valorEstimadoProximoConcurso=$(jq -r '.valorEstimadoProximoConcurso' $fileUltSorteioAtualizado)
-   numGanhadoresSena=$(jq -r '.listaRateioPremio[0].numeroDeGanhadores' $fileUltSorteioAtualizado)
-   valorPremioSena=$(jq -r '.listaRateioPremio[0].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
-   numGanhadoresQuina=$(jq -r '.listaRateioPremio[1].numeroDeGanhadores' $fileUltSorteioAtualizado)
-   valorPremioQuina=$(jq -r '.listaRateioPremio[1].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
-   numGanhadoresQuadra=$(jq -r '.listaRateioPremio[2].numeroDeGanhadores' $fileUltSorteioAtualizado)
-   valorPremioQuadra=$(jq -r '.listaRateioPremio[2].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
-   varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSena - $numGanhadoresSena - $valorPremioQuina - $numGanhadoresQuina - $valorPremioQuadra - $numGanhadoresQuadra)
-   tee -a $fileresult <<< "$varLinhaInteira"
-}
-
 sh_atualizaBD()
 {
 	contLinha=$1
    #wget $SITE$contLinha --no-check-certificate -qO- > $fileUltSorteioAtualizado 						# mais lento
    curl --compressed --insecure -s --url "$SITE$contLinha" --output $fileUltSorteioAtualizado		# mais rápido
-	listaDezenas=$(sed -n '/listaDezenas/,/],/p' $fileUltSorteioAtualizado | sed 's/[^0-9]//g' | sed -e "s/\r//g" | awk -F"-" '{print $1}')
-   listaDezenas=$(echo $listaDezenas | cut -c1-18)
-   dataApuracao=$(grep '"dataApuracao":' $fileUltSorteioAtualizado | awk '{print $2}' | sed 's/\"//g' | sed 's/\,//g' | sed -e "s/\r//g" )
-   valorEstimadoProximoConcurso=$(grep '"valorEstimadoProximoConcurso":' $fileUltSorteioAtualizado | awk -F"-" '{print $2}' | sed 's/\,//g')
-   dadosSena=$(sed -n '/"faixa": 1/,/},/p' $fileUltSorteioAtualizado)
-   dadosQuina=$(sed -n '/"faixa": 2/,/},/p' $fileUltSorteioAtualizado)
-   dadosQuadra=$(sed -n '/"faixa": 3/,/},/p' $fileUltSorteioAtualizado)
-   numGanhadoresSena=$(echo $dadosSena | awk -F'"' '{ print $5 }' | sed 's/://g' | sed 's/,//g')
-   valorPremioSena=$(echo $dadosSena | awk -F'"' '{print $7}' | sed 's/://g' | sed 's/,//g')
-   valorPremioSena=$(awk '{printf "%.2f\n" ,$1}' <<< "$valorPremioSena")
-   valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
-   varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
-   echo $varLinhaInteira |& tee -a $fileresult
+
+	if [[ -z $(command -v jq) ]]; then
+		listaDezenas=$(sed -n '/listaDezenas/,/],/p' $fileUltSorteioAtualizado | sed 's/[^0-9]//g' | sed -e "s/\r//g" | awk -F"-" '{print $1}')
+	   listaDezenas=$(echo $listaDezenas | cut -c1-18)
+	   dataApuracao=$(grep '"dataApuracao":' $fileUltSorteioAtualizado | awk '{print $2}' | sed 's/\"//g' | sed 's/\,//g' | sed -e "s/\r//g" )
+	   valorEstimadoProximoConcurso=$(grep '"valorEstimadoProximoConcurso":' $fileUltSorteioAtualizado | awk -F"-" '{print $2}' | sed 's/\,//g')
+	   dadosSena=$(sed -n '/"faixa": 1/,/},/p' $fileUltSorteioAtualizado)
+	   dadosQuina=$(sed -n '/"faixa": 2/,/},/p' $fileUltSorteioAtualizado)
+	   dadosQuadra=$(sed -n '/"faixa": 3/,/},/p' $fileUltSorteioAtualizado)
+	   numGanhadoresSena=$(echo $dadosSena | awk -F'"' '{ print $5 }' | sed 's/://g' | sed 's/,//g')
+	   valorPremioSena=$(echo $dadosSena | awk -F'"' '{print $7}' | sed 's/://g' | sed 's/,//g')
+	   valorPremioSena=$(awk '{printf "%.2f\n" ,$1}' <<< "$valorPremioSena")
+	   valorPremioSenaFormat=$(echo $valorPremioSena  | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+	   varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSenaFormat - $numGanhadoresSena)
+	   echo $varLinhaInteira |& tee -a $fileresult
+	else # usando jq
+		listaDezenas=$(jq -r '.listaDezenas[range(0;6)]' $fileUltSorteioAtualizado)
+	   dataApuracao=$(jq -r '.dataApuracao' $fileUltSorteioAtualizado)
+	   valorEstimadoProximoConcurso=$(jq -r '.valorEstimadoProximoConcurso' $fileUltSorteioAtualizado)
+	   numGanhadoresSena=$(jq -r '.listaRateioPremio[0].numeroDeGanhadores' $fileUltSorteioAtualizado)
+	   valorPremioSena=$(jq -r '.listaRateioPremio[0].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+	   numGanhadoresQuina=$(jq -r '.listaRateioPremio[1].numeroDeGanhadores' $fileUltSorteioAtualizado)
+	   valorPremioQuina=$(jq -r '.listaRateioPremio[1].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+	   numGanhadoresQuadra=$(jq -r '.listaRateioPremio[2].numeroDeGanhadores' $fileUltSorteioAtualizado)
+	   valorPremioQuadra=$(jq -r '.listaRateioPremio[2].valorPremio' $fileUltSorteioAtualizado|awk '{printf "%.2f\n" ,$1}'|sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta' | tr ',.' '.,')
+	   varLinhaInteira=$(echo $contLinha - $dataApuracao - $listaDezenas - $valorPremioSena - $numGanhadoresSena - $valorPremioQuina - $numGanhadoresQuina - $valorPremioQuadra - $numGanhadoresQuadra)
+	   tee -a $fileresult <<< "$varLinhaInteira"
+	fi
 }
 
 sh_checkresultadosfaltantes()
 {
 	local -i numUltSorteioGravado=$1
+	local -i numUltSorteio=$2
 	local -i n=0
 	local value
 	local array
 	local filetmp=$(mktemp)
 
 	msg "Checando a integridade do BD. Aguarde..."
-	seq "$numUltSorteioGravado" > $filetmp
+	if [[ $numUltSorteioGravado -eq 0 ]]; then
+		msg "Baixando arquivo ${URL_GITHUB_RESULTADOSENA}"
+		wget -c --no-check-certificate "${URL_GITHUB_RESULTADOSENA}" -qO - > $fileresult
+		#curl --compressed --insecure -s --url "${URL_GITHUB_RESULTADOSENA}" --output $fileresult
+	fi
+	seq "$numUltSorteio" > $filetmp
 	local array=$(awk 'NR == FNR {file1[$1]++; next} !($0 in file1)' $fileresult $filetmp)
 	rm -f $filetmp 2> /dev/null
 
@@ -410,11 +420,7 @@ sh_checkresultadosfaltantes()
 			msg "Atualizando Banco de Dados. Aguarde..."
 		fi
 		((n++))
-		if [[ -z $(command -v jq) ]]; then
-			sh_atualizaBD "$value"
-		else
-			sh_atualizaBDjq "$value"
-		fi
+		sh_atualizaBD "$value"
 	done
 }
 
@@ -431,18 +437,24 @@ sh_update()
 	[[ ! -e "$fileresult" ]] && :>| "$fileresult"
 
 	#### COLETANDO DADOS DO ULTIMO RESULTADO DA MEGASENA PULICADO PELA API DA CAIXA
-	wget "$SITE" --no-check-certificate -qO- > "$fileUltSorteio"
-	numUltSorteio=$(awk '/["]numero["]:/ {print $2}' "$fileUltSorteio" | sed 's/\,//g' | sed '/^$/d' | sed -e "s/\r//g")
+#	wget "$SITE" --no-check-certificate -qO- > "$fileUltSorteio"					# mais lento
+   curl --compressed --insecure -s --url "$SITE" --output "$fileUltSorteio"	# mais rápido
 
-	#### COLETANDO O NUMERO DO ULTIMO SORTEIO GRAVADO NO BD
-	numUltSorteioGravado=$(awk 'END {print NR}' "$fileresult")
+	#### COLETANDO O NUMERO DO ULTIMO SORTEIO NA CAIXA e GRAVADO NO BD
+	if [[ -z $(command -v jq) ]]; then
+		numUltSorteio=$(awk '/["]numero["]:/ {print $2}' "$fileUltSorteio" | sed 's/\,//g' | sed '/^$/d' | sed -e "s/\r//g")
+		numUltSorteioGravado=$(awk 'END {print NR}' "$fileresult")
+	else
+		numUltSorteio=$(jq -r '.numero' $fileUltSorteio)
+		numUltSorteioGravado=$(awk 'END {print NR}' "$fileresult")
+	fi
 
 	#### COLETANDO DADOS DOS DOS RESULTADOS NAO INCLUÍDOS NO BD
 	declare -i falta=$(( numUltSorteio - numUltSorteioGravado ))
-	printf "Sorteios feitos pela CAIXA : %s\n" "${red}$numUltSorteio${reset}"
-	printf "Sorteios registrados no BD : %s\n" "${orange}$numUltSorteioGravado${reset}"
+	printf "$(DOT)Sorteios feitos pela CAIXA : %s\n" "${red}$numUltSorteio${reset}"
+	printf "$(DOT)Sorteios registrados no BD : %s\n" "${orange}$numUltSorteioGravado${reset}"
 	msg "${falta} novo(s) registro(s) encontrado(s)!"
-	sh_checkresultadosfaltantes "$numUltSorteio"
+	sh_checkresultadosfaltantes "$numUltSorteioGravado" "$numUltSorteio"
 	sort -g -u "$fileresult" > "$fileresult.sort"
 	cp "$fileresult.sort" "$fileresult"
 	rm -f "$fileresult.sort" 2> /dev/null
@@ -498,7 +510,7 @@ choosefile()
       done
 
 #              --ascii-lines													               \
-      sd=$(dialog                                                                \
+      sd=$(${DIALOG}                                                             \
                --clear															               \
                --title        "Arquivos de Log"							               \
                --backtitle 	"${0##*/} v${_VERSION_}"									\
@@ -522,14 +534,21 @@ choosefile()
             exit
             ;;
          3)
-				sh_conf "${red}:: ${reset}Deseja excluir o arquivo $sd ?"
-   			LCONF=$?
-	   		if (( LCONF )); then
-            	rm -f "$CPATH/$sd" 2> /dev/null
-            	continue
-            fi
-            ;;
-      esac
+				${DIALOG} --yesno "Deseja excluir o arquivo $sd ?" 5 55
+		      exit_status=$?
+      		case $exit_status in
+					"$D_OK")
+				      if test -e "$sd"; then
+			           	rm -f "$CPATH/$sd" 2> /dev/null
+		            	continue
+      				fi
+      				;;
+         		"$D_ESC"|"$D_CANCEL")
+         			continue
+            		;;
+      		esac
+      		;;
+		esac
 	done
 }
 
@@ -554,7 +573,7 @@ EOF
 
 display_result()
 {
-	dialog      --title  "$1" 									\
+	${DIALOG}   --title  "$1" 									\
             	--no-collapse              				\
                --no-cr-wrap               				\
                --backtitle "${0##*/} v${_VERSION_}"	\

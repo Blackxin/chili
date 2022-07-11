@@ -40,6 +40,16 @@ LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 source "${LIBRARY}"/core.sh
 
+sh_ascii-lines()
+{
+   if [[ "$LANG" =~ 'UTF-8' ]]
+   then
+      export NCURSES_NO_UTF8_ACS=0
+   else
+      export NCURSES_NO_UTF8_ACS=1
+   fi
+}
+
 sh_configure()
 {
 	sh_ascii-lines

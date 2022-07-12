@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/05/23
+#  Altered: 2022/07/12
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -30,9 +30,9 @@
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, ETC
 #########################################################################
 #set -e
-declare -r APP="${0##*/}"
+#declare -r APP="${0##*/}"
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="3.0.20220523"
+declare -r _VERSION_="3.40.20220712"
 readonly DEPENDENCIES=(which echo printf lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -54,32 +54,31 @@ sh_configure()
 {
 	sh_ascii-lines
 	# vars bool
-	DIAHORA=$(sh_diahora)
 	true=0
-	false=1
+	#false=1
 
 	# flag languages
-	: ${PT_BR=0}
-	: ${EN_US=1}
-	: ${DE_DE=2}
-	: ${FR_FR=3}
-	: ${LC_DEFAULT=${EN_US}}
+	: "${PT_BR=0}"
+	: "${EN_US=1}"
+	: "${DE_DE=2}"
+	: "${FR_FR=3}"
+	: "${LC_DEFAULT=${EN_US}}"
 
 	# flag dialog exit status codes
-	: ${D_OK=0}
-	: ${D_CANCEL=1}
-	: ${D_HELP=2}
-	: ${D_EXTRA=3}
-	: ${D_ITEM_HELP=4}
-	: ${D_ESC=255}
+	: "${D_OK=0}"
+	: "${D_CANCEL=1}"
+	: "${D_HELP=2}"
+	: "${D_EXTRA=3}"
+	: "${D_ITEM_HELP=4}"
+	: "${D_ESC=255}"
 
 	# common vars
-	: ${DIALOG=${DIALOG:-"dialog"}}
-	: ${grafico=$true}
-	: ${xapp="Chili CloneDisk"}
-	: ${ccabec="${xapp} $_VERSION_"}
-	: ${ctitle="$cdistro Linux"}
-	: ${welcome="Welcome to the $xapp"}
+	: "${DIALOG=${DIALOG:-"dialog"}}"
+	: "${grafico=$true}"
+	: "${xapp="Chili CloneDisk"}"
+	: "${ccabec="${xapp} $_VERSION_"}"
+	: "${ctitle="$cdistro Linux"}"
+	: "${welcome="Welcome to the $xapp"}"
 	sep='\xe2\x94\x82'
 }
 
@@ -165,12 +164,12 @@ sh_checkdisk()
 {
 	local nchoice=0
 	dsk=$(df -h | grep "$sddest" | awk '{print $1, $2, $3, $4, $5, $6, $7}')
-	if [ "$dsk" <> " " ]; then
+	if [ -n "$dsk" ]; then
 		conf "${cwarning[$LC_DEFAULT]}" "\n${cmsg_all_mounted_part[$LC_DEFAULT]}\n\n$dsk\n\n${cmsg_dismount[$LC_DEFAULT]}"
 		nchoice=$?
 		if [ $nchoice = 0 ]; then
 			for i in $(seq 1 10); do
-				umount -f $sddest$i 2> /dev/null
+				umount -f "$sddest$i" 2> /dev/null
 			done
 		fi
 	fi
@@ -186,6 +185,7 @@ choosedisk()
 		local i
 		local n=0
 		local nc=0
+		local result
 
 		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
@@ -207,22 +207,22 @@ choosedisk()
 
     	exit_status=$?
     	case $exit_status in
-			$D_ESC|$D_CANCEL)
+			"$D_ESC"|"$D_CANCEL")
     			init
     			;;
     		3)
-         	local result=$( fdisk -l $sd );
+         	result=$( fdisk -l "$sd" );
     			display_result "$result" "${csmg_particionamento_automatico[$LC_DEFAULT]}" "${cmsg_part_disk[$LC_DEFAULT]}"
     			continue
     			;;
     	esac
 
-	   if [ $sd != "" ]; then
+	   if [ -n "$sd" ]; then
          {  local item
             index=0
-            for item in ${ARRAY_DSK_DEVICES[*]}
+            for item in "${ARRAY_DSK_DEVICES[@]}"
             do
-               [ $item = $sd ] && { break; }
+               [ "$item" = "$sd" ] && { break; }
                ((index++))
             done
          }
@@ -240,8 +240,9 @@ choosediskdestin()
 		local i
 		local n=0
 		local nc=0
+     	local result
 
-		for i in ${ARRAY_DSK_DEVICES[@]}
+		for i in "${ARRAY_DSK_DEVICES[@]}"
 		do
 			if [[ "${i}" = "${sd}" ]]; then
 				((n++))
@@ -265,34 +266,33 @@ choosediskdestin()
 
     	exit_status=$?
     	case $exit_status in
-			$D_ESC)
+			"$D_ESC")
     			init
     			;;
-    		$D_CANCEL)
+    		"$D_CANCEL")
     			choosedisk
     			;;
     		3)
-         	local result=$( fdisk -l $sd );
+         	result=$( fdisk -l "$sd" );
 	  			display_result "$result" "${csmg_particionamento_automatico[$LC_DEFAULT]}" "${cmsg_part_disk[$LC_DEFAULT]}"
     			continue
     			;;
     	esac
 
-    	if [ $sddest != "" ]; then
+    	if [ -n "$sddest" ]; then
 			{	local item
             index=0
-            for item in ${ARRAY_DSK_DEVICES[*]}
+            for item in "${ARRAY_DSK_DEVICES[@]}"
             do
-            	[ $item = $sddest ] && { break; }
+            	[ "$item" = "$sddest" ] && { break; }
                ((index++))
             done
 			}
 
 			DEVICE_DESTINO="${ARRAY_DSK_DISKS[index]}"
 			MODEL_DESTINO="$sddest [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
-			TRAN_DESTINO="${ARRAY_DSK_TRAN[index]}"
 
-	    	if [ $sd == $sddest ]; then
+	    	if [ "$sd" == "$sddest" ]; then
 				alerta " *** WARWING *** " "\n   \Z1${cmsg_disco_identico[$LC_DEFAULT]} \n\n      \Z4SOURCE DISK : \Z1\Zr$MODEL_ORIGEM\ZR\n \Z4DISK DESTINATION : \Z1\Zr$MODEL_DESTINO\ZR"
 				init
 				return
@@ -312,15 +312,13 @@ choosediskdestin()
 sh_domakeclone()
 {
 	mensagem "${cmsg_formatando_particao[$LC_DEFAULT]}: $sd TO $sddest"
-	(pv -n $sd | 												\
-	dd of=$sddest conv=notrunc,noerror,sync) 2>&1 |	\
-	${DIALOG} --gauge 										\
+	(pv -n "$sd" | 												\
+	dd of="$sddest" conv=notrunc,noerror,sync) 2>&1 |	\
+	${DIALOG} --gauge 											\
 	"Running cloning dd command (dd if=$sd of=$sddest conv=notrunc,noerror,sync), please wait...\n\n     SOURCE DISK : $MODEL_ORIGEM \n DISK DESTINATION: $MODEL_DESTINO" 10 84 0
-	local nchoice=$?
+	local -i nchoice=$?
 
-	if [[ $nchoice = $true ]]; then
-		display_result "$(fdisk -l $sddest)"
-   fi
+	[[ $nchoice -eq 0 ]] && display_result "$(fdisk -l "$sddest")"
 	return $nchoice
 }
 
@@ -420,7 +418,7 @@ sh_language()
   								 "Wählen Sie die SOURCE-Festplatte" \
   								 "Choisissez le disque SOURCE")'
 	)
-	for xmsg in "${langmsg[@]}"; do eval $xmsg; done
+	for xmsg in "${langmsg[@]}"; do eval "$xmsg"; done
 	#echo "lang       ${#lang[@]} ${lang[@]} ${lang[$PT_BR]} ${lang[$EN_US]}"
 	#echo "cmsg_Error ${#cmsg_Error[@]} ${cmsg_Error[@]} ${cmsg_Error[$PT_BR]} ${cmsg_Error[$EN_US]}"
 }
@@ -443,7 +441,7 @@ init()
 
 			exit_status=$?
 			case $exit_status in
-				$D_ESC|$D_CANCEL)
+				"$D_ESC"|"$D_CANCEL")
                clear
 					scrend 0
 					;;
@@ -460,7 +458,7 @@ init()
 #figlet
 sh_logo()
 {
-	printf "$green"
+	printf '%s' "$green"
    cat << 'EOF'
       _                      _ _     _
   ___| | ___  _ __   ___  __| (_)___| | __   Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
@@ -478,17 +476,17 @@ testelang()
 				'lang=("pt BR" "en_US")'
 				'cmsg_Error=("ERRO" "ERROR")'
 	)
-	for elt in "${langmsg[@]}"; do eval $elt; done
-	echo "lang       -> ${#lang[@]} ${lang[@]} ${lang[$PT_BR]} ${lang[$EN_US]}"
-	echo "cmsg_Error -> ${#cmsg_Error[@]} ${cmsg_Error[@]} ${cmsg_Error[$PT_BR]} ${cmsg_Error[$EN_US]}"
+	for elt in "${langmsg[@]}"; do eval "$elt"; done
+	echo "lang       -> ${#lang[*]} ${lang[*]} ${lang[$PT_BR]} ${lang[$EN_US]}"
+	echo "cmsg_Error -> ${#cmsg_Error[*]} ${cmsg_Error[*]} ${cmsg_Error[$PT_BR]} ${cmsg_Error[$EN_US]}"
 }
 
 usage()
 {
-	printf "${cyan}Most used commands:\n"
-	printf "${red}	-h  ${reset}- display this help and exit\n"
-	printf "${red}	-v  ${reset}- display version\n"
-	printf "${red}	-c  ${reset}- no color\n"
+	printf '%s\n' "${cyan}Most used commands:"
+	printf '%s\n' "${red}	-h  ${reset}- display this help and exit"
+	printf '%s\n' "${red}	-v  ${reset}- display version"
+	printf '%s\n' "${red}	-c  ${reset}- no color"
 }
 
 if [[ $1 = "-v" || $1 = "--version" || $1 = "-V" ]]; then
@@ -501,13 +499,13 @@ sh_checkroot
 sh_configure
 sh_language
 #en_US
-sh_checkDependencies ${DEPENDENCIES}
+sh_checkDependencies "${DEPENDENCIES[*]}"
 sh_display
 
 ##############################################################################################################
 #TEMP=$(getopt -o vnh: --long version,nocolor,help:,debugfile:,minheap:,maxheap: -n 'clonedisk' -- "$@")
 #if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
-if ! TEMP=$(getopt -o vnh --long version,nocolor,help -n ${0##*/} -- "$@"); then
+if ! TEMP=$(getopt -o vnh --long version,nocolor,help -n "${0##*/}" -- "$@"); then
 	usage
 	exit 0
 fi
@@ -522,31 +520,6 @@ while true; do
 	esac
 done
 
-aflag=no
-bflag=no
-cargument=none
-
-# options may be followed by one colon to indicate they have a required argument
-if ! options=$(getopt -o abc: -l along,blong,clong: -n 'clonedisk' -- "$@"); then
-   # something went wrong, getopt will put out an error message for us
-	usage
-   exit 1
-fi
-set -- $options
-while [ $# -gt 0 ]
-do
-	case $1 in
-   -a|--along) aflag="yes" ;;
-   -b|--blong) bflag="yes" ;;
-   # for options with required arguments, an additional shift is required
-   -c|--clong) cargument="$2" ; shift;;
-   (--) shift; break;;
-   (-*) echo "$0: error - unrecognized option $1" 1>&2; exit 1;;
-   (*) break;;
-   esac
-   shift
-done
-
 init
 
 :<<'LIXO'
@@ -556,6 +529,6 @@ Passagem padrão original de Lorem Ipsum, usada desde o século XVI.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
 dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
 proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-'LIXO'
+LIXO
 
 # vim:set ts=3 sw=3 et:

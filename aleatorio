@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 declare -i Num QtdAposta=6 Cont=0
 declare -A Jogo
 while : 

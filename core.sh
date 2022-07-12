@@ -777,7 +777,7 @@ function is_true()
    [ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
 }
 
-function info()
+info()
 {
 #	whiptail							\
 	dialog							\

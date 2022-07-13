@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+function leading_zero()
+{
+    local num=$1
+    local zeroos=00
+    echo ${zeroos:${#num}:${#zeroos}}${num}
+}
+
+#var=' 1'
+#echo "${var/ /0}"
+
+zeroos="000"
+echo
+
+for num in {99..105};do
+ echo ${zeroos:${#num}:${#zeroos}}${num}
+done
+
+pad=100000      ;# 5 digit fixed
+for i in {0..99999}; do ((j=pad+i))
+    echo ${j#?}
+done
+
+var=1
+echo $(leading_zero $var)
+
+var='2'
+echo $var
+zeroos=0
+echo ${zeroos:${#num}:${#zeroos}}${var}
+
+
+
+

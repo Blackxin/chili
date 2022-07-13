@@ -86,7 +86,7 @@ sh_linecount(){ awk 'END {print NR}' "$1"; }
 alltrim(){ echo "${1// /}"; } # remover todos espacos da string
 len(){ echo "${#1}"; }
 
-sh_ascii-lines()
+sh_ascii_lines()
 {
    if [[ "$LANG" =~ 'UTF-8' ]]
    then
@@ -779,26 +779,10 @@ function is_true()
 
 info()
 {
-#	whiptail							\
 	dialog							\
 		--title     "[debug]$0"	\
 		--backtitle "\n$*\n"	   \
 		--yesno     "${1}"		\
-	0 0
-	result=$?
-	if (( $result )); then
-		exit
-	fi
-	return $result
-}
-
-debug()
-{
-#	dialog							\
-	whiptail							\
-		--title     "[debug]$0"	\
-		--backtitle "[debug]$0"	\
-		--yesno     "${*}\n"	\
 	0 0
 	result=$?
 	if (( $result )); then
@@ -956,17 +940,19 @@ replicate()
 	local Var
 	printf -v Var %$2s " "  #  Coloca em $Var $1 espaços
 	echo ${Var// /$1}       #  Troca os espaços pelo caractere escolhido
-}; export -f replicate
+}
+export -f replicate
 
 # $1 - caractere
 # $2 - tamanho
-repete()
+function repete()
 {
    for counter in $(seq 1 $2);
    do
       printf "%s" $1
    done
-}; export -f repete
+}
+export -f repete
 
 # $1 - linha
 # $2 - coluna
@@ -1387,7 +1373,7 @@ function sh_version()
 
 alerta()
 {
-   ${DIALOG}                           \
+   dialog	                           \
       --title  "$1"                    \
       --backtitle "$ccabec"            \
       --msgbox    "$2\n$3\n$4\n$5\n$6" \
@@ -1741,5 +1727,19 @@ parseopts()
 	OPTRET+=('--' "${unused_argv[@]}" "$@")
 	unset longoptmatch
 	return 0
+}
+
+function debug()
+{
+	whiptail							\
+		--title     "[debug]$0"	\
+		--backtitle "[debug]$0"	\
+		--yesno     "${*}\n"	\
+	0 0
+	result=$?
+	if (( $result )); then
+		exit
+	fi
+	return $result
 }
 

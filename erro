@@ -1,0 +1,144 @@
+
+In chili-install line 35:
+readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
+         ^----------^ SC2034 (warning): DEPENDENCIES appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 41:
+[ -r "${LIBRARY}/core.sh" ] && source "${LIBRARY}/core.sh"
+                                      ^------------------^ SC1091 (info): Not following: ./core.sh was not specified as input (see shellcheck -x).
+
+
+In chili-install line 346:
+   running()   { ps "$1" | grep "$1" >/dev/null; }
+                 ^-- SC2009 (info): Consider using pgrep instead of grepping ps output.
+
+
+In chili-install line 417:
+	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lresultbind=$false; }
+                                                                           ^--^ SC2034 (warning): lshm appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 418:
+	mensagem "umount $xqueue" ; umount "$xqueue" > /dev/null 2>&1 || { lqueue="FAIL" ; lresultbind=$false; }
+                                                                           ^----^ SC2034 (warning): lqueue appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 419:
+	mensagem "umount $xpts"   ; umount "$xpts"   > /dev/null 2>&1 || { lpts="FAIL"   ; lresultbind=$false; }
+                                                                           ^--^ SC2034 (warning): lpts appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1580:
+	lang='en_US'
+        ^--^ SC2034 (warning): lang appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1581:
+	cmsgSetKeyboardLayout='Set keyboard layout'
+        ^-------------------^ SC2034 (warning): cmsgSetKeyboardLayout appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1586:
+	cmsgcmsg004='Choose an option:'
+        ^---------^ SC2034 (warning): cmsgcmsg004 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1600:
+	menuquit='Quit'
+        ^------^ SC2034 (warning): menuquit appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1601:
+	menustep='Step by step'
+        ^------^ SC2034 (warning): menustep appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1604:
+	cdlok1='*** DOWNLOAD ***'
+        ^----^ SC2034 (warning): cdlok1 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1605:
+	cdlok2='\n[OK] Download completed successfully.'
+        ^----^ SC2034 (warning): cdlok2 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1606:
+	cdlok3='found.'
+        ^----^ SC2034 (warning): cdlok3 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1607:
+	cdlok4="\n\nStart the installation now?"
+        ^----^ SC2034 (warning): cdlok4 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1608:
+	cshaok="\n[OK] Checksum successfully verified."
+        ^----^ SC2034 (warning): cshaok appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1609:
+   plswait='Please wait, Downloading package...'
+   ^-----^ SC2034 (warning): plswait appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1621:
+	cmsgPacotes_disponiveis='Available packages'
+        ^---------------------^ SC2034 (warning): cmsgPacotes_disponiveis appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1622:
+   cmsggetshasum='Please wait, download sha256sum new...'
+   ^-----------^ SC2034 (warning): cmsggetshasum appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1623:
+   cmsgtestsha256sum='Wait, testing sha256sum'
+   ^---------------^ SC2034 (warning): cmsgtestsha256sum appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1626:
+   cmsgerrotar='Error in package unpacking'
+   ^---------^ SC2034 (warning): cmsgerrotar appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1628:
+	cmsgerrodlsha1='Ops, error downloading of'
+        ^------------^ SC2034 (warning): cmsgerrodlsha1 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1629:
+	cmsgerrodlsha2='Check your internet.'
+        ^------------^ SC2034 (warning): cmsgerrodlsha2 appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1630:
+	cmsgcorrdlnew='Ops, corrupted package or SHA256. \nDownload the package again?'
+        ^-----------^ SC2034 (warning): cmsgcorrdlnew appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1631:
+	cmsg_corr_rep='Ops, corrupted package or SHA256. \nPlease retry the operation!'
+        ^-----------^ SC2034 (warning): cmsg_corr_rep appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1632:
+	cmsg_erro_tar_continue='Error in decompressing the package. \nDo you want to continue?'
+        ^--------------------^ SC2034 (warning): cmsg_erro_tar_continue appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1634:
+   cmsg_wget_package_index='Wait, downloading package index...'
+   ^---------------------^ SC2034 (warning): cmsg_wget_package_index appears unused. Verify use (or export if used externally).
+
+
+In chili-install line 1644:
+	cmsg_try_mount_partition='Partition already mounted. Try?'
+        ^----------------------^ SC2034 (warning): cmsg_try_mount_partition appears unused. Verify use (or export if used externally).
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2034 -- DEPENDENCIES appears unused. Veri...
+  https://www.shellcheck.net/wiki/SC1091 -- Not following: ./core.sh was not ...
+  https://www.shellcheck.net/wiki/SC2009 -- Consider using pgrep instead of g...

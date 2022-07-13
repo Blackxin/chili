@@ -201,7 +201,7 @@ DOT()
 	printf '%s' "${blue}:: ${reset}"
 }
 
-sh_ascii-lines()
+sh_ascii_lines()
 {
 	if [[ "$LANG" =~ 'UTF-8' ]]
 	then
@@ -808,7 +808,7 @@ init()
 setvarcolors
 log_prefix
 check_deps
-sh_ascii-lines
+sh_ascii_lines
 
 [[ -z $1 ]] && { sh_usage; exit $(( $# ? 0 : 1 ));}
 init "$@"

@@ -1370,9 +1370,9 @@ function choosedisk()
 				return 0
          fi
 
-			typefmt=$(${DIALOG}                                   \
+			typefmt=$(${DIALOG}                                \
 				--stdout                                        \
-            --title        "$xmsg: $sd [${modelo[index]}]"	\
+            --title        "$xmsg: $sd [$MOEL_ORIGEM]"		\
             --cancel-label "$buttonback"                    \
             --menu         "\n$cmsg010"                     \
             0 0 0                                           \

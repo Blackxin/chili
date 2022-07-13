@@ -7,7 +7,7 @@
 #  MazonOS GNU/Linux - http://mazonos.com
 #
 #  Created: 2020/10/05
-#  Altered: 2022/06/02
+#  Altered: 2022/07/12
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -31,24 +31,20 @@
 #########################################################################
 export LC_ALL=C
 export LANG=C
+readonly DEPENDENCIES=(which find sed grep sort cat awk tput dialog)
 declare -r myname='fetchpack'
-declare -r myver='1.3.20220602'
-declare    delim=$'\n' keep=3 movedir= scanarch=
-declare    USE_COLOR='y'
+declare -r myver='1.30.20220602'
 declare -a cachedirs=()
 declare -a candidates=() cmdopts=() candesc=()
-declare -i delete=0 dryrun=0 filecount=0 move=0 totalsaved=0 pkgcount=0
+declare -i delete=0 dryrun=0 move=0 totalsaved=0 pkgcount=0
 declare -i verbose=0
 declare -i ctime=0
-declare -i LTIME=0
-declare -i true=1
-declare -i false=0
 declare -i QUIET=0
-declare    IFS=$' \t\n'
-declare    SAVEIFS=$IFS
-readonly DEPENDENCIES=(which find sed grep sort cat awk tput dialog)
+declare delim=$'\n'
+declare keep=3
+declare movedir=
+declare USE_COLOR='y'
 readonly PKG_RE='(.+)-(([^-]+)-([0-9]))-([^.]+)(\.chi\.zst)'     #VC
-
 
 # Expand to nothing if there are no matches
 shopt -s nullglob
@@ -56,31 +52,31 @@ shopt -s extglob
 
 # Import libs
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
-source /etc/fetch/fetch.conf &> /dev/null
-source "$LIBRARY"/core.sh
+[ -e /etc/fetch/fetch.conf ] && source /etc/fetch/fetch.conf
+[ -e "$LIBRARY/core.sh"    ] && source "$LIBRARY/core.sh"
 export PKG_EXT="${PKG_EXT:='chi.zst'}"
 
 # flag's para split package
-: ${aPKGSPLIT=()}
-: ${aPKGLIST=}
-: ${PKG_FOLDER_DIR=0}
-: ${PKG_FULLNAME=1}
-: ${PKG_ARCH=2}
-: ${PKG_BASE=3}
-: ${PKG_BASE_VERSION=4}
-: ${PKG_VERSION=5}
-: ${PKG_BUILD=6}
+: "${aPKGSPLIT=()}"
+: "${aPKGLIST=}"
+: "${PKG_FOLDER_DIR=0}"
+: "${PKG_FULLNAME=1}"
+: "${PKG_ARCH=2}"
+: "${PKG_BASE=3}"
+: "${PKG_BASE_VERSION=4}"
+: "${PKG_VERSION=5}"
+: "${PKG_BUILD=6}"
 
 sh_splitpkg()
 {
-   file=$1
+   file="$1"
    aPKGSPLIT=()
 
-   pkg_folder_dir=${file%/*}                             #remove arquivo deixando somente o diretorio/repo
-   pkg_fullname=${file##*/}                              #remove diretorio deixando somente nome do pacote
+   pkg_folder_dir="${file%/*}"                             #remove arquivo deixando somente o diretorio/repo
+   pkg_fullname="${file##*/}"                              #remove diretorio deixando somente nome do pacote
 
-   [[ $pkg_folder_dir == $pkg_fullname ]] && pkg_folder_dir="localhost"
-   if [[ $pkg_fullname =~ $PKG_RE ]] ; then
+   [[ "$pkg_folder_dir" == "$pkg_fullname" ]] && pkg_folder_dir="localhost"
+   if [[ "$pkg_fullname" =~ $PKG_RE ]] ; then
       pkg_fullname="${BASH_REMATCH[0]}"
       pkg_base="${BASH_REMATCH[1]}"
       pkg_version_build="${BASH_REMATCH[2]}"
@@ -89,7 +85,7 @@ sh_splitpkg()
       pkg_arch="${BASH_REMATCH[5]}"
       pkg_base_version="${pkg_base}-${pkg_version_build}"
 
-      : '
+:<<'comment'
         debug " file            : $file\n" \
               "pkg_folder_dir  : $pkg_folder_dir\n" \
               "pkg_fullname    : $pkg_fullname\n" \
@@ -98,7 +94,7 @@ sh_splitpkg()
               "pkg_base_version: $pkg_base_version\n" \
               "pkg_version     : $pkg_version\n" \
               "pkg_build       : $pkg_build"
-     '
+comment
       aPKGSPLIT=( "$pkg_folder_dir"
                   "$pkg_fullname"
                   "$pkg_arch"
@@ -123,10 +119,9 @@ logo()
 |_|  \___|\__\___|_| |_| .__/ \__,_|\___|_|\_\  sob os termos da Licença Pública Geral GNU.
                        |_|
 EOF
-	echo $yellow
+	echo "$yellow"
    version
-	echo $reset
-	unsetvarcolors
+	echo "$reset"
 }
 
 version()
@@ -138,10 +133,8 @@ version()
 mainOLD()
 {
 	local arr=
-	local cdir=
 	local nfiles=
 	local pkg=
-	local cOldDir=
 	local AllFilesPackages=
 	local pkg=
 	local pkgInAll=
@@ -150,15 +143,12 @@ mainOLD()
 
 	for cachedir in "${cachedirs[@]}"
 	do
-		[[ -d $cachedir ]] ||
-			die "cachedir '%s' does not exist or is not a directory" "$cachedir"
-
+		[[ -d "$cachedir" ]] ||	die "cachedir '%s' does not exist or is not a directory" "$cachedir"
 		if (( move || delete )); then
-			[[ ! -w $cachedir ]] && needsroot=1
+			[[ ! -w "$cachedir" ]] && needsroot=1
 		fi
 		pushd "$cachedir" &>/dev/null || die "failed to chdir to $cachedir"
 
-		cOldDir=$PWD
 		pkgInAll=
 		FilteredPackages=
 		AllFilesPackages=
@@ -170,22 +160,22 @@ mainOLD()
 		if [ $# -lt 1 ]; then
 			AllFilesPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort )
 		else
-			AllFilesPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort)
+			AllFilesPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep "$1" | sort)
 		fi
 
-		arr=(${AllFilesPackages[*]})
+		arr=("${AllFilesPackages[*]}")
 	  	nfiles=${#arr[*]}
 
 		log_wait_msg "${reset}wait, searching ${red}($nfiles) ${reset}candidates for pruning in ${green}$cachedir"
 		for pkgInAll in $AllFilesPackages
 		do
 			((pkgNumber++))
-			pkgInFullName=$pkgInAll
-			sh_splitpkg $pkgInAll
-			FilteredPackages=${aPKGSPLIT[$PKG_BASE]}
+			pkgInFullName="$pkgInAll"
+			sh_splitpkg "$pkgInAll"
+			FilteredPackages="${aPKGSPLIT[$PKG_BASE]}"
 			AllFilteredPackages=$(find "$PWD" -type f -iname "$FilteredPackages*.zst" | grep -E "*$FilteredPackages-([0-9])" | sort)
 			pkg=
- 			arr=(${AllFilteredPackages[*]})
+ 			arr=("${AllFilteredPackages[*]}")
  			array=("${AllFilteredPackages[*]}")
 		  	nfiles=${#arr[*]}
 
@@ -193,10 +183,10 @@ mainOLD()
 				printf "     ${white}verifying package ${purple}(%04d) ${green}[%40s]${purple}(%04d)${green} => %s\n" "$pkgNumber" "$FilteredPackages" "$nfiles" "${pkgInFullName}"
 			fi
 
-			if [[ $nfiles -gt 1 ]]; then
+			if [[ nfiles -gt 1 ]]; then
 				while read -r pkg; do
-					sh_splitpkg ${pkg}
-					SearchPkg=${aPKGSPLIT[$PKG_BASE]}
+					sh_splitpkg "$pkg"
+					SearchPkg="${aPKGSPLIT[$PKG_BASE]}"
 
 					first="${FilteredPackages:1:1}"
 					last="${SearchPkg:1:1}"
@@ -205,18 +195,16 @@ mainOLD()
 						break
 					fi
 
-					debug $FilteredPackages $SearchPkg
-					if [[ $FilteredPackages =~ $SearchPkg ]]; then
-						debug "$(vercmp $pkgInFullName $pkg)"
-						if [[ "$(vercmp $pkgInFullName $pkg)" -lt 0 ]]; then
-							debug "$pkgInFullName"
-							candidates+=("${pkgInFullName}")
-  							  canddesc+=("${pkgInFullName}.desc")
-						  	  canddesc+=("${pkgInFullName}.sha256")
+					if [[ "$FilteredPackages" =~ $SearchPkg ]]; then
+						if [[ $(vercmp "$pkgInFullName" "$pkg") -lt 0 ]]; then
+							candidates+=("$pkgInFullName")
+  							canddesc+=("$pkgInFullName.desc")
+						  	canddesc+=("$pkgInFullName.sha256")
 							if (( verbose >= 3 )); then
-								[[ $pkg =~ $PKG_RE ]] && name=${BASH_REMATCH[1]} arch=${BASH_REMATCH[2]}
-								if [[ -z $seen || $seenarch != "$arch" || $seen != "$name" ]]; then
-									seen=$name seenarch=$arch
+								[[ "$pkg" =~ $PKG_RE ]] && name="${BASH_REMATCH[1]}" arch="${BASH_REMATCH[2]}"
+								if [[ -z "$seen" || "$seenarch" != "$arch" || "$seen" != "$name" ]]; then
+									seen="$name"
+									seenarch="$arch"
 									printf '%s (%s):\n' "${name##*/}" "$arch"
 								fi
 								printf '  %s\n' "${pkg##*/}"
@@ -225,7 +213,7 @@ mainOLD()
 							fi
 						fi
 					fi
-				done < <(printf '%s\n' "$array")
+				done < <(printf '%s\n' "${array[*]}")
 			fi
 		done
 		popd >/dev/null 2>&1
@@ -263,9 +251,9 @@ main()
 	local pkg=
 	local pkgInAll=
 	local pkg_base=
-	local pkg_search=
 	local candidates=()
 	local cachedir
+	local re
 
    #'[0-9]+([.][0-9]+)+'
    #'-[0-9]+(.[0-9]+)+'
@@ -273,11 +261,9 @@ main()
    #'[0-9]+([.][0-9]+)(.+)'
    #'(([^-]+)-([0-9]+))-'
    #'(.+)-(([^-]+)-([0-9]))-([^.]+)'
-   # '.*?(?=-[^-]+-[0-9]-.*)')
-   # '\-[^-]+-[0-9]-')
-   re='-[^-]+-[0-9]-'
-
- 	local	re='-[^-]+-[0-9]-'
+   #'.*?(?=-[^-]+-[0-9]-.*)')
+   #'\-[^-]+-[0-9]-')
+ 	re='-[^-]+-[0-9]-'
 
 	if (( QUIET )); then
 		verbose=0
@@ -301,20 +287,20 @@ main()
 		if [ $# -lt 1 ]; then
  			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | sort -Vr | awk -F "$re" 'lista[$1]++')
 		else
- 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep $1 | sort -Vr | awk -F "$re" 'lista[$1]++')
+ 			AllOldPackages=$(find "$PWD" -type f -iname "*.$PKG_EXT" | grep "$1" | sort -Vr | awk -F "$re" 'lista[$1]++')
 		fi
 
 		while read -r pkgInAll; do
-			pkg_base=$pkgInAll
+			pkg_base="$pkgInAll"
 			[[ -z "$pkg_base" ]] &&	continue
 			(( pkgNumber++ ))
 
 			if (( verbose >= 3 )); then
-				printf "  $(DOT)${white}candidate package ${purple}(%04d) ${green}%s\n" $pkgNumber $pkg_base
+				printf "  $(DOT)${white}candidate package ${purple}(%04d) ${green}%s\n" "$pkgNumber" "$pkg_base"
 			fi
 
-			candidates+=($pkgInAll)
-			candesc+=($pkgInAll.desc)
+			candidates+=("$pkgInAll")
+			candesc+=("$pkgInAll.desc")
 		done <<< "$AllOldPackages"  #done < <(printf '%s\n' "$AllOldPackages") #done <<< $(printf '%s\n' "$AllOldPackages")
 		popd >/dev/null 2>&1
 	done
@@ -328,8 +314,9 @@ main()
 		pkgNumber=0
 		while read -r pkg; do
 			(( pkgNumber++ ))
-			printf "  $(DOT)${white}found package ${purple}(%04d) ${green}%42s\n" $pkgNumber $pkg
-		done <<< $(printf '%s\n' "${candidates[@]}") #done < <(printf '%s\n' "${candidates[@]}") #done <<< "${candidates[@]}"
+			printf "  $(DOT)${white}found package ${purple}(%04d) ${green}%42s\n" "$pkgNumber" "$pkg"
+		done <<< "$(printf '%s\n' "${candidates[@]}")"
+		#done < <(printf '%s\n' "${candidates[@]}") #done <<< "${candidates[@]}"
 	fi
 
 	pkgcount=$((${#candidates[*]} + ${#candesc[*]}))
@@ -387,9 +374,7 @@ sh_checkroot
 checkDependencies
 
 OPT_SHORT=':a:c:dfhi:k:m:qrsuVvzt:'
-OPT_LONG=('arch:' 'cachedir:' 'dryrun' 'force' 'help' 'ignore:' 'keep:' 'move:'
-          'nocolor' 'quiet' 'remove' 'uninstalled' 'version' 'verbose' 'null'
-          'ctime:')
+OPT_LONG=('arch:' 'cachedir:' 'dryrun' 'force' 'help' 'ignore:' 'keep:' 'move:' 'nocolor' 'quiet' 'remove' 'uninstalled' 'version' 'verbose' 'null' 'ctime:')
 
 if ! parseopts "$OPT_SHORT" "${OPT_LONG[@]}" -- "$@"; then
 	exit 1
@@ -401,7 +386,6 @@ while :; do
 	case $1 in
 		-t|--ctime)
 			ctime="$2"
-			LTIME=$true
 			shift ;;
 		-c|--cachedir)
 			cachedirs+=("$2")
@@ -444,7 +428,7 @@ if [[ -t 2 && $USE_COLOR != "n" ]]; then
 fi
 
 # setting default cachedirs
-if [[ -z $cachedirs ]]; then
+if [[ -z "${cachedirs[*]}" ]]; then
 	cachedirs=("${GITDIR:=/var/cache/fetch/archives}")
 	cachedirs+=("/var/cache/fetch/archives")
 fi
@@ -455,8 +439,7 @@ case $(( dryrun+delete+move )) in
 	[^1]) die "only one operation may be used at a time" ;;
 esac
 
-[[ $movedir && ! -d $movedir ]] &&
-	die "destination directory '$movedir' does not exist or is not a directory!"
+[[ $movedir && ! -d $movedir ]] && die "destination directory '$movedir' does not exist or is not a directory!"
 
 if (( move || delete )); then
 	# make it an absolute path since we're about to chdir
@@ -464,4 +447,4 @@ if (( move || delete )); then
 	[[ $movedir && ! -w $movedir ]] && needsroot=1
 fi
 
-main $*
+main "$@"

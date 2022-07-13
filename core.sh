@@ -792,7 +792,7 @@ info()
 	return $result
 }
 
-function debug()
+debug()
 {
 #	dialog							\
 	whiptail							\
@@ -1383,6 +1383,15 @@ quit()
 function sh_version()
 {
 	printf "$0 $_VERSION_\n"
+}
+
+alerta()
+{
+   ${DIALOG}                           \
+      --title  "$1"                    \
+      --backtitle "$ccabec"            \
+      --msgbox    "$2\n$3\n$4\n$5\n$6" \
+      10 60
 }
 
 function conf()

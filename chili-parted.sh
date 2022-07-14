@@ -27,12 +27,13 @@ chili-image()
 	sudo kpartx -av foo.qcow2
 	fdisk -l foo.qcow2
 	cfdisk foo.qcow2
-
 }
 
 chili-mapdevice()
 {
-	#losetup -P /dev/loop20 $1
+	#sudo mknod -m 0777 /dev/sr0 b 7 10
+	#sudo mknod -m 0777 /dev/sr0 b 7 20
+	#losetup -P /dev/sr0 $1
 	kpartx -av $1 # kpartx -av file.img
 }
 

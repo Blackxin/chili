@@ -55,15 +55,12 @@ sh_configure()
 	sh_ascii_lines
 	: "${DIALOG=${DIALOG:-"dialog"}}"
 	: "${DOWNLOADER="curl -L -O -C - "}"
-	sep='\xe2\x94\x82'
-	archiso='liveiso'
+	sep="\xe2\x94\x82"
+	chili_iso="liveiso"
 
 	# vars bool
-	true=0
-	false=1
-
-	yes=1
-	no=0
+	true=1
+	false=0
 	grafico=$true
 
 	# flag dialog exit status codes
@@ -89,12 +86,7 @@ sh_configure()
 	: "${dir_install="/mnt/lfs"}"
 	: "${cvconsole="${dir_install}/etc/vconsole.conf"}"
 	: "${cfstab=${dir_install}"/etc/fstab"}"
-	: "${sha256_min=$cnick"_minimal-0.3.tar.xz.sha256sum"}"
-	: "${sha256_full=$cnick"_beta-1.3.tar.xz.sha256sum"}"
-	: "${FULLINST=$true}"
-	: "${sha256_default=$sha256_full}"
 	: "${STANDALONE=$false}"
-	: "${STARTXFCE4=$true}"
 	: "${xLABEL=$cdistro}"
 
 	# flag para disco/particao/formatacao/montagem
@@ -106,8 +98,8 @@ sh_configure()
 	: "${xPARTSWAP=""}"
 	: "${xPARTEFI=""}"
 	: "${LGRUB="BIOS"}"
-	: "${lEFI=$false}"
-	: "${LAUTOMATICA=$false}"
+	: "${lEFI=$true}"
+	: "${LAUTOMATICA=$true}"
 
 	# sfdisk types
 	: "${nEFI=1}"
@@ -280,14 +272,15 @@ confmulti()
 {
 	xtitle="$1"
 	shift
-   ${DIALOG}									\
+   ${DIALOG}								\
 			--title 		"$xtitle" 		\
 			--backtitle	"$ccabec"		\
 			--yes-label "$yeslabel"		\
 			--no-label  "$nolabel"		\
 			--yesno 		"$*" 				\
 			10 100
-			return $?
+			nchoice=$?
+			[[ $nchoice -eq 0 ]] && return 1 || return 0
 }
 
 sh_confhost()
@@ -308,9 +301,7 @@ sh_adduser()
 	chostname=$(cat /tmp/root-chostname)
 
 	if [ -n "$cuser" ]; then
-		if (( FULLINST )); then
-			cgroups="audio,video"
-		fi
+		cgroups="audio,video"
 
 		if ! (( LPARTITION )); then
 			choosepartition
@@ -411,7 +402,7 @@ sh_stopbind()
 	local lrun="OK"
 	local lshm="OK"
 	local lqueue="OK"
-	local lresultbind=$no
+	local lresultbind=$false
 
 	pushd "$pwd" &>/dev/null
 	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lresultbind=$false; }
@@ -439,7 +430,7 @@ sh_initbind()
    local lsys="OK"
    local ldev="OK"
    local lrun="OK"
-   local lresultbind=$no
+   local lresultbind=$false
 
 	pushd $dir_install &>/dev/null
 	[ -d "$dir_install/home"     ] || mkdir -p "$dir_install/home"     > /dev/null 2>&1
@@ -470,7 +461,7 @@ sh_bind()
     		bindyes=$?
     		if [ $bindyes = $false ]; then
     			alerta "*** BIND *** " "$cancelbind"
-    			STANDALONE=$yes
+    			STANDALONE=$true
     			return $STANDALONE
      		fi
 		fi
@@ -500,7 +491,7 @@ sh_bind()
    if [ $# -lt 1 ] ; then
    	if ! (( STANDALONE )); then
       	alerta "*** BIND ***" "$xstrbind" "\n$cmsgbindresult";
-    		STANDALONE=$yes
+    		STANDALONE=$true
     	fi
 	fi
 }
@@ -508,10 +499,10 @@ sh_bind()
 sh_efi()
 {
 	xPARTEFI=$(fdisk "$sd" -l | grep EFI | cut -c1-11)
-	lEFI=$yes
+	lEFI=$true
 
 	if [[ -n "$xPARTEFI" ]] ; then
-   	lEFI=$no
+   	lEFI=$true
 	fi
 }
 
@@ -567,16 +558,16 @@ sh_grubmkconfig()
 
 grubinstall()
 {
-	if [ $LAUTOMATICA = $false ]; then
+	if ! (( LAUTOMATICA )); then
   		conf "*** GRUB ***" "$cGrubMsgInstall"
-    	grubyes=$?
-    	LDISK=0
+		grubyes=$?
+		LDISK=$false
     else
 		grubyes=0
-      LDISK=1
+      LDISK=$true
 	fi
 
-	if [ $grubyes = $true ]; then
+	if [ $grubyes -eq 0 ]; then
 		if [ $LDISK -eq 0 ]; then
 			choosedisk "GRUB"
 			if [ $LDISK -eq 0 ]; then
@@ -604,7 +595,7 @@ grubinstall()
 
 		if [ $lEFI = $true ]; then
       	local nChoiceEFI=$true
-			if [ $LAUTOMATICA = $false ]; then
+			if ! (( LAUTOMATICA )); then
          	conf "** EFI **"                                \
             		"$cmsg_Detectada_particao_EFI: $xPARTEFI    \
                 	\n$cmsg_Deseja_instalar_o_GRUB_EFI?         \
@@ -619,7 +610,7 @@ grubinstall()
 		fi
 		sh_grubBIOS # UEFI, também instalar BIOS
 		sh_grubmkconfig
-    	if [ $LAUTOMATICA = $false ]; then
+    	if ! (( LAUTOMATICA )); then
     	    alerta "*** GRUB *** " "$sd" "\n\n$cgrubsuccess"
         fi
 	else
@@ -664,7 +655,7 @@ sh_check_install()
 		sh_mountpartition
 	fi
 
-	if [ $LAUTOMATICA = $false ]; then
+	if ! (( LAUTOMATICA )); then
     	confmulti "** INSTALL ** " "\n Mount : $dir_install" "\n  Part : $part" "\n\n$cmsg_all_ready"
     	local nOk=$?
     	case $nOk in
@@ -772,7 +763,7 @@ sh_partnewbie()
 	evaluate_retval
 	LDISK=1
 
-	if [ $LAUTOMATICA = $true ]; then
+	if (( LAUTOMATICA )); then
 		if [ "$TRAN_ORIGEM" = "nvme" ]; then
 			part=$sd"p4"
 		else
@@ -815,13 +806,13 @@ choosedisk()
     	exit_status=$?
 		case $exit_status in
     	"$D_ESC")
-        	if [ $LAUTOMATICA = $true ]; then
+        	if (( LAUTOMATICA )); then
            	return 1
         	fi
     		init
     		;;
     	"$D_CANCEL")
-			if [ $LAUTOMATICA = $true ]; then
+			if (( LAUTOMATICA )); then
            	return 1
         	fi
     		init
@@ -858,7 +849,7 @@ choosedisk()
 			TRAN_ORIGEM="${ARRAY_DSK_TRAN[index]}"
 			sh_backup_partitions "${sd}" "${DEVICE_ORIGEM}"
 
-			if [ $LAUTOMATICA = $true ]; then
+			if (( LAUTOMATICA )); then
 				return 0
          fi
 
@@ -874,13 +865,13 @@ choosedisk()
 	    	exit_status=$?
 	    	case $exit_status in
 	    		"$D_ESC")
-					if [ $LAUTOMATICA = $true ]; then
+					if (( LAUTOMATICA )); then
 	            	return 1
 	            fi
 	    			init
 	    			;;
 	    		"$D_CANCEL")
-	            if [ $LAUTOMATICA = $true ]; then
+	            if (( LAUTOMATICA )); then
 	            	return 1
 	            fi
 	    			init
@@ -951,7 +942,7 @@ sh_mountpartition()
 	done
 
 	LMOUNT=1
-	if [ $LAUTOMATICA = $false ]; then
+	if ! (( LAUTOMATICA )); then
 		mensagem "$cmsg_enter_work_dir"
 	fi
 	cd "$dir_install"
@@ -1085,14 +1076,14 @@ init()
 
 		case $clang in
 			1)	pt_BR
-				if [[ "$live" -eq 0 ]]; then
+				if (( LIVECD )); then
 					sh_liveinstall
 				else
 					sh_tools
 				fi
 				;;
 			2)	en_US
-				if [[ "$live" -eq 0 ]]; then
+				if (( LIVECD )); then
 					sh_liveinstall
 				else
 					sh_tools
@@ -1241,85 +1232,76 @@ sh_wgetsqfs()
 	#sh_pvexecrunsquashfs
 }
 
+choosegrub()
+{
+	mbr=$(${DIALOG} --radiolist 'Instalacao do GRUB:'     \
+		0 0 0                                           	\
+      EFI     "Interface de Firmaware Extensivel" off 	\
+      BIOS    "Sistema Básico de Entrada e Saída" on 		\
+      2>&1 >/dev/tty )
+
+	exit_status=$?
+	case $exit_status in
+		"$D_ESC"|"$D_CANCEL")
+			return 1
+			;;
+	esac
+}
+
 sh_liveinstall()
 {
-	confmulti	"$cmsgInstalacao_Automatica"                  			\
-					"\n$cmsgNeste_modo_a_instalacao_sera_automatizada"		\
-					"bastando escolher o pacote e o disco destino"      	\
-        			"\n\n$cmsgDeseja_continuar_e_escolher_o_disco_destino?"
-
-	local nChoice=$?
-	if [ $nChoice = $false ]; then
+	if ! confmulti	"$cmsgInstalacao_Automatica"                  			\
+					 	"\n$cmsgNeste_modo_a_instalacao_sera_automatizada"	\
+					 	"bastando escolher o pacote e o disco destino"			\
+        				"\n\n$cmsgDeseja_continuar_e_escolher_o_disco_destino?"; then
 		LAUTOMATICA=$false
 		scrmain
 	fi
 
-	FULLINST=$true
 	LADDUSER=$false
 	LAUTOMATICA=$true
 
-	choosedisk
-	nChoice=$?
-	if [ $nChoice = $false ]; then
+	if ! choosedisk ; then
 		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
 		init
 	fi
 
-	mbr=$(${DIALOG} --radiolist 'Instalacao do GRUB:'      \
-		0 0 0                                           \
-      EFI     "Interface de Firmaware Extensivel" off \
-      BIOS    "Sistema Básico de Entrada e Saída" on 	\
-      2>&1 >/dev/tty )
-
-	exit_status=$?
-	case $exit_status in
-		"$D_ESC")
-			info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
-			zeravar
-			sh_tools
-			;;
-		"$D_CANCEL")
-			info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
-			zeravar
-			sh_tools
-			;;
-	esac
+	if ! choosegrub; then
+		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		zeravar
+		sh_tools
+	fi
 	LGRUB=$mbr
 	keymap=$(grep ^KEYMAP /etc/vconsole.conf | cut -d= -f2)
 
-	conf2 "*** KEYBOARD ***" "Current layout : $keymap" "\n\nSet new keyboard layout?"
-	if [ $? = $true ]; then
+	if conf2 "*** KEYBOARD ***" "Current layout : $keymap" "\n\nSet new keyboard layout?"; then
 		setkeymap
 	fi
 
-	conf "*** ADDUSER ***" "\n$cconfusernow?"
-	if [ $? = $true ]; then
+	if conf "*** ADDUSER ***" "\n$cconfusernow?"; then
 		LADDUSER=$true
 		sh_confadduser
 	fi
 
-	conf "$cmsgInstalacao_Automatica" "\nTudo pronto para iniciar a instalação. Continuar?"
-	nChoice=$?
-    if [ $nChoice = $false ]; then
-        info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
-        zeravar
-        sh_tools
-    fi
-    sh_partnewbie
-    nChoice=$?
-    if [ $nChoice = $false ]; then
-        info "$cmsgInstalacao_Automatica" "\n$cmsgErro_no_particionamento!\n\n$cmsgInstalacao_Automatica_cancelada"
-        zeravar
-        sh_tools
-    fi
-    sh_domkfs
-    nChoice=$?
-    if [ $nChoice = $false ]; then
-        info "$cmsgInstalacao_Automatica" "\n$cmsgErro_na_formatacao!\n\n$cmsgInstalacao_Automatica_cancelada"
-        zeravar
-        sh_tools
-    fi
+	if ! conf "$cmsgInstalacao_Automatica" "\nTudo pronto para iniciar a instalação. Continuar?"; then
+		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		zeravar
+		sh_tools
+	fi
+
+   if ! sh_partnewbie; then
+		info "$cmsgInstalacao_Automatica" "\n$cmsgErro_no_particionamento!\n\n$cmsgInstalacao_Automatica_cancelada"
+   	zeravar
+   	sh_tools
+	fi
+
+   if ! sh_domkfs; then
+		info "$cmsgInstalacao_Automatica" "\n$cmsgErro_na_formatacao!\n\n$cmsgInstalacao_Automatica_cancelada"
+		zeravar
+		sh_tools
+	fi
+
 	sh_mkswap
 	sh_stopbind
 	sh_stopbind
@@ -1328,7 +1310,7 @@ sh_liveinstall()
 	sh_fstab
 	sh_initbind
 
-	if [ $LADDUSER = $true ]; then
+	if (( LADDUSER )); then
 		sh_adduser
 	fi
 	grubinstall
@@ -1407,10 +1389,10 @@ sh_fstab()
     	fi
    fi
 
-	live=$(sh_testlive)
+	LIVECD=$(sh_testlive)
 	[ -d "$dir_install"/etc 		 ] || mkdir -p "$dir_install"/etc >/dev/null
 	[ -e "$dir_install"/etc/fstab  ]	||	sh_touchfstab
-	[ "$live" -eq 1                ]	||	sh_touchfstab
+	[ "$LIVECD" -eq 1              ]	||	sh_touchfstab
 
 	xUUIDPART=$(blkid "$part" --match-tag UUID --match-tag TYPE | cut -d'"' -f2)
 	xFSTYPE=$(blkid "$part" --match-tag UUID --match-tag TYPE | cut -d'"' -f4)
@@ -1423,11 +1405,11 @@ sh_fstab()
 	if ! (( STANDALONE )); then
 		nano "$cfstab"
   		display_result "$result" "$(cat "$cfstab")"
-		STANDALONE=$yes
+		STANDALONE=$true
 	else
     	if (( LAUTOMATICA )); then
     		display_result "$result" "$(cat "$cfstab")"
-	    	STANDALONE=$yes
+	    	STANDALONE=$true
         fi
 	fi
 }
@@ -1439,7 +1421,6 @@ sh_confkeyboard()
 	if [[ -n "$keymap" ]]; then
 		sed -i 's|KEYMAP|#KEYMAP|g' "$cvconsole"
 		echo "KEYMAP=$keymap" >> "$cvconsole"
-		return $?
 	fi
 }
 
@@ -1456,29 +1437,29 @@ sh_trapErro()
 
 sh_testlive()
 {
-	[[ -e "$LIVE" ]] && echo 0 || echo 1
+	[[ -e "$LIVE_DIR" ]] && echo $true || echo $false
 }
 
 sh_checklive()
 {
 	#SQFS
-	[ -d /run/$archiso/bootmnt  ] || mkdir -p /run/$archiso/bootmnt
-	[ -d /run/$archiso/airootfs ] || mkdir -p /run/$archiso/airootfs
-	mount /dev/sr0 /run/$archiso/bootmnt
-	mount /dev/loop0 /run/$archiso/airootfs
+	[ -d /run/$chili_iso/bootmnt  ] || mkdir -p /run/$chili_iso/bootmnt
+	[ -d /run/$chili_iso/airootfs ] || mkdir -p /run/$chili_iso/airootfs
+	mount /dev/sr0 /run/$chili_iso/bootmnt 		> /dev/null 2>&1
+	mount /dev/loop0 /run/$chili_iso/airootfs 	> /dev/null 2>&1
 	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
-	LIVE=/run/$archiso/bootmnt/chili/x86_64/airootfs.sfs
+	LIVE_DIR=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
 
-	if [[ -e "$LIVE" ]]; then
-		export ROOTSQFS=/run/$archiso/bootmnt/chili/x86_64/airootfs.sfs
-		export MEDIUM=/run/$archiso/airootfs
-		export LIVE
+	if [[ -e "$LIVE_DIR" ]]; then
+		export ROOTSQFS=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
+		export MEDIUM=/run/$chili_iso/airootfs
+		export LIVE_DIR
 	else
 		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
 		export MEDIUM=/lib/initramfs/system
-		export LIVE=/lib/initramfs/medium/isolinux/venomlive
+		export LIVE_DIR=/lib/initramfs/medium/isolinux/venomlive
 	fi
-	live=$(sh_testlive)
+	LIVECD=$(sh_testlive)
 }
 
 pt_BR()
@@ -1525,16 +1506,12 @@ pt_BR()
 	cGrubMsgInstall='Você gostaria de instalar o GRUB?'
 	cmsgusermanager='Gerenciamento de usuários'
 	cmsgPacotes_disponiveis='Pacotes disponiveis'
-   cmsggetshasum='Aguarde, baixando sha256sum novo...'
-   cmsgtestsha256sum='Aguarde, testando sha256sum'
 	cmsgadduser='Aguarde, criando usuario...'
 	cmsgaddhost='Aguarde, setando hostname...'
    cmsgerrotar='Erro na descompatacao do pacote'
 	cmsgwaitgrub='Aguarde, instalando o GRUB no disco'
 	cmsgerrodlsha1="Ops, erro no download de !\nVerifique sua internet."
 	cmsgerrodlsha2='Verifique sua internet.'
-	cmsgcorrdlnew="Ops, Pacote ou SHA256 corrompido. \nBaixar novamente o pacote?"
-	cmsg_corr_rep="Ops, Pacote ou SHA256 corrompido. \nFavor repetir a operação!"
 	cmsg_erro_tar_continue="Erro na descompactação 'do' pacote. \nDeseja ainda prosseguir?"
 	cmsg_all_ready='Tudo pronto para iniciar a instalação. Confirma?'
 	cmsg_nec_dismount='Necessário desmontar particao para reparticionar automaticamente.'
@@ -1617,16 +1594,12 @@ en_US()
 	cGrubMsgInstall='Would you like to install grub?'
 	cmsgusermanager='User management'
 	cmsgPacotes_disponiveis='Available packages'
-   cmsggetshasum='Please wait, download sha256sum new...'
-   cmsgtestsha256sum='Wait, testing sha256sum'
 	cmsgadduser='Please wait, creating user...'
 	cmsgaddhost='Please wait, setting hostname...'
    cmsgerrotar='Error in package unpacking'
 	cmsgwaitgrub='Please wait, installing grub to disk'
 	cmsgerrodlsha1='Ops, error downloading of'
 	cmsgerrodlsha2='Check your internet.'
-	cmsgcorrdlnew='Ops, corrupted package or SHA256. \nDownload the package again?'
-	cmsg_corr_rep='Ops, corrupted package or SHA256. \nPlease retry the operation!'
 	cmsg_erro_tar_continue='Error in decompressing the package. \nDo you want to continue?'
 	cmsg_all_ready='All ready to begin the installation. Do you confirm?'
 	cmsg_nec_dismount='Need to dismount partition to repartition automatically.'
@@ -1670,4 +1643,5 @@ trap sh_trapErro 2 15
 sh_checkroot
 sh_checkDependencies
 sh_checklive
+
 init "$@"

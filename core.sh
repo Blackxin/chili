@@ -34,12 +34,12 @@
 IFS=$' \t\n'
 SAVEIFS=$IFS
 
-ERR_ERROR=1
-ERR_OK=0
-true=1
-false=0
-LINSTALLED=2
-LREMOVED=3
+declare -i ERR_ERROR=1
+declare -i ERR_OK=0
+declare -i true=1
+declare -i false=0
+declare -i LINSTALLED=2
+declare -i LREMOVED=3
 declare -l BAIXA=${MENSAGEM}
 declare -u ALTA=${MENSAGEM}
 trancarstderr=2>&-
@@ -225,13 +225,15 @@ sh_disk_info()
   while read line
   do
 		eval "${line//=/_=}"
+		[[ -z "$TRAN_" ]] && continue
       ARRAY_DSK_DISKS+=( $NAME_ )
     ARRAY_DSK_DEVICES+=( $PATH_ )
        ARRAY_DSK_SIZE+=( $SIZE_ )
        ARRAY_DSK_TRAN+=( ${TRAN_:-blk} )
       ARRAY_DSK_MODEL+=( "${MODEL_:-unknown}" )
+	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk)')
 #	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
-	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk|loop)')
+#	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk|loop)')
 #	declare -p ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}
 }
 
@@ -1402,7 +1404,7 @@ function conf()
 {
 	read -p "$1 [Y/n]"
 	[[ ${REPLY^} == "" ]] && return $true
-	[[ ${REPLY^} == N ]] && return $false || return $true
+	[[ ${REPLY^} == N ]]  && return $false || return $true
 }
 
 function confok()

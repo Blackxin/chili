@@ -777,12 +777,30 @@ function is_true()
    [ "$1" = "1" ] || [ "$1" = "yes" ] || [ "$1" = "true" ] ||  [ "$1" = "y" ] || [ "$1" = "t" ]
 }
 
-info()
+function debug()
+{
+	whiptail							\
+		--fb							\
+		--clear						\
+		--backtitle "[debug]$0"	\
+		--title     "[debug]$0"	\
+		--yesno     "${*}\n"	\
+	0 40
+	result=$?
+	if (( $result )); then
+		exit
+	fi
+	return $result
+}
+
+#	--yesno   	"${1}"			\
+
+function info()
 {
 	dialog							\
-		--title     "[debug]$0"	\
-		--backtitle "\n$*\n"	   \
-		--yesno     "${1}"		\
+	--backtitle	"\n$*\n"	   	\
+	--title		"[info]$0"		\
+	--yesno   	"${1}"			\
 	0 0
 	result=$?
 	if (( $result )); then
@@ -1727,19 +1745,5 @@ parseopts()
 	OPTRET+=('--' "${unused_argv[@]}" "$@")
 	unset longoptmatch
 	return 0
-}
-
-function debug()
-{
-	whiptail							\
-		--title     "[debug]$0"	\
-		--backtitle "[debug]$0"	\
-		--yesno     "${*}\n"	\
-	0 0
-	result=$?
-	if (( $result )); then
-		exit
-	fi
-	return $result
 }
 

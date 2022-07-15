@@ -760,10 +760,10 @@ function runcmd()
 
 function evaluate_retval()
 {
-   local error_value="${?}"
+   local error_value="$?"
 
 	if [ $# -gt 0 ]; then
-   	error_value="${1}"
+   	error_value="$1"
 	fi
 
 	if [ ${error_value} = 0 ]; then
@@ -796,13 +796,12 @@ function debug()
 }
 
 #	--yesno   	"${1}"			\
-
 function info()
 {
 	dialog							\
 	--backtitle	"\n$*\n"	   	\
 	--title		"[info]$0"		\
-	--yesno   	"${1}"			\
+	--yesno   	"${*}\n"			\
 	0 0
 	result=$?
 	if (( $result )); then

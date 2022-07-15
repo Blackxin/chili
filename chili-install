@@ -61,7 +61,7 @@ sh_configure()
 	# vars bool
 	true=1
 	false=0
-	grafico=$true
+	grafico=$false
 
 	# flag dialog exit status codes
 	: "${D_OK=0}"
@@ -84,16 +84,14 @@ sh_configure()
 	: "${url_release="http://${site}/releases"}"
 	: "${url_distro="http://${site}/releases/"}"
 	: "${dir_install="/mnt/lfs"}"
-	: "${cvconsole="${dir_install}/etc/vconsole.conf"}"
-	: "${cfstab=${dir_install}"/etc/fstab"}"
 	: "${STANDALONE=$false}"
 	: "${xLABEL=$cdistro}"
 
 	# flag para disco/particao/formatacao/montagem
-	: "${LDISK=0}"
-	: "${LPARTITION=0}"
+	: "${LDISK=$false}"
+	: "${LPARTITION=$false}"
 	: "${LFORMAT=1}"
-	: "${LMOUNT=0}"
+	: "${LMOUNT=$false}"
 	: "${xUUIDSWAP=""}"
 	: "${xPARTSWAP=""}"
 	: "${xPARTEFI=""}"
@@ -198,14 +196,9 @@ _WIKI
 	)
 }
 
-confirma()
-{
-	[ "$1" -ne 0 ] && { conf "INFO" "$2"; return $?;}
-}
-
 msg()
 {
-	if ! (( grafico )); then
+	if (( grafico )); then
 		${DIALOG}           \
 		--no-collapse       \
       --title     "$1"    \
@@ -218,21 +211,29 @@ msg()
 
 mensagem()
 {
-	${DIALOG}            	\
-	--title 	"$ctitle"   	\
-	--backtitle	"$ccabec"   \
-	--infobox 	"$*"        \
+   ${DIALOG}               \
+   --title  "$ctitle"      \
+   --backtitle "$ccabec"   \
+   --infobox   "$*"        \
    6 60
 }
 
-display_result()
+display_info()
+{
+	${DIALOG}            	\
+	--title 	"$ctitle"   	\
+	--backtitle	"$ccabec"   \
+   --ok-label  "OK"    		\
+	--msgbox 	"$*"        \
+   6 60
+}
+
+function display_result()
 {
 	local xbacktitle=$ccabec
-
 	if [ "$3" != "" ] ; then
 		xbacktitle="$3"
 	fi
-
 	${DIALOG} 	--title 	"$2"					\
             	--beep                     \
     				--no-collapse					\
@@ -280,14 +281,13 @@ confmulti()
 			--yesno 		"$*" 				\
 			10 100
 			nchoice=$?
-			[[ $nchoice -eq 0 ]] && return 1 || return 0
+			return $nchoice
 }
 
 sh_confhost()
 {
 	msg "INFO" "$(log_info_msg "$cmsgaddhost")"
 	if [ "$chostname" != "$calias" ]; then
-		rm -f "$dir_install"/etc/hostname
 		echo "$chostname" > "$dir_install"/etc/hostname
 		echo "127.0.0.1   $chostname" >> "$dir_install"/etc/hosts
 		return $?
@@ -304,15 +304,17 @@ sh_adduser()
 		cgroups="audio,video"
 
 		if ! (( LPARTITION )); then
-			choosepartition
-			if ! (( LPARTITION )); then
-				info "\n$cancelinst"
+			if ! choosepartition; then
+				display_info "\n$cancelinst"
 				return 1
 			fi
 		fi
 
 		if ! (( LMOUNT )); then
-			sh_mountpartition
+			if ! sh_mountpartition; then
+				display_info "\n$cancelinst"
+				return 1
+			fi
 		fi
 
 		sh_initbind
@@ -383,7 +385,9 @@ sh_execcopia()
 
 sh_stopmount()
 {
+   msg "INFO" "$(log_info_msg "$cmsg_umount_partition")"
 	umount -rl "$dir_install"
+	evaluate_retval
 }
 
 sh_stopbind()
@@ -402,22 +406,23 @@ sh_stopbind()
 	local lrun="OK"
 	local lshm="OK"
 	local lqueue="OK"
-	local lresultbind=$false
+	local lstopbind=0
 
 	pushd "$pwd" &>/dev/null
-	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lresultbind=$false; }
-	mensagem "umount $xqueue" ; umount "$xqueue" > /dev/null 2>&1 || { lqueue="FAIL" ; lresultbind=$false; }
-	mensagem "umount $xpts"   ; umount "$xpts"   > /dev/null 2>&1 || { lpts="FAIL"   ; lresultbind=$false; }
-	mensagem "umount $xproc"  ; umount "$xproc"  > /dev/null 2>&1 || { lproc="FAIL"  ; lresultbind=$false; }
-	mensagem "umount $xsys"   ; umount "$xsys"   > /dev/null 2>&1 || { lsys="FAIL"   ; lresultbind=$false; }
-	mensagem "umount $xrun"   ; umount "$xrun"   > /dev/null 2>&1 || { lrun="FAIL"   ; lresultbind=$false; }
-	mensagem "umount $xdev"   ; umount "$xdev"   > /dev/null 2>&1 || { ldev="FAIL"   ; lresultbind=$false; }
+	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xqueue" ; umount "$xqueue" > /dev/null 2>&1 || { lqueue="FAIL" ; lstopbind=1; }
+	mensagem "umount $xpts"   ; umount "$xpts"   > /dev/null 2>&1 || { lpts="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xproc"  ; umount "$xproc"  > /dev/null 2>&1 || { lproc="FAIL"  ; lstopbind=1; }
+	mensagem "umount $xsys"   ; umount "$xsys"   > /dev/null 2>&1 || { lsys="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xrun"   ; umount "$xrun"   > /dev/null 2>&1 || { lrun="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xdev"   ; umount "$xdev"   > /dev/null 2>&1 || { ldev="FAIL"   ; lstopbind=1; }
 
 	xstrbind="mount $xproc : $lproc    \
             \nmount $xsys : $lsys     \
             \nmount $xdev : $ldev     \
             \nmount $xrun : $lrun"
    popd  &>/dev/null
+   return $lstopbind
 }
 
 sh_initbind()
@@ -430,7 +435,7 @@ sh_initbind()
    local lsys="OK"
    local ldev="OK"
    local lrun="OK"
-   local lresultbind=$false
+   linitbind=0
 
 	pushd $dir_install &>/dev/null
 	[ -d "$dir_install/home"     ] || mkdir -p "$dir_install/home"     > /dev/null 2>&1
@@ -440,10 +445,10 @@ sh_initbind()
 	[ -d "$dir_install/run"      ] || mkdir -p "$dir_install/run"      > /dev/null 2>&1
 	[ -d "$dir_install/boot/efi" ] || mkdir -p "$dir_install/boot/efi" > /dev/null 2>&1
 
-	mensagem "mount $xproc"; mount "$xproc" > /dev/null 2>&1 || { lproc="FAIL"; lresultbind=$false; }
-	mensagem "mount $xsys" ; mount "$xsys"  > /dev/null 2>&1 || { lsys="FAIL"; lresultbind=$false; }
-	mensagem "mount $xdev" ; mount "$xdev"  > /dev/null 2>&1 || { ldev="FAIL"; lresultbind=$false; }
-	mensagem "mount $xrun" ; mount "$xrun"  > /dev/null 2>&1 || { lrun="FAIL"; lresultbind=$false; }
+	mensagem "mount $xproc"; mount "$xproc" > /dev/null 2>&1 || { lproc="FAIL"; linitbind=1; }
+	mensagem "mount $xsys" ; mount "$xsys"  > /dev/null 2>&1 || { lsys="FAIL";  linitbind=1; }
+	mensagem "mount $xdev" ; mount "$xdev"  > /dev/null 2>&1 || { ldev="FAIL";  linitbind=1; }
+	mensagem "mount $xrun" ; mount "$xrun"  > /dev/null 2>&1 || { lrun="FAIL";  linitbind=1; }
 
 	xstrbind="mount $xproc : $lproc    \
             \nmount $xsys : $lsys     \
@@ -451,54 +456,52 @@ sh_initbind()
             \nmount $xrun : $lrun"
 
 	popd &>/dev/null
+	return $linitbind
 }
 
 sh_bind()
 {
 	if [ $# -lt 1 ] ; then
-   	if ! (( STANDALONE )); then
-    		conf "*** BIND ***" "\n$cinitbind?"
-    		bindyes=$?
-    		if [ $bindyes = $false ]; then
-    			alerta "*** BIND *** " "$cancelbind"
-    			STANDALONE=$true
-    			return $STANDALONE
+   	if (( STANDALONE )); then
+    		if ! conf "*** BIND ***" "\n$cinitbind?"; then
+				alerta "*** BIND *** " "$cancelbind"
+				return 1
      		fi
 		fi
    fi
 
 	if ! (( LPARTITION )); then
-		choosepartition
-		if ! (( LPARTITION )); then
-			info "\n$cancelinst"
+		if ! choosepartition; then
+			display_info "\n$cancelinst"
 			return 1
 		fi
 	fi
 
 	if ! (( LMOUNT )); then
-		sh_mountpartition
+		if ! sh_mountpartition; then
+			display_info "\n$cancelinst"
+			return 1
+		fi
 	fi
 
    xstrbind=""
-   lresultbind=$false
-	sh_initbind
-   if [ $lresultbind = $true ]; then
+	if sh_initbind; then
 		cmsgbindresult="BIND OK"
    else
    	cmsgbindresult="BIND FAIL"
    fi
 
    if [ $# -lt 1 ] ; then
-   	if ! (( STANDALONE )); then
+   	if ! (( LAUTOMATICA )); then
       	alerta "*** BIND ***" "$xstrbind" "\n$cmsgbindresult";
-    		STANDALONE=$true
+      	return 1
     	fi
 	fi
 }
 
 sh_efi()
 {
-	xPARTEFI=$(fdisk "$sd" -l | grep EFI | cut -c1-11)
+	xPARTEFI=$(fdisk "$sd" -l | grep EFI | cut -d' ' -f1)
 	lEFI=$true
 
 	if [[ -n "$xPARTEFI" ]] ; then
@@ -537,8 +540,12 @@ sh_grubEFI()
     evaluate_retval
 
     # Caminho de inicialização padrão/reserva
-    mkdir "$dir_install"/boot/efi/EFI/BOOT 2> /dev/null
-    cp  "$dir_install"/boot/efi/EFI/chili/grubx64.efi "$dir_install"/boot/efi/EFI/BOOT/BOOTX64.EFI 2> /dev/null
+    msg "INFO" "$(log_info_msg "Criando diretorio: $dir_install/boot/efi/EFI/BOOT")"
+    mkdir "$dir_install/boot/efi/EFI/BOOT" 2> /dev/null
+    evaluate_retval
+
+    msg "INFO" "$(log_info_msg "Copiando caminho de inicialização padrão/reserva para: $dir_install/boot/efi")"
+    cp "$dir_install"/boot/efi/EFI/chili/grubx64.efi "$dir_install"/boot/efi/EFI/BOOT/BOOTX64.EFI 2> /dev/null
     evaluate_retval
     return $?
 }
@@ -546,7 +553,6 @@ sh_grubEFI()
 sh_grubmkconfig()
 {
     local nchoice
-
     msg "INFO" "$(log_info_msg "$cmsgGerando_arquivo_configuracao_do_grub")"
     chroot "$dir_install" /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg" > /dev/null 2>&1
     evaluate_retval
@@ -558,66 +564,72 @@ sh_grubmkconfig()
 
 grubinstall()
 {
+	local grubyes=$true
+	LDISK=$true
+
 	if ! (( LAUTOMATICA )); then
-  		conf "*** GRUB ***" "$cGrubMsgInstall"
-		grubyes=$?
-		LDISK=$false
-    else
-		grubyes=0
-      LDISK=$true
+     	LDISK=$false
+  		if ! conf "*** GRUB ***" "$cGrubMsgInstall"; then
+			grubyes=$false
+      fi
 	fi
 
-	if [ $grubyes -eq 0 ]; then
-		if [ $LDISK -eq 0 ]; then
-			choosedisk "GRUB"
-			if [ $LDISK -eq 0 ]; then
-				info "\n$ccancelgrub"
-				return 1
-			fi
+	if ! (( grubyes )); then
+		display_info "\n$ccancelgrub"
+		return 1
+	fi
+
+	if ! (( LDISK )); then
+		choosedisk "GRUB"
+		if ! (( LDISK )); then
+			display_info "\n$ccancelgrub"
+			return 1
 		fi
+	fi
 
-		if [ $LPARTITION -eq 0 ]; then
-			choosepartition "grub"
-			if [ $LDISK -eq 0 ]; then
-				info "\n$ccancelgrub"
-				return 1
-			fi
+	if ! (( LPARTITION )); then
+		if ! choosepartition; then
+			display_info "\n$ccancelgrub"
+			return 1
 		fi
-
-		sh_bind $true
-		mensagem "$cmsgwaitgrub: \n\n$sd"
-
-		if efivar --list >/dev/null; then
-	      sh_efi
-	   else
-	   	lEFI=$false
-	   fi
-
-		if [ $lEFI = $true ]; then
-      	local nChoiceEFI=$true
-			if ! (( LAUTOMATICA )); then
-         	conf "** EFI **"                                \
-            		"$cmsg_Detectada_particao_EFI: $xPARTEFI    \
-                	\n$cmsg_Deseja_instalar_o_GRUB_EFI?         \
-                 	\n\n$cmsg_Sim_EFI \n$cmsg_Nao_MBR"
-				nChoiceEFI=$?
-			fi
-			if [ $nChoiceEFI = $true ] ; then
-         	if [[ $LGRUB == "EFI" ]] ; then
-            	sh_grubEFI
-            fi
-			fi
+		if ! (( LDISK )); then
+			display_info "\n$ccancelgrub"
+			return 1
 		fi
-		sh_grubBIOS # UEFI, também instalar BIOS
-		sh_grubmkconfig
-    	if ! (( LAUTOMATICA )); then
-    	    alerta "*** GRUB *** " "$sd" "\n\n$cgrubsuccess"
-        fi
+	fi
+
+	sh_bind $true
+	mensagem "$cmsgwaitgrub: \n\n$sd"
+
+	if efivar --list >/dev/null; then
+		sh_efi
 	else
-		info "\n$ccancelgrub"
+		lEFI=$false
 	fi
 
-	if [ $STANDALONE = $false ]; then
+	if (( lEFI )); then
+		local nChoiceEFI=$true
+		if ! (( LAUTOMATICA )); then
+			conf 	"** EFI **"                                \
+         		"$cmsg_Detectada_particao_EFI: $xPARTEFI    \
+               \n$cmsg_Deseja_instalar_o_GRUB_EFI?         \
+               \n\n$cmsg_Sim_EFI \n$cmsg_Nao_MBR"
+			nChoiceEFI=$?
+		fi
+
+		if (( nChoiceEFI )); then
+      	if [[ $LGRUB == "EFI" ]] ; then
+         	sh_grubEFI
+			fi
+		fi
+	fi
+
+	sh_grubBIOS # UEFI, também instalar BIOS
+	sh_grubmkconfig
+
+  	if ! (( LAUTOMATICA )); then
+  	    alerta "*** GRUB *** " "$sd" "\n\n$cgrubsuccess"
+	else
 		sh_finish
 	fi
 }
@@ -627,77 +639,108 @@ sh_finish()
 	if confmulti "*** INSTALL ***" \ "\n$cfinish" \ "\nDeseja Rebootar agorar?"; then
 		reboot
  	fi
-	clear
    exit 0
 }
 
 sh_check_install()
 {
-	if [ $LPARTITION -eq 0 ]; then
-    	#if [ $LDISK -eq 0 ]; then
-	    #	choosedisk
-    	#fi
-		choosepartition
-		if [ $LPARTITION -eq 0 ]; then
-			info "\n$cancelinst"
+	if ! (( LPARTITION )); then
+		if ! choosepartition; then
+			display_info "\n$cancelinst"
 			return 1
 		fi
 	fi
-	if [ $LFORMAT -eq $false ]; then
-		sh_format
-		if [ $? = $false ]; then
-			LPARTITION=0
-			menuinstall
+
+	if ! (( LFORMAT )); then
+		if ! sh_format; then
+			LPARTITION=$false
+			sh_tools
 		fi
 	fi
 
-	if [ $LMOUNT -eq 0 ]; then
+	if ! (( LMOUNT )); then
 		sh_mountpartition
 	fi
 
 	if ! (( LAUTOMATICA )); then
-    	confmulti "** INSTALL ** " "\n Mount : $dir_install" "\n  Part : $part" "\n\n$cmsg_all_ready"
+		confmulti "** INSTALL ** " "\n Mount : $dir_install" "\n  Part : $part" "\n\n$cmsg_all_ready"
     	local nOk=$?
     	case $nOk in
-    		"$D_ESC")
-    			info "\n$cancelinst"
-    			menuinstall
+    		"$D_ESC"|"$D_CANCEL")
+    			display_info "\n$cancelinst"
+    			sh_tools
     			;;
-    		"$D_CANCEL")
-    			info "\n$cancelinst"
-    			menuinstall
-    			;;
-    	esac
-    fi
+   	esac
+	fi
 }
 
 sh_checkdisk()
 {
-	local nchoice=0
+	local dsk
+
+	msg "INFO" "$(log_info_msg "Aguardando, checando por partições montadas no disco: $sd")"
 	dsk=$(df -h | grep "$sd" | awk '{print $1, $2, $3, $4, $5, $6, $7}')
 
 	if [[ -n "$dsk" ]]; then
-		conf "$cwarning" "\n$cmsg_all_mounted_part\n\n$dsk\n\n$cmsg_dismount"
-		nchoice=$?
-		if [ $nchoice = 0 ]; then
-			for i in $(seq 1 10); do
-				umount -f -rl "$sd$i" 2> /dev/null
-			done
+		if ! conf "$cwarning" "\n$cmsg_all_mounted_part\n\n$dsk\n\n$cmsg_dismount"; then
+			return 1
 		fi
+		for i in $(seq 1 10); do
+			umount -f -rl "$sd$i" 2> /dev/null
+			return $?
+		done
 	fi
-	return $nchoice
+	return 0
 }
 
 sh_checksimple()
 {
-	local nchoice=0
 	local sdsk
 
 	sdsk=$(df -h | grep "$sd" | awk '{print $1, $2, $3, $4, $5, $6, $7}')
 	if [[ -n "$sdsk" ]]; then
 		alerta "$cwarning" "\n$cmsg_alert_mount\n\n$sdsk"
 	fi
-	return $nchoice
+	return 0
+}
+
+sh_checkpartition()
+{
+	cpart=$(df | grep "$part" | cut -c 1-)
+	if [[ -n "$cpart" ]]; then
+		if conf "** $part **" "\n$cmsgA_particao_esta_montada!\n\n$cpart\n\n$cmsg_dismount"; then
+			if umount -f -rl "$part" 2> /dev/null; then
+				LMOUNT=$false
+				return 1
+			fi
+		fi
+	fi
+	return 0
+}
+
+sh_partitions_with_sfdisk()
+{
+	local xMEMSWAP
+	xMEMSWAP=$(free | grep Mem | awk '{ print $2}')
+	[ -z "$xMEMSWAP" ] && xMEMSWAP="2G"
+	flock "$sd" sfdisk --delete --force "$sd"  > /dev/null 2>&1
+	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
+	| flock "$sd" sfdisk --wipe=always --wipe-partitions=always --force --label=gpt "$sd" > /dev/null 2>&1
+	udevadm settle > /dev/null 2>&1
+}
+
+sh_partitions_with_parted()
+{
+	msg "INFO" "$(log_info_msg "Aguarde, criando tabela de partições em: $sd")"
+	parted --script "$sd" -- 														\
+	mklabel gpt																			\
+	mkpart primary fat32      1MiB   100MiB set 1 bios on name 1 BIOS	\
+	mkpart primary fat32      100MiB 200MiB set 2 esp  on name 2 EFI  \
+	mkpart primary linux-swap 200MiB 2GB                  name 3 SWAP \
+	mkpart primary ext4       2GB 100%                    name 4 ROOT \
+	align-check optimal 1
+	evaluate_retval
+	udevadm settle > /dev/null 2>&1
 }
 
 sh_umountall()
@@ -712,66 +755,25 @@ sh_umountall()
 	done
 }
 
-sh_checkpartition()
-{
-	local nchoice=$true
-
-	cpart=$(df | grep "$part" | cut -c 1-)
-	if [[ -n "$cpart" ]]; then
-		if conf "** $part **" "\n$cmsgA_particao_esta_montada!\n\n$cpart\n\n$cmsg_dismount"; then
-			if umount -f -rl "$part" 2> /dev/null; then
-				LMOUNT=0
-			else
-				nchoice=$false
-			fi
-		fi
-	fi
-	return $nchoice
-}
-
-sh_partitions_with_sfdisk()
-{
-	local xMEMSWAP
-
-	xMEMSWAP=$(free | grep Mem | awk '{ print $2}')
-	[ -z "$xMEMSWAP" ] && xMEMSWAP="2G"
-	flock "$sd" sfdisk --delete --force "$sd"  > /dev/null 2>&1
-	echo -e ",400M,$nEFI\n,1M,$nBIOS\n,$xMEMSWAP,$nSWAP\n,;" \
-	| flock "$sd" sfdisk --wipe=always --wipe-partitions=always --force --label=gpt "$sd" > /dev/null 2>&1
-	udevadm settle > /dev/null 2>&1
-}
-
-sh_partitions_with_parted()
-{
-	parted --script "$sd" -- 														\
-	mklabel gpt																			\
-	mkpart primary fat32      1MiB   100MiB set 1 bios on name 1 BIOS	\
-	mkpart primary fat32      100MiB 200MiB set 2 esp  on name 2 EFI  \
-	mkpart primary linux-swap 200MiB 2GB                  name 3 SWAP \
-	mkpart primary ext4       2GB 100%                    name 4 ROOT \
-	align-check optimal 1
-	udevadm settle > /dev/null 2>&1
-}
-
 sh_partnewbie()
 {
+	local nchoice
 	msg "INFO" "$(log_info_msg "$cmsg_prepare_disk $sd")"
 	sh_umountall
-
-	#sh_partitions_with_sfdisk
+#	sh_partitions_with_sfdisk
 	sh_partitions_with_parted
-	evaluate_retval
-	LDISK=1
+	evaluate_retval; nchoice=$?
+	LDISK=$true
 
 	if (( LAUTOMATICA )); then
-		if [ "$TRAN_ORIGEM" = "nvme" ]; then
+		if [ "$TRAN_ORIGEM" == "nvme" ]; then
 			part=$sd"p4"
 		else
 			part=$sd"4"
 		fi
-		LPARTITION=1
+		LPARTITION=$true
 	fi
-	return $?
+	return $nchoice
 }
 
 choosedisk()
@@ -779,7 +781,7 @@ choosedisk()
 	while true
 	do
 		sh_disk_info
-    	LDISK=0
+    	LDISK=$false
 		local xmsg="$cdisco"
 		local array=()
 		local i
@@ -805,37 +807,31 @@ choosedisk()
 
     	exit_status=$?
 		case $exit_status in
-    	"$D_ESC")
+    	"$D_ESC"|"$D_CANCEL")
         	if (( LAUTOMATICA )); then
            	return 1
         	fi
     		init
     		;;
-    	"$D_CANCEL")
-			if (( LAUTOMATICA )); then
-           	return 1
-        	fi
-    		init
-    		;;
 		3)
-        	result=$( fdisk -l "$sd" );
+      	result=$(fdisk -l "$sd");
          display_result "$result" "$cmsg013" "$cmsg_part_disk"
          continue
          ;;
 		esac
 
     	if [ "$1" = "SEE" ] ; then
-    		result=$( fdisk -l "$sd" )
+    		result=$(fdisk -l "$sd")
     		display_result "$result" "$cmsg013" "$cmsg_part_disk"
     		continue
     	fi
 
 		if [ "$1" = "GRUB" ] ; then
-      	LDISK=1
+      	LDISK=$true
          return 0
       fi
 
-    	if [ "$sd" != "" ]; then
+    	if [ -n "$sd" ]; then
 			{	local item
             index=0
             for item in "${ARRAY_DSK_DEVICES[@]}"
@@ -864,44 +860,34 @@ choosedisk()
 
 	    	exit_status=$?
 	    	case $exit_status in
-	    		"$D_ESC")
+	    		"$D_ESC"|"$D_CANCEL")
 					if (( LAUTOMATICA )); then
 	            	return 1
 	            fi
 	    			init
-	    			;;
-	    		"$D_CANCEL")
-	            if (( LAUTOMATICA )); then
-	            	return 1
-	            fi
-	    			init
-	    			;;
+	   			;;
 			esac
-
 			case "$typefmt" in
 			"$cexpert")
 				sh_checksimple
-				cfdisk "$sd"
-				LDISK=1
-				result=$( fdisk -l "$sd" )
-				display_result "$result" "$cmsg011"
+				if cfdisk "$sd"; then
+					LDISK=$true
+					result=$(fdisk -l "$sd")
+					display_result "$result" "$cmsg011"
+				fi
 				;;
 			"$cnewbie")
-				sh_checkdisk
-				local nmontada=$?
-				if [ $nmontada = 1 ]; then
+				if ! sh_checkdisk; then
 					alerta "CHOOSEDISK" "$cmsg_nec_dismount"
 					choosedisk
 				fi
-				conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"
-				local nb=$?
-				case $nb in
-            "$D_OK")
-					sh_partnewbie
-					result=$( fdisk -l "$sd" )
-					display_result "$result" "$cmsg013"
-					;;
-				esac
+
+				if conf "$cmsgTodos_os_dados_serao_perdidos" "\n$cmsgTodos_os_dados_serao_perdidos\n$cmsg014"; then
+					if sh_partnewbie; then
+						result=$(fdisk -l "$sd")
+						display_result "$result" "$cmsg013"
+					fi
+				fi
 				;;
 			esac
 		fi
@@ -909,54 +895,51 @@ choosedisk()
 	done
 }
 
-sh_umountpartition()
+function sh_mountpartition()
 {
-	mensagem "$cmsg_umount_partition"
-	umount -f "$part" 2> /dev/null
-	LMOUNT=0
-	cd "$pwd"
-}
+	local nchoice
 
-sh_mountpartition()
-{
-	mensagem "$cmsg_create_dir"
-	mkdir -p "$dir_install" 2> /dev/null
-	mensagem "$cmsg_mount_partition"
+   mensagem "$cmsg_create_dir"
+   mkdir -p "$dir_install" 2> /dev/null
+   mensagem "$cmsg_mount_partition"
 
-	while true
-	do
-		umount -f "$part" 2> /dev/null
-		mount "$part" "$dir_install" 2> /dev/null
-		if [ $? = 32 ]; then # montada?
-			LMOUNT=1
-			break
-		fi
-		if [ $? = 1 ]; then # fail?
-			if conf "** MOUNT **" "$cmsg_mount_failed"; then
-				continue
-			fi
-			LMOUNT=0
-			break
-		fi
-		break
-	done
+   while true
+   do
+      umount -f "$part" 2> /dev/null
+      mount "$part" "$dir_install" 2> /dev/null
+      nchoice=$?
 
-	LMOUNT=1
+      if [ $nchoice -eq 32 ]; then # montada?
+         LMOUNT=$true
+         break
+      fi
+
+      if [ $nchoice -eq 1 ]; then # fail?
+         if conf "** MOUNT **" "$cmsg_mount_failed"; then
+            continue
+         fi
+         LMOUNT=$false
+         break
+      fi
+      break
+   done
+
+	cd "$dir_install"
 	if ! (( LAUTOMATICA )); then
 		mensagem "$cmsg_enter_work_dir"
 	fi
-	cd "$dir_install"
+	return $LMOUNT
 }
 
 choosepartition()
 {
-	LPARTITION=0
+	LPARTITION=$false
    local array=()
    local n=0
    local y=0
    local x=0
 
-	if [ $LDISK -eq 0 ]; then
+	if ! (( LDISK )); then
 		local devices=($(fdisk -l -o Device|sed -n '/sd[a-z][0-9]/p'))
       local size=($(fdisk -l  | sed -n /sd[a-z][0-9]/p | awk '{printf "(%7s)\n", $5}'|sed 's/ /_/g'))
       local type=($(fdisk -l -o device,type|sed -n '/sd[a-z][0-9]/p'|awk '{printf "%-0s %0s %0s %0s %0s\n", $2, $3, $4, $5, $6}'|sed 's/[ \t]*$//'|sed 's/ /_/g'))
@@ -982,19 +965,15 @@ choosepartition()
 
 	exit_status=$?
 	case $exit_status in
-	"$D_ESC")
-		LDISK=0
-		LPARTITION=0
-		sh_tools
-		;;
-	"$D_CANCEL")
-		LDISK=0
-		LPARTITION=0
-		sh_tools
+	"$D_ESC"|"$D_CANCEL")
+		LDISK=$false
+		LPARTITION=$false
+		return 1
 		;;
 	esac
-	LDISK=1
-	LPARTITION=1
+	LDISK=$true
+	LPARTITION=$true
+	return 0
 }
 
 sh_mkswap()
@@ -1011,28 +990,28 @@ sh_domkfs()
 	mensagem "$cmsg_Desmontando_particao: $part"
 	umount -f "$part" 2> /dev/null
 	mensagem "$cmsg_Formatando_particao: $part"
-	mkfs -t ext4 -L "$xLABEL" "$part" > /dev/null 2>&1
-	LFORMAT=$?
-	return $LFORMAT
+	if mkfs.ext4 -L "$xLABEL" "$part" > /dev/null 2>&1; then
+		LFORMAT=$true
+		return 0
+	else
+		LFORMAT=$false
+		return 1
+	fi
 }
 
 sh_format()
 {
 	sh_checkpartition
 	local nmontada=$?
-	local format=1
 
 	if [ $nmontada = 0 ] ; then
 		LFORMAT=$false
-		conf " *** FORMAT *** " "\n   $cmsgTodos_os_dados_serao_perdidos \n\n   $cmsg021 $part ?"
-		format=$?
-		if [ $format = $true ] ; then
-			sh_domkfs
-			local nfmt=$?
-			if [ $nfmt = 0 ] ; then
+		if conf " *** FORMAT *** " "\n   $cmsgTodos_os_dados_serao_perdidos \n\n   $cmsg021 $part ?"; then
+			if sh_domkfs; then
 				sh_mkswap
 				alerta "MKFS" "$cmsg_mkfs_ok"
 				LFORMAT=$true
+				return 0
 			else
 				alerta "MKFS" "$cmsg_mkfs_error."
 				LFORMAT=$false
@@ -1040,9 +1019,10 @@ sh_format()
 			fi
 		else
 			LFORMAT=$false
+			return 1
 		fi
 	fi
-	return $format
+	return 0
 }
 
 sh_checkroot()
@@ -1127,7 +1107,7 @@ sh_tools()
 				3) choosepartition;;
 				4) STANDALONE=$true; grubinstall;;
 				5) STANDALONE=$true; sh_fstab;;
-				6) STANDALONE=$true; LDISK=$true; LPARTITION=$true; sh_bind;;
+				6) STANDALONE=$true; LDISK=$false; LPARTITION=$false; sh_bind;;
 				7) STANDALONE=$true; sh_confadduser;;
 				8) choosedisk "SEE";;
 				9) exec chili-clonedisk;;
@@ -1139,11 +1119,12 @@ zeravar()
 {
 	sd=""
 	part=""
-	LDISK=0
-	LPARTITION=0
+	LDISK=$false
+	LPARTITION=$false
 	LFORMAT=$false
-	LMOUNT=0
+	LMOUNT=$false
 	LAUTOMATICA=$false
+	STANDALONE=$false
 }
 
 sh_pvexecrsync()
@@ -1228,8 +1209,8 @@ sh_wgetsqfs()
 	cd $dir_install
 	#sh_tailexecrsync
 	#sh_pvexecrsync
-	sh_execcopia
 	#sh_pvexecrunsquashfs
+	sh_execcopia
 }
 
 choosegrub()
@@ -1255,27 +1236,29 @@ sh_liveinstall()
 					 	"bastando escolher o pacote e o disco destino"			\
         				"\n\n$cmsgDeseja_continuar_e_escolher_o_disco_destino?"; then
 		LAUTOMATICA=$false
-		scrmain
+		zeravar
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		sh_tools
 	fi
 
 	LADDUSER=$false
 	LAUTOMATICA=$true
 
 	if ! choosedisk ; then
-		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
-		init
+		sh_tools
 	fi
 
 	if ! choosegrub; then
-		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
 		sh_tools
 	fi
 	LGRUB=$mbr
-	keymap=$(grep ^KEYMAP /etc/vconsole.conf | cut -d= -f2)
 
-	if conf2 "*** KEYBOARD ***" "Current layout : $keymap" "\n\nSet new keyboard layout?"; then
+	keymap=$(grep ^KEYMAP /etc/vconsole.conf | cut -d= -f2)
+	if conf2 "*** KEYBOARD ***" "Current layout : $keymap" "\n\n$cmsgSetKeyboardLayout?"; then
 		setkeymap
 	fi
 
@@ -1285,25 +1268,24 @@ sh_liveinstall()
 	fi
 
 	if ! conf "$cmsgInstalacao_Automatica" "\nTudo pronto para iniciar a instalação. Continuar?"; then
-		info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
 		sh_tools
 	fi
 
    if ! sh_partnewbie; then
-		info "$cmsgInstalacao_Automatica" "\n$cmsgErro_no_particionamento!\n\n$cmsgInstalacao_Automatica_cancelada"
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgErro_no_particionamento!\n\n$cmsgInstalacao_Automatica_cancelada"
    	zeravar
    	sh_tools
 	fi
 
    if ! sh_domkfs; then
-		info "$cmsgInstalacao_Automatica" "\n$cmsgErro_na_formatacao!\n\n$cmsgInstalacao_Automatica_cancelada"
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgErro_na_formatacao!\n\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
 		sh_tools
 	fi
 
 	sh_mkswap
-	sh_stopbind
 	sh_stopbind
 	sh_checkpartition
 	sh_wgetsqfs
@@ -1313,6 +1295,7 @@ sh_liveinstall()
 	if (( LADDUSER )); then
 		sh_adduser
 	fi
+
 	grubinstall
 	sh_stopbind
 	sh_stopbind
@@ -1341,7 +1324,6 @@ setkeymap()
 
 	nchoice=$?
 	if ! (( nchoice )); then
-		clear
 		echo "loadkeys ${keymap}"
 		loadkeys "$keymap"
 	fi
@@ -1363,23 +1345,21 @@ EOF
 
 sh_fstab()
 {
+	local cfstab="$dir_install/etc/fstab"
 	local result
 
 	msg "INFO" "$(log_info_msg "$cmsgAlterar_FSTAB")"
 	if (( LAUTOMATICA )); then
-		if ! (( STANDALONE )); then
-			conf '*** FSTAB ***' "\n$cmsgAlterar_FSTAB?"
-			fstabyes=$?
-    		if [ $fstabyes = $false ]; then
+		if (( STANDALONE )); then
+			if ! conf '*** FSTAB ***' "\n$cmsgAlterar_FSTAB?"; then
     			STANDALONE=$false
-    			return $STANDALONE
+    			return 1
     		fi
     	fi
 
     	if ! (( LPARTITION )); then
-	    	choosepartition
-    		if ! (( LPARTITION )); then
-    			info "\n$cancelinst"
+	    	if ! choosepartition; then
+	  			display_info "\n$cancelinst"
     			return 1
     		fi
     	fi
@@ -1390,9 +1370,14 @@ sh_fstab()
    fi
 
 	LIVECD=$(sh_testlive)
-	[ -d "$dir_install"/etc 		 ] || mkdir -p "$dir_install"/etc >/dev/null
-	[ -e "$dir_install"/etc/fstab  ]	||	sh_touchfstab
-	[ "$LIVECD" -eq 1              ]	||	sh_touchfstab
+	[ -d "$dir_install/etc" 		 ] || mkdir -p "$dir_install/etc" >/dev/null
+	[ -e "$dir_install/etc/fstab"  ] || sh_touchfstab
+	[ 	"$LIVECD" -eq $true         ] || sh_touchfstab
+
+	if (( lEFI )) ; then
+		xUUIDEFI=$(blkid "$xPARTEFI" --match-tag UUID --match-tag TYPE | cut -d'"' -f2)
+		echo -e "#UUID=$xUUIDEFI       /boot/efi      vfat     umask=0777 0 2" >> "$cfstab"
+	fi
 
 	xUUIDPART=$(blkid "$part" --match-tag UUID --match-tag TYPE | cut -d'"' -f2)
 	xFSTYPE=$(blkid "$part" --match-tag UUID --match-tag TYPE | cut -d'"' -f4)
@@ -1402,22 +1387,19 @@ sh_fstab()
 		echo -e "$xUUIDSWAP		none			swap		 pri=1					0 0" >> "$cfstab"
 	fi
 
-	if ! (( STANDALONE )); then
+	if (( STANDALONE )); then
 		nano "$cfstab"
   		display_result "$result" "$(cat "$cfstab")"
-		STANDALONE=$true
-	else
-    	if (( LAUTOMATICA )); then
-    		display_result "$result" "$(cat "$cfstab")"
-	    	STANDALONE=$true
-        fi
 	fi
+	evaluate_retval "0"
+	return 0
 }
 
 sh_confkeyboard()
 {
-	msg "INFO" "$(log_info_msg 'Setting keyboard layout')"
+	local cvconsole="$dir_install/etc/vconsole.conf"
 
+	msg "INFO" "$(log_info_msg 'Setting keyboard layout')"
 	if [[ -n "$keymap" ]]; then
 		sed -i 's|KEYMAP|#KEYMAP|g' "$cvconsole"
 		echo "KEYMAP=$keymap" >> "$cvconsole"
@@ -1435,6 +1417,46 @@ sh_trapErro()
    fi
 }
 
+sh_mknode_lo()
+{
+	local loDevice
+	for i in {8..63}
+	do
+		if [ -e /dev/loop$i ]; then
+			continue;
+		fi;
+		mknod -m 0660 /dev/loop$i b 7 $i
+		chown --reference=/dev/loop0 /dev/loop$i
+		chmod --reference=/dev/loop0 /dev/loop$i
+		loDevice=/dev/loop$i
+		break
+	done
+	echo $loDevice
+}
+
+sh_mknode_sr()
+{
+	local number=0
+	local srDevice
+
+	for i in {0..63}
+	do
+		if [ -e /dev/loop$i ]; then
+			continue;
+		fi;
+		if [ -e /dev/sr$number ]; then
+			((number++))
+			continue;
+		fi;
+		srDevice=/dev/sr$number
+		mknod -m 0660 /dev/sr$number b 7 $i
+		chown --reference=/dev/loop0 /dev/sr$number
+		chmod --reference=/dev/loop0 /dev/sr$number
+		break
+	done
+	echo $srDevice
+}
+
 sh_testlive()
 {
 	[[ -e "$LIVE_DIR" ]] && echo $true || echo $false
@@ -1442,29 +1464,43 @@ sh_testlive()
 
 sh_checklive()
 {
-	#SQFS
+	local loDevice="/dev/loop0"
+	local srDevice="/dev/sr0"
+
+	loDevice=$(losetup -f)
+	if ! [ -e $loDevice ]; then
+		loDevice=$(sh_mknode_lo)
+	fi
+	srDevice=$(sh_mknode_sr)
+	losetup -P $loDevice /archlive/out/chili-live-2022.07.11-x86_64.iso
+	losetup -P $srDevice /archlive/out/chili-live-2022.07.11-x86_64.iso
+
 	[ -d /run/$chili_iso/bootmnt  ] || mkdir -p /run/$chili_iso/bootmnt
 	[ -d /run/$chili_iso/airootfs ] || mkdir -p /run/$chili_iso/airootfs
-	mount /dev/sr0 /run/$chili_iso/bootmnt 		> /dev/null 2>&1
-	mount /dev/loop0 /run/$chili_iso/airootfs 	> /dev/null 2>&1
-	#mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
+	mount $srDevice /run/$chili_iso/bootmnt	> /dev/null 2>&1
+	#mount $loDevice /run/$chili_iso/airootfs 	> /dev/null 2>&1
 	LIVE_DIR=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
 
 	if [[ -e "$LIVE_DIR" ]]; then
 		export ROOTSQFS=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
 		export MEDIUM=/run/$chili_iso/airootfs
 		export LIVE_DIR
+#		mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
+		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
+			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
+		fi
 	else
 		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
 		export MEDIUM=/lib/initramfs/system
 		export LIVE_DIR=/lib/initramfs/medium/isolinux/venomlive
+#		mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 	fi
 	LIVECD=$(sh_testlive)
 }
 
 pt_BR()
 {
-	lang='pt_BR'
+#	lang='pt_BR'
 	cmsgSetKeyboardLayout='Definir layout do teclado'
 	buttonOK='Aceitar'
 	buttonCancel='Cancelar'
@@ -1484,16 +1520,8 @@ pt_BR()
 	cancelbind='Chroot cancelado!'
 	cmsgTodos_os_dados_serao_perdidos='** AVISO ** Todos os dados serão perdidos!'
 	cmsg021='Formatar partição'
-	menuquit='Sair'
-	menustep='Passo a passo'
 	yeslabel='Sim'
 	nolabel='Não'
-	cdlok1='*** DOWNLOAD *** '
-	cdlok2="\n[OK] Download concluído com sucesso."
-	cdlok3='encontrado.'
-	cdlok4="\n\nIniciar a instalação agora?"
-	cshaok="\n[OK] Checksum verificado com sucesso."
-	plswait='Por favor aguarde, baixando pacote...'
 	cfinish="Instalação completa!\nReboot para iniciar com $cdistro Linux.\n\nBugs? $xemail"
 	cgrubsuccess='GRUB instalado com sucesso!'
 	ccancelgrub='Instalação do GRUB cancelada!'
@@ -1505,14 +1533,9 @@ pt_BR()
 	ccreatenewuser='Criar um novo usuário'
 	cGrubMsgInstall='Você gostaria de instalar o GRUB?'
 	cmsgusermanager='Gerenciamento de usuários'
-	cmsgPacotes_disponiveis='Pacotes disponiveis'
 	cmsgadduser='Aguarde, criando usuario...'
 	cmsgaddhost='Aguarde, setando hostname...'
-   cmsgerrotar='Erro na descompatacao do pacote'
 	cmsgwaitgrub='Aguarde, instalando o GRUB no disco'
-	cmsgerrodlsha1="Ops, erro no download de !\nVerifique sua internet."
-	cmsgerrodlsha2='Verifique sua internet.'
-	cmsg_erro_tar_continue="Erro na descompactação 'do' pacote. \nDeseja ainda prosseguir?"
 	cmsg_all_ready='Tudo pronto para iniciar a instalação. Confirma?'
 	cmsg_nec_dismount='Necessário desmontar particao para reparticionar automaticamente.'
 	cwarning='** AVISO **'
@@ -1552,13 +1575,12 @@ pt_BR()
 
 en_US()
 {
-	lang='en_US'
+#	lang='en_US'
 	cmsgSetKeyboardLayout='Set keyboard layout'
 	buttonback='Back'
    buttonpart='Disk Info'
 	buttonOK='Accept'
 	buttonCancel='Cancel'
-	cmsgcmsg004='Choose an option:'
 	cmsg006='Partition Disk'
 	cmsg007='Choose partition'
 	cmsg009='Choose the disk:'
@@ -1572,16 +1594,8 @@ en_US()
 	cancelbind='Chroot canceled!'
 	cmsgTodos_os_dados_serao_perdidos='** NOTICE ** Will data will be lost!'
 	cmsg021='Format partition'
-	menuquit='Quit'
-	menustep='Step by step'
 	yeslabel='Yes'
 	nolabel='No'
-	cdlok1='*** DOWNLOAD ***'
-	cdlok2='\n[OK] Download completed successfully.'
-	cdlok3='found.'
-	cdlok4="\n\nStart the installation now?"
-	cshaok="\n[OK] Checksum successfully verified."
-   plswait='Please wait, Downloading package...'
 	cfinish="Install Complete!\nReboot to start with $cdistro Linux. \n\nBugs? $xemail"
 	cgrubsuccess='GRUB successfully installed!'
 	ccancelgrub='Installing grub canceled!'
@@ -1593,14 +1607,9 @@ en_US()
 	ccreatenewuser='Create a new user'
 	cGrubMsgInstall='Would you like to install grub?'
 	cmsgusermanager='User management'
-	cmsgPacotes_disponiveis='Available packages'
 	cmsgadduser='Please wait, creating user...'
 	cmsgaddhost='Please wait, setting hostname...'
-   cmsgerrotar='Error in package unpacking'
 	cmsgwaitgrub='Please wait, installing grub to disk'
-	cmsgerrodlsha1='Ops, error downloading of'
-	cmsgerrodlsha2='Check your internet.'
-	cmsg_erro_tar_continue='Error in decompressing the package. \nDo you want to continue?'
 	cmsg_all_ready='All ready to begin the installation. Do you confirm?'
 	cmsg_nec_dismount='Need to dismount partition to repartition automatically.'
 	cwarning='** WARNING **'
@@ -1643,5 +1652,4 @@ trap sh_trapErro 2 15
 sh_checkroot
 sh_checkDependencies
 sh_checklive
-
 init "$@"

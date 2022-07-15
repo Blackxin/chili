@@ -337,12 +337,12 @@ sh_execcopia()
 	DESTINO="$dir_install/"
    DEST="$dir_install"
 
-   sizeof()    { du -s "$1" | cut -f1; }
+   sizeof()    { du -sP "$1" 2> /dev/null | cut -f1; }
    running()   { ps "$1" | grep "$1" >/dev/null; }
 
    TITLE="INSTALL"
    MSG="Aguarde, instalando... if=$ORIGEM of=$DESTINO"
-#  INTERVALO=1
+   INTERVALO=0.2
 #  PORCENTO=0
    DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
 
@@ -358,14 +358,14 @@ sh_execcopia()
    #cp -rap $ORIGEM/* $DESTINO >$log &
    #CPPID=$!
 
-   rsync -crav "$ORIGEM" "$DESTINO" 1>&2>"$log" &
+#   rsync -cra "$ORIGEM" "$DESTINO" 1>&2>"$log" &
+#   export CPPID=$!
+
+   rsync -Cravzp "$ORIGEM" "$DESTINO" 1>&2>"$log" &
    export CPPID=$!
 
-   #rsync -cra $ORIGEM $DESTINO &
-   #CPPID=$!
-
 #  trap sh_trapErro 2 15
-   #trap "kill $CPPID" 2 15
+#	trap "kill $CPPID" 2 15
 
    (
        while running "$CPPID"; do
@@ -377,8 +377,7 @@ sh_execcopia()
 #          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
 #          ${DIALOG} --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
            ${DIALOG} --title $TITLE --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
-#          sleep $INTERVALO
-           sleep 0.5
+           sleep $INTERVALO
        done
        #echo 100
 #   )| ${DIALOG} --title "$TITLE" --tailbox "$log" 8 70
@@ -488,28 +487,30 @@ sh_grubBIOS()
 sh_grubEFI()
 {
     msg "INFO" "$(log_info_msg "$cmsg_Desmontando_particao: $xPARTEFI")"
-    umount -f "$xPARTEFI" 2> /dev/null
+    if mount | grep -q "$xPARTEFI"; then
+    	umount -f "$xPARTEFI" > /dev/null 2>&1
+    fi
     evaluate_retval
 
     msg "INFO" "$(log_info_msg "$cmsg_Formatando_particao: $xPARTEFI")"
-    mkfs.vfat -F32 "$xPARTEFI" 2> /dev/null
+    mkfs.vfat -F32 "$xPARTEFI" > /dev/null 2>&1
     evaluate_retval
 
     msg "INFO" "$(log_info_msg "$cmsg_Montando_particao: $xPARTEFI")"
-    mount "$xPARTEFI" "$dir_install"/boot/efi 2> /dev/null
+    mount "$xPARTEFI" "$dir_install"/boot/efi > /dev/null 2>&1
     evaluate_retval
 
     msg "INFO" "$(log_info_msg "$cmsg_Instalando_GRUB_EFI_na_particao: $dir_install/boot/efi")"
-    chroot "$dir_install" /bin/bash -c "grub-install		\
-    			--target=x86_64-efi                 			\
-        		--efi-directory=/boot/efi           			\
-        		--bootloader-id=$cnick              			\
-        		--recheck">/dev/null 2>&1
+	 chroot "$dir_install" /bin/bash -c "grub-install    	\
+         --target=x86_64-efi                          	\
+         --efi-directory=/boot/efi								\
+         --bootloader-id=$cnick                       	\
+         --recheck">/dev/null 2>&1
     evaluate_retval
 
     # Caminho de inicialização padrão/reserva
     msg "INFO" "$(log_info_msg "Criando diretorio: $dir_install/boot/efi/EFI/BOOT")"
-    mkdir -p "$dir_install/boot/efi/EFI/BOOT" 2> /dev/null
+    mkdir -p "$dir_install/boot/efi/EFI/BOOT" > /dev/null 2>&1
     evaluate_retval
 
     msg "INFO" "$(log_info_msg "Copiando caminho de inicialização padrão/reserva para: $dir_install/boot/efi")"

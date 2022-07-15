@@ -1255,7 +1255,12 @@ sh_liveinstall()
 		sh_confadduser
 	fi
 
-	if ! conf "$cmsgInstalacao_Automatica" "\nTudo pronto para iniciar a instalação. Continuar?"; then
+	if ! confmulti "$cmsgInstalacao_Automatica" 	\
+						"User 	  : $cuser"				\
+						"\nTeclado : $keymap"			\
+						"\nDisco   : $sd"					\
+						"\nGrub    : $mbr"				\
+						"\n\nTudo pronto para iniciar a instalação. Continuar?"	; then
 		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
 		sh_tools
@@ -1492,7 +1497,7 @@ sh_checklive()
 pt_BR()
 {
 #	lang='pt_BR'
-	cmsgSetKeyboardLayout='Definir layout do teclado'
+	cmsgSetKeyboardLayout='Definir outro layout do teclado'
 	buttonOK='Aceitar'
 	buttonCancel='Cancelar'
 	buttonback='Voltar'
@@ -1567,7 +1572,7 @@ pt_BR()
 en_US()
 {
 #	lang='en_US'
-	cmsgSetKeyboardLayout='Set keyboard layout'
+	cmsgSetKeyboardLayout='Set other keyboard layout'
 	buttonback='Back'
    buttonpart='Disk Info'
 	buttonOK='Accept'

@@ -53,6 +53,7 @@ sh_ascii_lines()
 sh_configure()
 {
 	sh_ascii_lines
+	en_US
 	: "${DIALOG=${DIALOG:-"dialog"}}"
 	: "${DOWNLOADER="curl -L -O -C - "}"
 	sep="\xe2\x94\x82"
@@ -96,8 +97,9 @@ sh_configure()
 	: "${xPARTSWAP=""}"
 	: "${xPARTEFI=""}"
 	: "${LGRUB="BIOS"}"
-	: "${lEFI=$true}"
+	: "${lEFI=$false}"
 	: "${LAUTOMATICA=$true}"
+	: "${LBIND=$false}"
 
 	# sfdisk types
 	: "${nEFI=1}"
@@ -317,7 +319,7 @@ sh_adduser()
 			fi
 		fi
 
-		sh_initbind
+		initbind
 	   msg "INFO" "$(log_info_msg "$cmsgadduser")"
 	   chroot "$dir_install" /bin/bash -c "useradd -m -G ${cgroups} ${cuser} -p ${cpass} > /dev/null 2>&1"
 	   chroot "$dir_install" /bin/bash -c "(echo $cuser:$cpass) | chpasswd -m > /dev/null 2>&1"
@@ -386,88 +388,62 @@ sh_execcopia()
 sh_stopmount()
 {
    msg "INFO" "$(log_info_msg "$cmsg_umount_partition")"
-	umount -rl "$dir_install"
+	umount -rl "$dir_install" > /dev/null 2>&1
 	evaluate_retval
 }
 
-sh_stopbind()
+bindmount()
 {
-	local xproc="$dir_install/proc"
-	local xsys="$dir_install/sys"
-	local xdev="$dir_install/dev"
-	local xpts="$dir_install/dev/pts"
-	local xshm="$dir_install/dev/shm"
-	local xqueue="$dir_install/dev/mqueue"
-	local xrun="$dir_install/run"
-	local lproc="OK"
-	local lsys="OK"
-	local ldev="OK"
-	local lpts="OK"
-	local lrun="OK"
-	local lshm="OK"
-	local lqueue="OK"
-	local lstopbind=0
-
-	pushd "$pwd" &>/dev/null
-	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lstopbind=1; }
-	mensagem "umount $xqueue" ; umount "$xqueue" > /dev/null 2>&1 || { lqueue="FAIL" ; lstopbind=1; }
-	mensagem "umount $xpts"   ; umount "$xpts"   > /dev/null 2>&1 || { lpts="FAIL"   ; lstopbind=1; }
-	mensagem "umount $xproc"  ; umount "$xproc"  > /dev/null 2>&1 || { lproc="FAIL"  ; lstopbind=1; }
-	mensagem "umount $xsys"   ; umount "$xsys"   > /dev/null 2>&1 || { lsys="FAIL"   ; lstopbind=1; }
-	mensagem "umount $xrun"   ; umount "$xrun"   > /dev/null 2>&1 || { lrun="FAIL"   ; lstopbind=1; }
-	mensagem "umount $xdev"   ; umount "$xdev"   > /dev/null 2>&1 || { ldev="FAIL"   ; lstopbind=1; }
-
-	xstrbind="mount $xproc : $lproc    \
-            \nmount $xsys : $lsys     \
-            \nmount $xdev : $ldev     \
-            \nmount $xrun : $lrun"
-   popd  &>/dev/null
-   return $lstopbind
+	mount "$@" > /dev/null 2>&1
 }
 
-sh_initbind()
+initbind()
 {
-	local xproc="--type proc /proc $dir_install/proc/"
-	local xsys="--rbind /sys $dir_install/sys/"
-   local xdev="--rbind /dev $dir_install/dev/"
-   local xrun="--rbind /run $dir_install/run/"
-   local lproc="OK"
-   local lsys="OK"
-   local ldev="OK"
-   local lrun="OK"
-   linitbind=0
+	local nchoice=$LBIND
 
-	pushd $dir_install &>/dev/null
-	[ -d "$dir_install/home"     ] || mkdir -p "$dir_install/home"     > /dev/null 2>&1
-	[ -d "$dir_install/proc"     ] || mkdir -p "$dir_install/proc"     > /dev/null 2>&1
-	[ -d "$dir_install/sys"      ] || mkdir -p "$dir_install/sys"      > /dev/null 2>&1
-	[ -d "$dir_install/dev"      ] || mkdir -p "$dir_install/dev"      > /dev/null 2>&1
-	[ -d "$dir_install/run"      ] || mkdir -p "$dir_install/run"      > /dev/null 2>&1
-	[ -d "$dir_install/boot/efi" ] || mkdir -p "$dir_install/boot/efi" > /dev/null 2>&1
+	if ! (( LBIND )); then
+		msg "INFO" "$(log_info_msg "Montando ambiente chroot")"
+		for i in /proc /sys /dev /dev/pts /dev/shm /run /tmp; do
+	   	mkdir -pv ${dir_install}${i}
+		done
+	   bindmount proc "${dir_install}/proc" -t proc -o nosuid,noexec,nodev
+	   bindmount sys "${dir_install}/sys" -t sysfs -o nosuid,noexec,nodev,ro
+	   bindmount udev "${dir_install}/dev" -t devtmpfs -o mode=0755,nosuid
+	   bindmount devpts "${dir_install}/dev/pts" -t devpts -o mode=0620,gid=5,nosuid,noexec
+	   bindmount shm "${dir_install}/dev/shm" -t tmpfs -o mode=1777,nosuid,nodev
+	   bindmount /run "${dir_install}/run" --bind
+	   bindmount tmp "${dir_install}/tmp" -t tmpfs -o mode=1777,strictatime,nodev,nosuid
+	   evaluate_retval
+	   nchoice=$?
+	  [ $nchoice -eq 0 ] && LBIND=$true
+	fi
+	return $nchoice
+}
 
-	mensagem "mount $xproc"; mount "$xproc" > /dev/null 2>&1 || { lproc="FAIL"; linitbind=1; }
-	mensagem "mount $xsys" ; mount "$xsys"  > /dev/null 2>&1 || { lsys="FAIL";  linitbind=1; }
-	mensagem "mount $xdev" ; mount "$xdev"  > /dev/null 2>&1 || { ldev="FAIL";  linitbind=1; }
-	mensagem "mount $xrun" ; mount "$xrun"  > /dev/null 2>&1 || { lrun="FAIL";  linitbind=1; }
-
-	xstrbind="mount $xproc : $lproc    \
-            \nmount $xsys : $lsys     \
-            \nmount $xdev : $ldev     \
-            \nmount $xrun : $lrun"
-
-	popd &>/dev/null
-	return $linitbind
+stopbind()
+{
+	local nchoice
+	msg "INFO" "$(log_info_msg "Desmontando ambiente chroot")"
+	umount -r "${dir_install}/proc" > /dev/null 2>&1
+	umount -r "${dir_install}/sys" > /dev/null 2>&1
+	umount -r "${dir_install}/dev/shm" > /dev/null 2>&1
+   umount -r "${dir_install}/dev/pts" > /dev/null 2>&1
+   umount -r "${dir_install}/dev" > /dev/null 2>&1
+   umount -r "${dir_install}/run" > /dev/null 2>&1
+   umount -r "${dir_install}/tmp" > /dev/null 2>&1
+	evaluate_retval
+	nchoice=$?
+	[ $nchoice -eq 0 ] && LBIND=$false
+	return $nchoice
 }
 
 sh_bind()
 {
-	if [ $# -lt 1 ] ; then
-   	if (( STANDALONE )); then
-    		if ! conf "*** BIND ***" "\n$cinitbind?"; then
-				alerta "*** BIND *** " "$cancelbind"
-				return 1
-     		fi
-		fi
+  	if (( STANDALONE )); then
+  		if ! conf "*** BIND ***" "\n$cinitbind?"; then
+			alerta "*** BIND *** " "$cancelbind"
+			return 1
+  		fi
    fi
 
 	if ! (( LPARTITION )); then
@@ -484,29 +460,22 @@ sh_bind()
 		fi
 	fi
 
-   xstrbind=""
-	if sh_initbind; then
-		cmsgbindresult="BIND OK"
+	if initbind; then
+		return 0
    else
-   	cmsgbindresult="BIND FAIL"
+   	return 1
    fi
-
-   if [ $# -lt 1 ] ; then
-   	if ! (( LAUTOMATICA )); then
-      	alerta "*** BIND ***" "$xstrbind" "\n$cmsgbindresult";
-      	return 1
-    	fi
-	fi
 }
 
 sh_efi()
 {
+	lEFI=$false
 	xPARTEFI=$(fdisk "$sd" -l | grep EFI | cut -d' ' -f1)
-	lEFI=$true
 
 	if [[ -n "$xPARTEFI" ]] ; then
    	lEFI=$true
 	fi
+	return $lEFI
 }
 
 sh_grubBIOS()
@@ -514,7 +483,6 @@ sh_grubBIOS()
    msg "INFO" "$(log_info_msg "$cmsg_install_grub_disk: $sd")"
    chroot "$dir_install" /bin/bash -c "grub-install --target=i386-pc $sd --recheck" > /dev/null 2>&1
    evaluate_retval
-   return $?
 }
 
 sh_grubEFI()
@@ -541,13 +509,12 @@ sh_grubEFI()
 
     # Caminho de inicialização padrão/reserva
     msg "INFO" "$(log_info_msg "Criando diretorio: $dir_install/boot/efi/EFI/BOOT")"
-    mkdir "$dir_install/boot/efi/EFI/BOOT" 2> /dev/null
+    mkdir -p "$dir_install/boot/efi/EFI/BOOT" 2> /dev/null
     evaluate_retval
 
     msg "INFO" "$(log_info_msg "Copiando caminho de inicialização padrão/reserva para: $dir_install/boot/efi")"
     cp "$dir_install"/boot/efi/EFI/chili/grubx64.efi "$dir_install"/boot/efi/EFI/BOOT/BOOTX64.EFI 2> /dev/null
     evaluate_retval
-    return $?
 }
 
 sh_grubmkconfig()
@@ -598,9 +565,14 @@ grubinstall()
 		fi
 	fi
 
-	sh_bind $true
-	mensagem "$cmsgwaitgrub: \n\n$sd"
+	if ! (( LBIND )); then
+		if ! sh_bind; then
+			display_info "\n$ccancelgrub"
+			return 1
+		fi
+	fi
 
+	mensagem "$cmsgwaitgrub: \n\n$sd"
 	if efivar --list >/dev/null; then
 		sh_efi
 	else
@@ -639,6 +611,7 @@ sh_finish()
 	if confmulti "*** INSTALL ***" \ "\n$cfinish" \ "\nDeseja Rebootar agorar?"; then
 		reboot
  	fi
+ 	stopbind
    exit 0
 }
 
@@ -1213,13 +1186,28 @@ sh_wgetsqfs()
 	sh_execcopia
 }
 
+sh_bootefi()
+{
+	efivar --list >/dev/null
+}
+
 choosegrub()
 {
-	mbr=$(${DIALOG} --radiolist 'Instalacao do GRUB:'     \
-		0 0 0                                           	\
-      EFI     "Interface de Firmaware Extensivel" off 	\
-      BIOS    "Sistema Básico de Entrada e Saída" on 		\
-      2>&1 >/dev/tty )
+	local cefi='off'
+	local cbios='on'
+	local cextra
+
+	if sh_bootefi ; then
+		cefi='on'
+		cbios='off'
+      cextra="Detectado boot via EFI \n↓ é recomendável instalar ↓"
+	fi
+
+	mbr=$(${DIALOG} --radiolist "Instalacao do GRUB:\n\n$cextra"	\
+		0 0 0                                           				\
+    	EFI     "Interface de Firmaware Extensivel" $cefi				\
+     	BIOS    "Sistema Básico de Entrada e Saída" $cbios				\
+     	2>&1 >/dev/tty )
 
 	exit_status=$?
 	case $exit_status in
@@ -1290,15 +1278,18 @@ sh_liveinstall()
 	sh_checkpartition
 	sh_wgetsqfs
 	sh_fstab
-	sh_initbind
+	initbind
 
 	if (( LADDUSER )); then
 		sh_adduser
 	fi
 
-	grubinstall
-	sh_stopbind
-	sh_stopbind
+	if ! grubinstall; then
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		zeravar
+		sh_tools
+	fi
+	stopbind
    zeravar
 }
 
@@ -1422,16 +1413,16 @@ sh_mknode_lo()
 	local loDevice
 	for i in {8..63}
 	do
-		if [ -e /dev/loop$i ]; then
+		if [ -e /dev/loop"$i" ]; then
 			continue;
 		fi;
-		mknod -m 0660 /dev/loop$i b 7 $i
-		chown --reference=/dev/loop0 /dev/loop$i
-		chmod --reference=/dev/loop0 /dev/loop$i
-		loDevice=/dev/loop$i
+		mknod -m 0660 /dev/loop"$i" b 7 "$i"
+		chown --reference=/dev/loop0 /dev/loop"$i"
+		chmod --reference=/dev/loop0 /dev/loop"$i"
+		loDevice=/dev/loop"$i"
 		break
 	done
-	echo $loDevice
+	echo "$loDevice"
 }
 
 sh_mknode_sr()
@@ -1441,20 +1432,20 @@ sh_mknode_sr()
 
 	for i in {0..63}
 	do
-		if [ -e /dev/loop$i ]; then
+		if [ -e /dev/loop"$i" ]; then
 			continue;
 		fi;
-		if [ -e /dev/sr$number ]; then
+		if [ -e /dev/sr"$number" ]; then
 			((number++))
 			continue;
 		fi;
-		srDevice=/dev/sr$number
-		mknod -m 0660 /dev/sr$number b 7 $i
-		chown --reference=/dev/loop0 /dev/sr$number
-		chmod --reference=/dev/loop0 /dev/sr$number
+		srDevice=/dev/sr"$number"
+		mknod -m 0660 /dev/sr"$number" b 7 "$i"
+		chown --reference=/dev/loop0 /dev/sr"$number"
+		chmod --reference=/dev/loop0 /dev/sr"$number"
 		break
 	done
-	echo $srDevice
+	echo "$srDevice"
 }
 
 sh_testlive()
@@ -1468,31 +1459,31 @@ sh_checklive()
 	local srDevice="/dev/sr0"
 
 	loDevice=$(losetup -f)
-	if ! [ -e $loDevice ]; then
+	if ! [ -e "$loDevice" ]; then
 		loDevice=$(sh_mknode_lo)
 	fi
 	srDevice=$(sh_mknode_sr)
-	losetup -P $loDevice /archlive/out/chili-live-2022.07.11-x86_64.iso
-	losetup -P $srDevice /archlive/out/chili-live-2022.07.11-x86_64.iso
+	losetup -P "$loDevice" /archlive/out/chili-live-2022.07.11-x86_64.iso
+	losetup -P "$srDevice" /archlive/out/chili-live-2022.07.11-x86_64.iso
 
-	[ -d /run/$chili_iso/bootmnt  ] || mkdir -p /run/$chili_iso/bootmnt
-	[ -d /run/$chili_iso/airootfs ] || mkdir -p /run/$chili_iso/airootfs
-	mount $srDevice /run/$chili_iso/bootmnt	> /dev/null 2>&1
-	#mount $loDevice /run/$chili_iso/airootfs 	> /dev/null 2>&1
-	LIVE_DIR=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
+	[ -d "/run/$chili_iso/bootmnt"  ] || mkdir -p "/run/$chili_iso/bootmnt"
+	[ -d "/run/$chili_iso/airootfs" ] || mkdir -p "/run/$chili_iso/airootfs"
+	mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
+	#mount "$loDevice" "/run/$chili_iso/airootfs" 	> /dev/null 2>&1
+	LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
 
 	if [[ -e "$LIVE_DIR" ]]; then
-		export ROOTSQFS=/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs
-		export MEDIUM=/run/$chili_iso/airootfs
+		export ROOTSQFS="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
+		export MEDIUM="/run/$chili_iso/airootfs"
 		export LIVE_DIR
 #		mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
 		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
 			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
 		fi
 	else
-		export ROOTSQFS=/lib/initramfs/medium/filesystem/root.sfs
-		export MEDIUM=/lib/initramfs/system
-		export LIVE_DIR=/lib/initramfs/medium/isolinux/venomlive
+		export ROOTSQFS="/lib/initramfs/medium/filesystem/root.sfs"
+		export MEDIUM="/lib/initramfs/system"
+		export LIVE_DIR="/lib/initramfs/medium/isolinux/venomlive"
 #		mount -t squashfs -o ro,loop $MEDIUM/filesystem/root.sfs /mnt
 	fi
 	LIVECD=$(sh_testlive)
@@ -1651,5 +1642,77 @@ sh_configure
 trap sh_trapErro 2 15
 sh_checkroot
 sh_checkDependencies
+stopbind
+sh_stopmount
 sh_checklive
 init "$@"
+
+sh_initbind()
+{
+	local xproc="--type proc /proc $dir_install/proc/"
+	local xsys="--rbind /sys $dir_install/sys/"
+   local xdev="--rbind /dev $dir_install/dev/"
+   local xrun="--rbind /run $dir_install/run/"
+   local lproc="OK"
+   local lsys="OK"
+   local ldev="OK"
+   local lrun="OK"
+   linitbind=0
+
+	pushd $dir_install &>/dev/null
+	[ -d "$dir_install/home"     ] || mkdir -p "$dir_install/home"     > /dev/null 2>&1
+	[ -d "$dir_install/proc"     ] || mkdir -p "$dir_install/proc"     > /dev/null 2>&1
+	[ -d "$dir_install/sys"      ] || mkdir -p "$dir_install/sys"      > /dev/null 2>&1
+	[ -d "$dir_install/dev"      ] || mkdir -p "$dir_install/dev"      > /dev/null 2>&1
+	[ -d "$dir_install/run"      ] || mkdir -p "$dir_install/run"      > /dev/null 2>&1
+	[ -d "$dir_install/boot/efi" ] || mkdir -p "$dir_install/boot/efi" > /dev/null 2>&1
+
+	mensagem "mount $xproc"; mount "$xproc" > /dev/null 2>&1 || { lproc="FAIL"; linitbind=1; }
+	mensagem "mount $xsys" ; mount "$xsys"  > /dev/null 2>&1 || { lsys="FAIL";  linitbind=1; }
+	mensagem "mount $xdev" ; mount "$xdev"  > /dev/null 2>&1 || { ldev="FAIL";  linitbind=1; }
+	mensagem "mount $xrun" ; mount "$xrun"  > /dev/null 2>&1 || { lrun="FAIL";  linitbind=1; }
+
+	xstrbind="mount $xproc : $lproc    \
+            \nmount $xsys : $lsys     \
+            \nmount $xdev : $ldev     \
+            \nmount $xrun : $lrun"
+
+	popd &>/dev/null
+	return $linitbind
+}
+
+sh_stopbind()
+{
+	local xproc="$dir_install/proc"
+	local xsys="$dir_install/sys"
+	local xdev="$dir_install/dev"
+	local xpts="$dir_install/dev/pts"
+	local xshm="$dir_install/dev/shm"
+	local xqueue="$dir_install/dev/mqueue"
+	local xrun="$dir_install/run"
+	local lproc="OK"
+	local lsys="OK"
+	local ldev="OK"
+	local lpts="OK"
+	local lrun="OK"
+	local lshm="OK"
+	local lqueue="OK"
+	local lstopbind=0
+
+	pushd "$pwd" &>/dev/null
+	mensagem "umount $xshm"   ; umount "$xshm"   > /dev/null 2>&1 || { lshm="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xqueue" ; umount "$xqueue" > /dev/null 2>&1 || { lqueue="FAIL" ; lstopbind=1; }
+	mensagem "umount $xpts"   ; umount "$xpts"   > /dev/null 2>&1 || { lpts="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xproc"  ; umount "$xproc"  > /dev/null 2>&1 || { lproc="FAIL"  ; lstopbind=1; }
+	mensagem "umount $xsys"   ; umount "$xsys"   > /dev/null 2>&1 || { lsys="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xrun"   ; umount "$xrun"   > /dev/null 2>&1 || { lrun="FAIL"   ; lstopbind=1; }
+	mensagem "umount $xdev"   ; umount "$xdev"   > /dev/null 2>&1 || { ldev="FAIL"   ; lstopbind=1; }
+
+	xstrbind="mount $xproc : $lproc    \
+            \nmount $xsys : $lsys     \
+            \nmount $xdev : $ldev     \
+            \nmount $xrun : $lrun"
+   popd  &>/dev/null
+   return $lstopbind
+}
+

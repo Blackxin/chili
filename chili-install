@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/07/15
+#  Altered: 2022/07/16
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -31,7 +31,7 @@
 #########################################################################
 #set -e
 declare -r _APP_="${0##*/}"
-declare -r _VERSION_="4.0.20220715"
+declare -r _VERSION_="4.0.20220716"
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
 # Import lib
@@ -363,14 +363,20 @@ sh_execcopia()
    log="/tmp/${_APP_}.log"
    [[ -e "$log" ]] && rm -f "$log"
 
+	log="/tmp/${_APP_}.log"
+   [ -e $log ] && rm -f $log
+
    #cp -rap $ORIGEM/* $DESTINO >$log &
    #CPPID=$!
 
-   rsync -cra "$ORIGEM" "$DESTINO" 1>&2>"$log" &
+   rsync -crav $ORIGEM $DESTINO 1>&2>$log &
    export CPPID=$!
 
+   #rsync -cra $ORIGEM $DESTINO &
+   #CPPID=$!
+
 #  trap sh_trapErro 2 15
-#	trap "kill $CPPID" 2 15
+   #trap "kill $CPPID" 2 15
 
    (
        while running "$CPPID"; do
@@ -382,7 +388,7 @@ sh_execcopia()
 #          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
 #          ${DIALOG} --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
            ${DIALOG} --title $TITLE --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
-           sleep $INTERVALO
+           sleep 0.5
        done
        #echo 100
 #   )| ${DIALOG} --title "$TITLE" --tailbox "$log" 8 70
@@ -391,9 +397,13 @@ sh_execcopia()
 
 sh_stopmount()
 {
+	local nchoice
    msg "INFO" "$(log_info_msg "$cmsg_umount_partition")"
 	umount -rl "$dir_install" > /dev/null 2>&1
-	evaluate_retval
+	nchoice=$?
+	evaluate_retval 0
+	[[ $nchoice -eq 0  || $nchoice -eq 32 ]] && LMOUNT=$false
+	[[ $LMOUNT -eq $false ]] && return 0 || return 1
 }
 
 ignore_error()
@@ -416,7 +426,7 @@ bindmount()
 	mount "$@" > /dev/null 2>&1
 }
 
-initbind()
+function initbind()
 {
 	local nchoice
 
@@ -443,7 +453,7 @@ initbind()
 	[[ $LBIND -eq $true ]] && return 0 || return 1
 }
 
-stopbind()
+sh_stopbind()
 {
 	local nchoice
 	msg "INFO" "$(log_info_msg "Desmontando ambiente chroot")"
@@ -455,11 +465,11 @@ stopbind()
    umount -r "${dir_install}/dev" > /dev/null 2>&1
    umount -r "${dir_install}/run" > /dev/null 2>&1
    umount -r "${dir_install}/tmp" > /dev/null 2>&1
-	evaluate_retval
 	nchoice=$?
+	evaluate_retval 0
 	[[ $nchoice -eq 0 ]] && LBIND=$false
+	[[ $LBIND -eq $false ]] && return 0 || return 1
 }
-[[ $LBIND -eq $false ]] && return 0 || return 1
 
 
 sh_bind()
@@ -639,7 +649,7 @@ sh_finish()
 	if confmulti "*** INSTALL ***" \ "\n$cfinish" \ "\nDeseja Rebootar agorar?"; then
 		reboot
  	fi
- 	stopbind
+ 	sh_stopbind
    exit 0
 }
 
@@ -711,13 +721,15 @@ sh_check_and_dismount_partition()
 
 	if mount | grep -q "$cpart"; then
 		if conf "** $cpart **" "\n$cmsgA_particao_esta_montada!\n\n$cpart\n\n$cmsg_dismount"; then
-			if ! umount -f -rl "$cpart" 2> /dev/null; then
-				return 1
+			if umount -f -rl "$cpart" 2> /dev/null; then
+				LMOUNT=$false
+				return 0
 			fi
-		else
-			return 1
 		fi
+		LMOUNT=$true
+		return 1
 	fi
+	LMOUNT=$false
 	return 0
 }
 
@@ -1114,7 +1126,7 @@ sh_tools()
 
 zeravar()
 {
-	stopbind
+	sh_stopbind
 	sd=""
 	part=""
 	LDISK=$false
@@ -1206,6 +1218,7 @@ sh_tailexecrsync()
 
 sh_wgetsqfs()
 {
+	sh_check_install
 	cd $dir_install
 	sh_execcopia
 }
@@ -1356,114 +1369,6 @@ sh_trapErro()
    fi
 }
 
-sh_mknode_lo()
-{
-	local loDevice
-	for i in {8..63}
-	do
-		if [[ -e /dev/loop"$i" ]]; then
-			continue;
-		fi;
-		mknod -m 0660 /dev/loop"$i" b 7 "$i"
-		chown --reference=/dev/loop0 /dev/loop"$i"
-		chmod --reference=/dev/loop0 /dev/loop"$i"
-		loDevice=/dev/loop"$i"
-		break
-	done
-	echo "$loDevice"
-}
-
-sh_mknode_sr()
-{
-	local number=0
-	local srDevice
-
-	for i in {0..63}
-	do
-		if [[ -e /dev/loop"$i" ]]; then
-			continue;
-		fi;
-		if [[ -e /dev/sr"$number" ]]; then
-			((number++))
-			continue;
-		fi;
-
-		srDevice=/dev/sr"$number"
- 		mknod -m 0660 /dev/sr"$number" b 7 "$i"
-		chown --reference=/dev/loop0 /dev/sr"$number"
-		chmod --reference=/dev/loop0 /dev/sr"$number"
-		break
-	done
-	echo "$srDevice"
-}
-
-sh_checklive()
-{
-	local loDevice="/dev/loop0"
-	local srDevice="/dev/sr0"
-
-	# detect live OS
-	liveOS=$false
-	export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
-
-	if [[ -e "$LIVE_DIR" ]]; then
-		liveOS=$true
-		export ROOTSQFS="$LIVE_DIR"
-		export MEDIUM="/run/$chili_iso/airootfs"
-	else
-		export LIVE_DIR="/lib/initramfs/medium/filesystem/root.sfs"
-		if [[ -e "$LIVE_DIR" ]]; then
-			liveOS=$true
-			export ROOTSQFS="$LIVE_DIR"
-			export MEDIUM="/lib/initramfs/system"
-		fi
-	fi
-
-	if ! (( liveOS )); then
-		[[ -d "/run/$chili_iso/bootmnt"  ]] || mkdir -p "/run/$chili_iso/bootmnt"
-		[[ -d "/run/$chili_iso/airootfs" ]] || mkdir -p "/run/$chili_iso/airootfs"
-
-#		loDevice=$(losetup -f)
-#		if ! [[ -e "$loDevice" ]]; then
-#			loDevice=$(sh_mknode_lo)
-#		else
-#			losetup -P "$loDevice" /livecd/out/ChiliOS-lfs-base-2022.04.06-x86_64.iso
-#			mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
-#		fi
-
-		if ! [[ -e "$srDevice" ]]; then
-			srDevice=$(sh_mknode_sr)
-		else
-			losetup -P "$srDevice" /archlive/out/chili-live-2022.07.11-x86_64.iso
-			mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
-		fi
-
-		export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
-		export ROOTSQFS="$LIVE_DIR"
-		export MEDIUM="/run/$chili_iso/airootfs"
-
-		if ! [[ -e "$LIVE_DIR" ]]; then
-			LIVE_DIR="/run/$chili_iso/bootmnt/filesystem/root.sfs"
-			ROOTSQFS="$LIVE_DIR"
-			if ! [[ -e "$LIVE_DIR" ]]; then
-				LIVECD=$(sh_testlive)
-				return 1
-			fi
-		fi
-
-		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
-#			mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
-			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
-		fi
-	fi
-	LIVECD=$(sh_testlive)
-}
-
-sh_testlive()
-{
-	[[ -e "$LIVE_DIR" ]] && echo $true || echo $false
-}
-
 pt_BR()
 {
 #	lang='pt_BR'
@@ -1521,7 +1426,7 @@ pt_BR()
 	cmsg_extracting='Aguarde, extraindo arquivos...'
 	cmsg_part_disk='Visualizar partições do disco'
    cmsg_prepare_disk='Aguarde, preparando o disco:'
-   cmsg_install_grub_disk='Instalando GRUB no disco'
+   cmsg_install_grub_disk='Instalando GRUB BIOS no disco'
    cmsg_Detectada_particao_EFI='Detectada partição EFI'
    cmsg_Deseja_instalar_o_GRUB_EFI='Deseja instalar o GRUB EFI'
    cmsg_Sim_EFI='Sim=EFI'
@@ -1595,7 +1500,7 @@ en_US()
 	cmsg_extracting='Wait, Extracting files...'
 	cmsg_part_disk='View disk partitions'
    cmsg_prepare_disk='Wait, preparing the disk:'
-   cmsg_install_grub_disk='Installing grub on disk'
+   cmsg_install_grub_disk='Installing BIOS grub on disk'
    cmsg_Detectada_particao_EFI='Detected EFI partition'
    cmsg_Deseja_instalar_o_GRUB_EFI='Do you want to install EFI grub'
    cmsg_Sim_EFI='Yes=EFI'
@@ -1611,6 +1516,121 @@ en_US()
    cmsgGerando_arquivo_configuracao_do_grub='Generating Grub configuration file'
 	cmsgNeste_modo_a_instalacao_sera_automatizada='In this mode an installation will be automated'
 	cmsgDeseja_continuar_e_escolher_o_disco_destino='Do you want to continue and choose the destination disk'
+}
+
+sh_mknode_lo()
+{
+	local loDevice
+	for i in {8..63}
+	do
+		if [[ -e /dev/loop"$i" ]]; then
+			continue;
+		fi;
+		mknod -m 0660 /dev/loop"$i" b 7 "$i"
+		chown --reference=/dev/loop0 /dev/loop"$i"
+		chmod --reference=/dev/loop0 /dev/loop"$i"
+		loDevice=/dev/loop"$i"
+		break
+	done
+	echo "$loDevice"
+}
+
+sh_mknode_sr()
+{
+	local number=0
+	local srDevice
+
+	for i in {0..63}
+	do
+		if [[ -e /dev/loop"$i" ]]; then
+			continue;
+		fi;
+		if [[ -e /dev/sr"$number" ]]; then
+			((number++))
+			continue;
+		fi;
+
+		srDevice=/dev/sr"$number"
+ 		mknod -m 0660 /dev/sr"$number" b 7 "$i"
+		chown --reference=/dev/loop0 /dev/sr"$number"
+		chmod --reference=/dev/loop0 /dev/sr"$number"
+		break
+	done
+	echo "$srDevice"
+}
+
+sh_checklive()
+{
+	local loDevice="/dev/loop0"
+	local srDevice="/dev/sr0"
+	local iso
+	local liveOS=$false
+
+   if (( $# >= 1 )); then
+   	iso="$1"
+	else
+		# detect live OS
+		export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
+
+		if [[ -e "$LIVE_DIR" ]]; then
+			liveOS=$true
+			export ROOTSQFS="$LIVE_DIR"
+			export MEDIUM="/run/$chili_iso/airootfs"
+		else
+			export LIVE_DIR="/lib/initramfs/medium/filesystem/root.sfs"
+			if [[ -e "$LIVE_DIR" ]]; then
+				liveOS=$true
+				export ROOTSQFS="$LIVE_DIR"
+				export MEDIUM="/lib/initramfs/system"
+			fi
+		fi
+	fi
+
+	if ! (( liveOS )); then
+		[[ -d "/run/$chili_iso/bootmnt"  ]] || mkdir -p "/run/$chili_iso/bootmnt"
+		[[ -d "/run/$chili_iso/airootfs" ]] || mkdir -p "/run/$chili_iso/airootfs"
+
+#		loDevice=$(losetup -f)
+#		if ! [[ -e "$loDevice" ]]; then
+#			loDevice=$(sh_mknode_lo)
+#		else
+#			losetup -d "$loDevice"  > /dev/null 2>&1
+#			losetup -P "$loDevice" "$iso"  > /dev/null 2>&1
+#			mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
+#		fi
+
+		if ! [[ -e "$srDevice" ]]; then
+			srDevice=$(sh_mknode_sr)
+		else
+			losetup -d "$srDevice"  > /dev/null 2>&1
+#			losetup -P "$srDevice" "$iso"  > /dev/null 2>&1
+			losetup -P "$srDevice" "$iso"  > /dev/null 2>&1
+			mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
+		fi
+		export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
+		export ROOTSQFS="$LIVE_DIR"
+		export MEDIUM="/run/$chili_iso/airootfs"
+
+		if ! [[ -e "$LIVE_DIR" ]]; then
+			LIVE_DIR="/run/$chili_iso/bootmnt/filesystem/root.sfs"
+			ROOTSQFS="$LIVE_DIR"
+			if ! [[ -e "$LIVE_DIR" ]]; then
+				LIVECD=$(sh_testlive)
+				return 1
+			fi
+		fi
+
+		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
+#			mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
+			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
+		fi
+	fi
+	LIVECD=$(sh_testlive)
+}
+
+sh_testlive()
+{
+	[[ -e "$LIVE_DIR" ]] && echo $true || echo $false
 }
 
 sh_liveinstall()
@@ -1676,6 +1696,7 @@ sh_liveinstall()
 	fi
 
 	sh_mkswap
+	sh_check_and_dismount_partition "$part"
 	sh_wgetsqfs
 	initbind
 
@@ -1698,11 +1719,30 @@ sh_liveinstall()
    zeravar
 }
 
+parseinit()
+{
+   while test $# -gt 0
+   do
+      case "${1}" in
+         -h|-H|--help) sh_usage; exit $(( $# ? 0 : 1 ));;
+         -i|-I|--iso)
+            shift;
+            (( $# < 1 )) && die "ERRO: opcao -i|-|I|--iso requer argumento/parâmetro. (use -h for help)";
+            [[ ! -e $1 ]] && die "ERRO: arquivo $1 não localizado. (use -h for help)";
+				sh_checklive "$1"
+            init
+            ;;
+         *)  die "operação não suportada: $1 (use -h for help)";;
+      esac
+      shift
+   done
+   init
+}
+
 sh_configure
 trap sh_trapErro 2 15
 sh_checkroot
 sh_checkDependencies
-stopbind
+sh_stopbind
 sh_stopmount
-sh_checklive
-init "$@"
+parseinit "$@"

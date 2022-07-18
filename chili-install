@@ -1028,13 +1028,19 @@ sh_domkfs()
 	umount -f "$part" 2> /dev/null
 
 	mensagem "$cmsg_Formatando_particao: $part"
-	if mkfs.ext4 -L "$xLABEL" "$part" > /dev/null 2>&1; then
-		LFORMAT=$true
-		return 0
+	if [[ "$mkfs" == "EXT4" ]]; then
+		if mkfs.ext4 -f -L "$xLABEL" "$part" > /dev/null 2>&1; then
+			LFORMAT=$true
+			return 0
+		fi
 	else
-		LFORMAT=$false
-		return 1
+		if mkfs.btrfs -f -L "$xLABEL" "$part" > /dev/null 2>&1; then
+			LFORMAT=$true
+			return 0
+		fi
 	fi
+	LFORMAT=$false
+	return 1
 }
 
 sh_format()
@@ -1311,6 +1317,28 @@ sh_wgetsqfs()
 sh_bootefi()
 {
 	efivar --list > /dev/null 2>&1
+}
+
+choosefilesystem()
+{
+	local cbtrfs='off'
+	local cext4='on'
+	local cextra
+	local exit_status
+
+	cextra="↓ é recomendável EXT4 ↓"
+	mkfs=$(${DIALOG} --radiolist "Escolha o filesystem\n\n$cextra"	\
+		0 0 0                                           				\
+    	EXT4     "Rápido e maduro"                   $cext4			\
+     	BTRFS    "Novos recursos, que são novidades" $cbtrfs			\
+     	2>&1 >/dev/tty )
+
+	exit_status=$?
+	case $exit_status in
+		"$D_ESC"|"$D_CANCEL")
+			return 1
+			;;
+	esac
 }
 
 choosegrub()
@@ -1671,6 +1699,13 @@ sh_liveinstall()
 		sh_tools
 	fi
 
+	if ! choosefilesystem; then
+		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
+		zeravar
+		sh_tools
+	fi
+	LMKFS=$mkfs
+
 	if ! choosegrub; then
 		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
 		zeravar
@@ -1795,23 +1830,23 @@ sh_checklive()
 		[[ -d "/run/$chili_iso/bootmnt"  ]] || mkdir -p "/run/$chili_iso/bootmnt"
 		[[ -d "/run/$chili_iso/airootfs" ]] || mkdir -p "/run/$chili_iso/airootfs"
 
-#		loDevice=$(losetup -f)
-#		if ! [[ -e "$loDevice" ]]; then
-#			loDevice=$(sh_mknode_lo)
-#		else
+		loDevice=$(losetup -f)
+		if ! [[ -e "$loDevice" ]]; then
+			loDevice=$(sh_mknode_lo)
+		else
 #			losetup -d "$loDevice"  > /dev/null 2>&1
-#			losetup -P "$loDevice" "$iso"  > /dev/null 2>&1
-#			mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
+			losetup -P "$loDevice" "$iso"  > /dev/null 2>&1
+			mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
+		fi
+
+#		if ! [[ -e "$srDevice" ]]; then
+#			srDevice=$(sh_mknode_sr)
+#		else
+#			losetup -d "$srDevice"  > /dev/null 2>&1
+#			losetup -P "$srDevice" "$iso"  > /dev/null 2>&1
+#			mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
 #		fi
 
-		if ! [[ -e "$srDevice" ]]; then
-			srDevice=$(sh_mknode_sr)
-		else
-			losetup -d "$srDevice"  > /dev/null 2>&1
-#			losetup -P "$srDevice" "$iso"  > /dev/null 2>&1
-			losetup -P "$srDevice" "$iso"  > /dev/null 2>&1
-			mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
-		fi
 		export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
 		export ROOTSQFS="$LIVE_DIR"
 		export MEDIUM="/run/$chili_iso/airootfs"

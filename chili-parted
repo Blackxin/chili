@@ -33,8 +33,25 @@ chili-mapdevice()
 {
 	#sudo mknod -m 0777 /dev/sr0 b 7 10
 	#sudo mknod -m 0777 /dev/sr0 b 7 20
-	#losetup -P /dev/sr0 $1
-	kpartx -av $1 # kpartx -av file.img
+	# losetup -P /dev/sr0 $1
+	kpartx -av disk.img # mapear
+	kpartx -d disk.img  #delete
+
+	# dd if=/dev/zero of=~/file.img bs=1024k count=10
+	# losetup --find --show ~/file.img # /dev/loop0
+	# mkfs -t ext2 /dev/loop0
+	# mount /dev/loop0 /mnt
+	# umount /dev/loop0
+	# losetup --detach /dev/loop0
+}
+
+chili-setup-img()
+{
+	qemu-img create foo.img -f raw 20G
+   qemu-img info foo.img
+	losetup --find --show foo.img
+	#kpartx -av foo.img # mapear
+	#kpartx -d foo.img  #delete
 }
 
 if [[ $# -eq 0 ]]; then

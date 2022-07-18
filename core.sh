@@ -225,15 +225,15 @@ sh_disk_info()
   while read line
   do
 		eval "${line//=/_=}"
-		[[ -z "$TRAN_" ]] && continue
+#		[[ -z "$TRAN_" ]] && continue
       ARRAY_DSK_DISKS+=( $NAME_ )
     ARRAY_DSK_DEVICES+=( $PATH_ )
        ARRAY_DSK_SIZE+=( $SIZE_ )
-       ARRAY_DSK_TRAN+=( ${TRAN_:-blk} )
+       ARRAY_DSK_TRAN+=( ${TRAN_:-loop} )
       ARRAY_DSK_MODEL+=( "${MODEL_:-unknown}" )
-	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk)')
+	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk|loop)"')
+#	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk)')
 #	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep disk)
-#	done < <(lsblk -Pao TYPE,NAME,PATH,SIZE,TRAN,MODEL | grep -P 'TYPE="(disk|loop)')
 #	declare -p ARRAY_DSK_{DISKS,DEVICES,SIZE,TRAN,MODEL}
 }
 
@@ -766,10 +766,12 @@ function evaluate_retval()
    	error_value="$1"
 	fi
 
-	if [ ${error_value} = 0 ]; then
-		log_success_msg2
-	else
-		log_failure_msg2
+	if ! (( $grafico )); then
+		if [ ${error_value} = 0 ]; then
+			log_success_msg2
+		else
+			log_failure_msg2
+		fi
 	fi
 	return ${error_value}
 }

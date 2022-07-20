@@ -74,9 +74,14 @@ trancarstderr=2>&-
 #m1
 #m3
 
+sizeof.du(){ du -bs $1; }
+sizeof.find(){ echo $(( $(find $1 -printf %s+)0 )); }
+sizeof.sfs.sed(){ echo $(( $( unsquashfs -ll $1 | sed -r ' 1,3d; /s*-root\/dev/d; s/^([^ ]+ ){2}//; s/^ *([^ ]+) .*/\1+/; $s/\+//; ' ) )); }
+sizeof.sfs.awk(){ unsquashfs -ll $1 | awk '{m+=$3} END {print m}'; }
+DIAHORA(){ date +"%d%m%Y-%T"|sed 's/://g'; }
 sh_filedatetimestat(){ stat -c %w "$1"; }
-sh_filedatetime(){ date -r "$1" +"%d/%m/%Y %T";}
-sh_filedate(){ date -r "$1" +"%d/%m/%Y";}
+sh_filedatetime(){ date -r "$1" +"%d/%m/%Y %T"; }
+sh_filedate(){ date -r "$1" +"%d/%m/%Y"; }
 sh_filetime(){ date -r "$1" +"%T"; }
 sh_datetime(){ date +"%d/%m/%Y %T"; }
 sh_time(){ date +"%T"; }

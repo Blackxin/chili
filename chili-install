@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-
 #  chili-install - utility written in bash to install chili/mazon distro
 #  Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
 #  Chili GNU/Linux - https://chililinux.com
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/07/18
+#  Altered: 2022/07/20
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -31,7 +30,7 @@
 #########################################################################
 #set -e
 declare -r _APP_="${0##*/}"
-declare -r _VERSION_="4.0.20220718"
+declare -r _VERSION_="4.0.20220720"
 declare -A AsUser
 readonly DEPENDENCIES=(which lsblk cut dialog whiptail pv grep sed cat awk tput dd)
 
@@ -78,8 +77,7 @@ sh_configure()
 #	sh_confdistro
 	# common vars
 	: "${BOOTLOG="$HOME/bootlog-${_APP_}"}"
-	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-#	: "${dir_install="/mnt/lfs-$DIAHORA"}"
+#	: "${dir_install="/mnt/lfs-$(DIAHORA)"}"
 	: "${dir_install="/mnt/lfs"}"
 	: "${STANDALONE=$false}"
 
@@ -367,7 +365,8 @@ sh_execcopia()
 	DESTINO="$dir_install/"
    DEST="$dir_install"
 
-   sizeof()    { du -s "$1" 2> /dev/null | cut -f1; }
+#  sizeof()    { find $1 -type f 2> /dev/null | wc -l; }
+  	sizeof()    { du -s "$1" 2> /dev/null | cut -f1; }
    running()   { ps "$1" | grep "$1" >/dev/null; }
 
    TITLE="INSTALL"
@@ -375,12 +374,28 @@ sh_execcopia()
    INTERVALO=0.2
 #  PORCENTO=0
    DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
-
    MSG=$(eval echo "$MSG")
-   TOTAL=$(sizeof "$ORIGEM")
-   TOTALGB=$((TOTAL/1024))
+	mensagem "Aguarde, computando arquivos para instalar"
+#	TOTAL=$(unsquashfs -ll "$LIVE_DIR" | awk '{n+=$3} END {print n}')
+#	TOTAL=$((TOTAL/1024))
+#  TOTALGB=$((TOTAL/1024))
+  	TOTAL=$(sizeof "$ORIGEM")
+  	TOTALGB=$((TOTAL/1024))
    DISPONIVEL=$(df | grep "${DEST}" | awk '{print $4}')
    DISPONIVEL=$((DISPONIVEL/1024))
+
+	if (( DISPONIVEL < TOTALGB )); then
+		if ! confmulti "*** WARNING ***" 													\
+						 "\nTamanho da partição destino é menor que o necessário\n"	\
+						 "\nPartição destino   : ${part}"									\
+						 "\nTamanho disponível : ${DISPONIVEL}G"							\
+						 "\nTamanho necessário : ${TOTALGB}G" 								\
+						 "\n\nSistema destino poderá não funcionar, continuar?"; then
+			sh_stopbind
+			sh_stopmount
+			sh_tools
+	 	fi
+ 	fi
 
    log="/tmp/${_APP_}.log"
    [[ -e "$log" ]] && rm -f "$log"
@@ -409,7 +424,7 @@ sh_execcopia()
            [[ "$PORCENTAGEM" -gt 100 ]] && PORCENTAGEM=100
 #          echo "$PORCENTAGEM% - $ORIGEM - $COPIADO - $DIR_DESTINO" >> $log
 #          ${DIALOG} --infobox "Percentual completo: $PORCENTAGEM\nBytes copiado: $COPIADO" 21 80
-           ${DIALOG} --title $TITLE --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 120 0 <<< $PORCENTAGEM
+           ${DIALOG} --title $TITLE --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 130 0 <<< $PORCENTAGEM
            sleep $INTERVALO
        done
        #echo 100
@@ -667,10 +682,11 @@ grubinstall()
 
 sh_finish()
 {
+ 	sh_stopbind
+ 	sh_stopmount
 	if confmulti "*** INSTALL ***" \ "\n$cfinish" \ "\nDeseja Rebootar agorar?"; then
 		reboot
  	fi
- 	sh_stopbind
    exit 0
 }
 
@@ -743,14 +759,7 @@ sh_check_and_dismount_partition()
 	local cpart="$1"
 
 	if mount | grep -q "$cpart"; then
-		if conf "** $cpart **" "\n$cmsgA_particao_esta_montada!\n\n$cpart\n\n$cmsg_dismount"; then
-			if umount -f -rl "$cpart" 2> /dev/null; then
-				LMOUNT=$false
-				return 0
-			fi
-		fi
-		LMOUNT=$true
-		return 1
+		umount -f -rl "$cpart" 2> /dev/null
 	fi
 	LMOUNT=$false
 	return 0
@@ -935,30 +944,19 @@ choosedisk()
 
 sh_mountpartition()
 {
-	local nchoice
+	local nchoice=0
 
+	sh_stopmount
    mensagem "$cmsg_create_dir"
    mkdir -p "$dir_install" 2> /dev/null
-   mensagem "$cmsg_mount_partition"
 
-	umount -f "$part" 2> /dev/null
+	msg "INFO" "$(log_info_msg "$cmsg_mount_partition")"
 	if ! mount "$part" "$dir_install" 2> /dev/null; then
-		nchoice=$?
-	else
-		if [[ $nchoice -eq 32 ]]; then # montada?
-			LMOUNT=$true
-			return 0
-		fi
-
-		if [[ $nchoice -eq 1 ]]; then # fail?
-			if conf "** MOUNT **" "$cmsg_mount_failed"; then
-				sh_mountpartition
-			fi
-			LMOUNT=$false
-			return 1
-	   fi
+		evaluate_retval
+		LMOUNT=$false
+		return 1
 	fi
-
+	evaluate_retval
 	LMOUNT=$true
 	cd "$dir_install"
 	if ! (( LAUTOMATICA )); then
@@ -1029,7 +1027,7 @@ sh_domkfs()
 
 	mensagem "$cmsg_Formatando_particao: $part"
 	if [[ "$mkfs" == "EXT4" ]]; then
-		if mkfs.ext4 -f -L "$xLABEL" "$part" > /dev/null 2>&1; then
+		if mkfs.ext4 -L "$xLABEL" "$part" > /dev/null 2>&1; then
 			LFORMAT=$true
 			return 0
 		fi
@@ -1279,6 +1277,7 @@ method2
          	   #echo "${AsUser[cpassroot]}" > /tmp/root-cpassroot
             	#echo "${AsUser[chostname]}" > /tmp/root-chostname
             	#sh_adduser
+
             	if ! (( LAUTOMATICA )); then
             		msg "INFO" "$(log_info_msg 'Cadastro efetuado com sucesso')"
             		inkey 5
@@ -1456,6 +1455,7 @@ sh_conffstab()
 		nano "$cfstab"
   		display_result "$result" "$(cat "$cfstab")"
 	fi
+	sed 's/#.*//' "$cfstab" | column --table --table-columns '#SOURCE,TARGET,TYPE,OPTIONS,PASS,FREQ' --table-right PASS,FREQ > "$cfstab"
 	evaluate_retval "0"
 	return 0
 }
@@ -1473,11 +1473,10 @@ sh_confkeyboard()
 
 sh_trapErro()
 {
-	local result
-
 	if conf '*** INSTALL ***' "\nInterrupt signal receveid. Cancel install?"; then
 		kill $CPPID
 		sh_stopbind
+		sh_stopmount
 		exit 1
    fi
 }
@@ -1691,7 +1690,8 @@ sh_liveinstall()
 
 	LADDUSER=$false
 	LAUTOMATICA=$true
-	sh_stopbind
+#	sh_stopbind
+#	sh_stopmount
 
 	if ! choosedisk ; then
 		display_info "$cmsgInstalacao_Automatica" "\n$cmsgInstalacao_Automatica_cancelada"
@@ -1753,7 +1753,7 @@ sh_liveinstall()
 		sh_tools
 	fi
 
-	sh_check_and_dismount_partition "$part"
+#	sh_check_and_dismount_partition "$part"
 	sh_wgetsqfs
 	sh_initbind
 
@@ -1863,7 +1863,8 @@ sh_checklive()
 
 		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
 #			mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
-			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
+#			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
+			mount -o loop -t squashfs "$ROOTSQFS" "$MEDIUM"
 		fi
 	fi
 	sh_confdistro

@@ -1564,6 +1564,7 @@ en_US()
    buttonpart='Disk Info'
 	buttonOK='Accept'
 	buttonCancel='Cancel'
+	cmsg004='Choose an option:'
 	cmsg006='Partition Disk'
 	cmsg007='Choose partition'
 	cmsg009='Choose the disk:'

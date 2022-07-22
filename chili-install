@@ -549,6 +549,18 @@ sh_efi()
 	return $lEFI
 }
 
+sh_initrd_adjust()
+{
+	local newtext="HOOKS=(base udev memdisk autodetect modconf block filesystems keyboard fsck)"
+   mensagem "Aguarde, ajustando e gerando initrd"
+#	sed -i '/#HOOKS=/a $newtext' "$dir_install/etc/mkinitcpio.conf"
+#	sed -i -E 's/memdisk/autodetect/'"$dir_install/etc/mkinitcpio.conf"
+# 	sed -i -E 's/archiso?.*?\s//' "$dir_install/etc/mkinitcpio.conf"
+	sed -i 's/HOOKS/#HOOKS/g' "$dir_install/etc/mkinitcpio.conf"
+	echo "$newtext" >> "$dir_install/etc/mkinitcpio.conf"
+   chroot "$dir_install" /bin/bash -c "mkinitcpio -P" > /dev/null 2>&1
+}
+
 sh_grubBIOS()
 {
    msg "INFO" "$(log_info_msg "$cmsg_install_grub_disk: $sd")"
@@ -670,6 +682,7 @@ grubinstall()
 		fi
 	fi
 
+	sh_initrd_adjust
 	sh_grubBIOS # UEFI, também instalar BIOS
 	sh_grubmkconfig
 
@@ -1756,6 +1769,7 @@ sh_liveinstall()
 
 #	sh_check_and_dismount_partition "$part"
 	sh_wgetsqfs
+	sh_copyfilesboot
 	sh_initbind
 
 	if (( LADDUSER )); then
@@ -1796,6 +1810,14 @@ parseinit()
       shift
    done
    init
+}
+
+sh_copyfilesboot()
+{
+	if ! test -e "$MEDIUM/boot/vmlinuz*"; then
+		mensagem "Aguarde, copiando kernel e initrd"
+		cp -Rpva /run/$chili_iso/bootmnt/$BOOT/boot/x86_64/* $dir_install/boot/ > /dev/null 2>&1
+	fi
 }
 
 sh_checklive()
@@ -1848,7 +1870,14 @@ sh_checklive()
 #			mount "$srDevice" "/run/$chili_iso/bootmnt"	> /dev/null 2>&1
 #		fi
 
-		export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
+		#chili
+		if [[ -e "/run/$chili_iso/bootmnt/chili/" ]]; then
+			export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
+			export BOOT="chili"
+		else #arch
+			export LIVE_DIR="/run/$chili_iso/bootmnt/arch/x86_64/airootfs.sfs"
+			export BOOT="arch"
+		fi
 		export ROOTSQFS="$LIVE_DIR"
 		export MEDIUM="/run/$chili_iso/airootfs"
 

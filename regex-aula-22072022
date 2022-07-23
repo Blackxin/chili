@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+wget https://www.gnu.org/software/bash/manual/bash.html -qO - | sed -En 's|^.*toc-.*href="\K([^"]+).*>(.*)<\/a>.*|\1 \2|p'
+wget https://www.gnu.org/software/bash/manual/bash.html -qO - | sed -En 's|^.*toc-.*href="\K([^"]+).*>(.*)<\/a>.*|\2|p'
+
+str=$'boa noite tarde\boa tarde noite\nboa noite noite\nboa tarde tarde'
+grep -E 'boa (tarde|noite) \1' <<< $str

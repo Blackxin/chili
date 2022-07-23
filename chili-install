@@ -214,10 +214,11 @@ _WIKI
 msg()
 {
 	if (( grafico )); then
-		${DIALOG}           \
-		--no-collapse       \
-      --title     "$1"    \
-      --infobox   "\n$2"  \
+		${DIALOG}           		\
+		--no-collapse       		\
+      --title     "$1"    		\
+   	--backtitle	"$ccabec"	\
+      --infobox   "\n$2"  		\
       10 60
 	else
 		log_info_msg "$2"
@@ -226,11 +227,16 @@ msg()
 
 mensagem()
 {
-   ${DIALOG}               \
-   --title  "$ctitle"      \
-   --backtitle "$ccabec"   \
-   --infobox   "$*"        \
-   6 60
+	if (( grafico )); then
+   	${DIALOG}               \
+		--no-collapse       		\
+   	--title  	"$ctitle"	\
+   	--backtitle	"$ccabec"	\
+   	--infobox   "$*"        \
+   	10 60
+   else
+		log_msg "$1"
+   fi
 }
 
 display_info()
@@ -363,6 +369,77 @@ sh_execcopia()
 {
 	ORIGEM="$MEDIUM/"
 	DESTINO="$dir_install/"
+	DEST="$dir_install"
+	PONT='|/—\' # Ponteiros de um hélice do lado direito
+	nVal=0
+
+	sizeof()    { du -s "$1" 2> /dev/null | cut -f1; }
+	running()   { ps "$1" | grep "$1" >/dev/null; }
+
+	TITLE="INSTALL"
+	INTERVALO=0.001
+#	PORCENTO=0
+	DIR_DESTINO="$DESTINO/${ORIGEM##*/}"
+	MSG="Aguarde, instalando... if=$ORIGEM of=$DESTINO"
+#	MSG=$(eval echo "$MSG")
+	mensagem "Aguarde, computando arquivos para instalar"
+#	TOTAL=$(unsquashfs -ll "$LIVE_DIR" | awk '{n+=$3} END {print n}')
+#	TOTAL=$((TOTAL/1024))
+#  TOTALGB=$((TOTAL/1024))
+  	TOTAL=$(sizeof "$ORIGEM")
+  	TOTALGB=$((TOTAL/1024))
+   DISPONIVEL=$(df | grep "${DEST}" | awk '{print $4}')
+   DISPONIVEL=$((DISPONIVEL/1024))
+
+	if (( DISPONIVEL < TOTALGB )); then
+		if ! confmulti "*** WARNING ***" 													\
+						 "\nTamanho da partição destino é menor que o necessário\n"	\
+						 "\nPartição destino   : ${part}"									\
+						 "\nTamanho disponível : ${DISPONIVEL}G"							\
+						 "\nTamanho necessário : ${TOTALGB}G" 								\
+						 "\n\nSistema destino poderá não funcionar, continuar?"; then
+			sh_stopbind
+			sh_stopmount
+			sh_tools
+	 	fi
+ 	fi
+
+	log="/tmp/${_APP_}.log"
+   [ -e "$log" ] && rm -f "$log"
+
+   rsync -crav "$ORIGEM" "$DESTINO" 1>&2>"$log" &
+   export CPPID=$!
+
+#  trap sh_trapErro 2 15
+   #trap "kill $CPPID" 2 15
+	(
+		while running "$CPPID"; do
+			((nval >= 4)) && nval=0
+      	COPIADO=$(sizeof "$DIR_DESTINO")
+         PERCENTAGEM=$((COPIADO*100/TOTAL))
+         COPIADOMB=$((COPIADO/1024))
+         LASTFILE=$(tail -n1 "$log")
+         [[ "$PERCENTAGEM" -gt 100 ]] && PERCENTAGEM=100
+				${DIALOG}	--colors	\
+          					--title $TITLE	\
+           					--gauge "$MSG\
+           							\nFalta \Zb\Z1$[100-PERCENTAGEM]%\ZB\Zn para completar a tarefa \Zb\Z1${PONT:nval:1}\ZB\Zn \
+           							\n\nDestino    : ${part}\
+           							\nDisponivel : ${DISPONIVEL}MB\
+           							\nTotal      :	${TOTALGB}MB\
+           							\nCopiado    : ${COPIADOMB}MB\
+           							\nArquivo    :	${LASTFILE}\
+           							\n" 13 130 0 <<< $PERCENTAGEM
+         ((nval++))
+#			sleep $INTERVALO
+		done
+	)
+}
+
+sh_execcopiaOLD()
+{
+	ORIGEM="$MEDIUM/"
+	DESTINO="$dir_install/"
    DEST="$dir_install"
 
 #  sizeof()    { find $1 -type f 2> /dev/null | wc -l; }
@@ -397,9 +474,6 @@ sh_execcopia()
 	 	fi
  	fi
 
-   log="/tmp/${_APP_}.log"
-   [[ -e "$log" ]] && rm -f "$log"
-
 	log="/tmp/${_APP_}.log"
    [ -e "$log" ] && rm -f "$log"
 
@@ -427,8 +501,6 @@ sh_execcopia()
            ${DIALOG} --title $TITLE --gauge "\n$MSG\n\nDestino    : ${part}\nDisponivel : ${DISPONIVEL}MB\nTotal      : ${TOTALGB}MB\nCopiado    : ${COPIADOMB}MB\nArquivo    : ${LASTFILE}\n\n\n" 13 130 0 <<< $PORCENTAGEM
            sleep $INTERVALO
        done
-       #echo 100
-#   )| ${DIALOG} --title "$TITLE" --tailbox "$log" 8 70
     )
 }
 
@@ -457,7 +529,6 @@ chroot_maybe_add_mount()
   	fi
 }
 
-
 bindmount()
 {
 	mount "$@" > /dev/null 2>&1
@@ -480,7 +551,6 @@ sh_initbind()
 	   bindmount udev "${dir_install}/dev" -t devtmpfs -o mode=0755,nosuid &&
 	   bindmount devpts "${dir_install}/dev/pts" -t devpts -o mode=0620,gid=5,nosuid,noexec &&
 	   bindmount shm "${dir_install}/dev/shm" -t tmpfs -o mode=1777,nosuid,nodev &&
-#	   bindmount /run "${dir_install}/run" --bind &&
 	   bindmount /run "${dir_install}/run" -t tmpfs -o nosuid,nodev,mode=0755 &&
 	   bindmount tmp "${dir_install}/tmp" -t tmpfs -o mode=1777,strictatime,nodev,nosuid
 	   evaluate_retval
@@ -805,14 +875,22 @@ sh_partitions_with_parted()
 
 sh_umountall()
 {
+	local nchoice
 	local nconta
 	local i
 
-	nconta=$(find "$sd"[0-9]|wc -l)
-	for i in $(seq 1 "$nconta"); do
-		mensagem "Desmontando partição: $sd$i"
-		umount -f "$sd$i" 2> /dev/null
-	done
+	nconta=$(find "$sd"[0-9] > /dev/null 2>&1|wc -l)
+	if (( nconta )); then
+		for i in $(seq 1 "$nconta"); do
+			mensagem "$cmsg_Desmontando_particao: $sd$i"
+			umount -f "$sd$i" 2> /dev/null
+			nchoice=$?
+			[[ $nchoice -eq 0  || $nchoice -eq 32 ]] && LMOUNT=$false
+			[[ $LMOUNT -eq $false ]] && evaluate_retval 0 || evaluate_retval 1
+			[[ $LMOUNT -eq $false ]] && return 0 || return 1
+		done
+	fi
+	return 0
 }
 
 sh_partnewbie()
@@ -820,9 +898,10 @@ sh_partnewbie()
 	local nchoice
 	msg "INFO" "$(log_info_msg "$cmsg_prepare_disk $sd")"
 	sh_umountall
+	evaluate_retval "$?"
 #	sh_partitions_with_sfdisk
 	sh_partitions_with_parted
-	evaluate_retval; nchoice=$?
+	nchoice=$?
 	LDISK=$true
 
 	if (( LAUTOMATICA )); then
@@ -1035,22 +1114,27 @@ sh_mkswap()
 
 sh_domkfs()
 {
-	mensagem "$cmsg_Desmontando_particao: $part"
-	umount -f "$part" 2> /dev/null
+	msg "INFO" "$(log_info_msg "$cmsg_Desmontando_particao: $part")"
+	sh_check_and_dismount_partition "$part"
+	evaluate_retval
 
-	mensagem "$cmsg_Formatando_particao: $part"
+	msg "INFO" "$(log_info_msg "$cmsg_Formatando_particao: $part")"
 	if [[ "$mkfs" == "EXT4" ]]; then
 		if mkfs.ext4 -L "$xLABEL" "$part" > /dev/null 2>&1; then
+			evaluate_retval
 			LFORMAT=$true
 			return 0
 		fi
 	else
 		if mkfs.btrfs -f -L "$xLABEL" "$part" > /dev/null 2>&1; then
+			evaluate_retval
 			LFORMAT=$true
 			return 0
 		fi
 	fi
+	evaluate_retval
 	LFORMAT=$false
+	exit
 	return 1
 }
 
@@ -1538,14 +1622,14 @@ pt_BR()
 	cmsg_alert_mount='Só para lembrar que o disco contém partições montadas.'
 	cmsgA_particao_esta_montada='A partição está montada'
 	cmsg_dismount='Desmontar?'
-	cmsg_all_mounted_part='O disco selecionado contém partições montadas.'
-	cmsg_umount_partition='Aguarde, Desmontando particao de trabalho.'
-	cmsg_create_dir='Aguarde, criando diretorio de trabalho.'
-	cmsg_mount_partition='Aguarde, Montando particao de trabalho.'
+	cmsg_all_mounted_part='O disco selecionado contém partições montadas'
+	cmsg_umount_partition='Aguarde, Desmontando particao de trabalho'
+	cmsg_create_dir='Aguarde, criando diretorio de trabalho'
+	cmsg_mount_partition='Aguarde, Montando particao de trabalho'
 	cmsg_mount_failed='Falha de montagem da partição. Repetir?'
-	cmsg_enter_work_dir='Aguarde, Entrando no diretorio de trabalho.'
-	cmsg_mkfs_ok='Formatacao terminada com sucesso.'
-	cmsg_mkfs_error='Erro na formatacao.'
+	cmsg_enter_work_dir='Aguarde, Entrando no diretorio de trabalho'
+	cmsg_mkfs_ok='Formatacao terminada com sucesso'
+	cmsg_mkfs_error='Erro na formatacao'
 	cdisco='DISCO'
 	cparticao='PARTIÇÃO'
 	cmsg_extracting='Aguarde, extraindo arquivos...'
@@ -1613,14 +1697,14 @@ en_US()
 	cmsg_alert_mount='Just to remember that the disk contains mounted partitions.'
 	cmsgA_particao_esta_montada='The partition is mounted'
 	cmsg_dismount='Disassemble?'
-	cmsg_all_mounted_part='The selected disk contains mounted partitions.'
-	cmsg_umount_partition='Please wait, dismantling the working partition.'
-	cmsg_create_dir='wait, creating working directory.'
-	cmsg_mount_partition='Please wait, setting up workpart.'
+	cmsg_all_mounted_part='The selected disk contains mounted partitions'
+	cmsg_umount_partition='Please wait, dismantling the working partition'
+	cmsg_create_dir='wait, creating working directory'
+	cmsg_mount_partition='Please wait, setting up workpart'
 	cmsg_mount_failed='Partition mount failed. Repeat?'
-	cmsg_enter_work_dir='Please wait, entering the work directory.'
-	cmsg_mkfs_ok='Formation completed successfully.'
-	cmsg_mkfs_error='Formatting error.'
+	cmsg_enter_work_dir='Please wait, entering the work directory'
+	cmsg_mkfs_ok='Formation completed successfully'
+	cmsg_mkfs_error='Formatting error'
 	cdisco='DISK'
 	cparticao='PARTITION'
 	cmsg_extracting='Wait, Extracting files...'
@@ -1856,11 +1940,10 @@ sh_checklive()
 		loDevice=$(losetup -f)
 		if ! [[ -e "$loDevice" ]]; then
 			loDevice=$(sh_mknode_lo)
-		else
-#			losetup -d "$loDevice"  > /dev/null 2>&1
-			losetup -P "$loDevice" "$iso"  > /dev/null 2>&1
-			mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
 		fi
+#		losetup -d "$loDevice"  > /dev/null 2>&1
+		losetup -P "$loDevice" "$iso"  > /dev/null 2>&1
+		mount "$loDevice" "/run/$chili_iso/bootmnt" > /dev/null 2>&1
 
 #		if ! [[ -e "$srDevice" ]]; then
 #			srDevice=$(sh_mknode_sr)
@@ -1892,7 +1975,6 @@ sh_checklive()
 		fi
 
 		if ! test -e "$MEDIUM/boot/vmlinuz*"; then
-#			mount -t squashfs -o ro,loop "$ROOTSQFS" "$MEDIUM"
 #			squashfuse -o ro "$ROOTSQFS" "$MEDIUM"
 			mount -o loop -t squashfs "$ROOTSQFS" "$MEDIUM"
 		fi

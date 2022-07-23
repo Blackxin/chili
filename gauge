@@ -9,12 +9,11 @@ do
 	cat <<- FIM
 		XXX
 		$Perc
-		Incremento a cada 20 centésimos de segundo
 			Falta$m \Zb\Z1$[100-Perc]%\ZB\Zn para\
 		completar a tarefa \Zb\Z1${Pont:((Perc%4)):1}\ZB\Zn
 	XXX
 	FIM
 	((Perc++))
 	((Perc > 98)) && { m=; unset Pont; }
-	sleep 0.20
+#	sleep 0.10
 done | dialog --clear --colors --title "Teste Gauge no dialog" --gauge "" 7 46 0

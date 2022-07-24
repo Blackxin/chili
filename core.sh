@@ -74,6 +74,13 @@ trancarstderr=2>&-
 #m1
 #m3
 
+function fcreate()
+# $1 name
+# $2 qtde
+{
+	eval \>$name{1..$qtde}\;
+}
+
 sizeof.du(){ du -bs $1; }
 sizeof.find(){ echo $(( $(find $1 -printf %s+)0 )); }
 sizeof.sfs.sed(){ echo $(( $( unsquashfs -ll $1 | sed -r ' 1,3d; /s*-root\/dev/d; s/^([^ ]+ ){2}//; s/^ *([^ ]+) .*/\1+/; $s/\+//; ' ) )); }

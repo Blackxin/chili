@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+#printf '%d:teste%d\n' {1..50} {1..50}>> sorteio.txt
+grep -nEo '^[^:]+' sorteio.txt | shuf | tail -1

@@ -20,9 +20,17 @@ echo $my_icons
 
 echo
 echo '5 - Nome da distribuição'
-# PRETTY_NAME="Debian GNU/Linux bookworm/sid"
 PRETTY_NAME="Debian GNU/Linux-libre (sid)"
 sed -nE 's/^P.*="(.*)\s\((.*)\).*/\1\/\2/p' /etc/os-release #BLAU
 #Debian GNU/Linux-libre/sid
+
+PRETTY_NAME="Debian GNU/Linux bookworm/sid"
 sed -nE 's/^#.*="(.*)\/(.*)"/\1\/\2/p' /etc/os-release		#VC
 #Debian GNU/Linux bookworm/sid
+
+sed -nE 's/^#.*="(.*)\/(.*)"/\1 (\2)/p' /etc/os-release		#VC
+#Debian GNU/Linux bookworm (sid)
+
+sed -nE 's/^#.*="(.*ux)\s(.*)\/(.*)"/\1-\2 (\3)/p' /etc/os-release		#VC
+#Debian GNU/Linux-bookworm (sid)
+

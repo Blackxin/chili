@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#my_res=$(echo $(xrandr --nograb --current | sed -nE 's/(.*)[^dis]connected.*primary\s(.*)\+0\+0.*/\1: \2/p')) 	# BLAU
+my_res=$(xrandr --nograb --current | sed -nE 's/^(.*)[^dis]connected.*primary\s(.*)\+.*/\1: \2/p')	 					#VC
+echo $my_res

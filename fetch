@@ -37,7 +37,7 @@
 #bg=${cores[red]}
 #export PS4=$'+\t${0##*/}[$LINENO] '
 setvarcolors
-export PS4=$'${red}${0##*/}${cyan}[$LINENO]${reset} '
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 set -x
 #set -Eeuo pipefail
 #trap 'echo "${BASH_SOURCE}:${LINENO}:${FUNCNAME:-}"' ERR

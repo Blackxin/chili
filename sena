@@ -27,10 +27,12 @@
 #     awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
-#global
+# debug with PS4
+#export PS4=$'+\t${0##*/}[$LINENO] '
+#set -x
 
 #system
-_VERSION_='2.57.20220724'
+_VERSION_='2.58.20220724'
 DEPENDENCIES=(curl wget grep printf mktemp sort sed awk tail cat tput stat dialog find jq)
 
 #paths/files/urls

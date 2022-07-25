@@ -40,8 +40,8 @@ declare -i true=1
 declare -i false=0
 declare -i LINSTALLED=2
 declare -i LREMOVED=3
-declare -l BAIXA=${MENSAGEM}
-declare -u ALTA=${MENSAGEM}
+#declare -l BAIXA=${MENSAGEM}
+#declare -u ALTA=${MENSAGEM}
 trancarstderr=2>&-
 
 # choosedisk
@@ -74,11 +74,25 @@ trancarstderr=2>&-
 #m1
 #m3
 
-function fcreate()
+fcreate()
 # $1 name
 # $2 qtde
 {
-	eval \>$name{1..$qtde}\;
+   local ini=1
+   local name="$1"
+   local fim="$2" 	# opcional, max 32762
+
+	if [[ -n "$name" ]] ; then
+		if [[ -z "$fim" ]] ; then
+			fim=1
+		elif (( fim > 32762 )) ; then
+			fim=32762
+		fi
+		eval eval \\\>"$name"\{"$ini".."$fim"\}
+#	   eval eval "\>"$name"{"$ini".."$fim"}"
+		return $?
+	fi
+	return 1
 }
 
 sizeof.du(){ du -bs $1; }

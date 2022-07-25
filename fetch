@@ -31,6 +31,17 @@
 #   	gettext, gpg, grep, gzip, sed, tput (ncurses), xz
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
+# debug
+#declare -A cores=( [bla]=0 [red]=1 [gre]=2 [yel]=3 [blu]=4 [mag]=5 [cya]=6 [whi]=7 )
+#fg=${cores[bla]}
+#bg=${cores[red]}
+#export PS4=$'+\t${0##*/}[$LINENO] '
+setvarcolors
+export PS4=$'${red}${0##*/}${cyan}[$LINENO]${reset} '
+set -x
+#set -Eeuo pipefail
+#trap 'echo "${BASH_SOURCE}:${LINENO}:${FUNCNAME:-}"' ERR
+
 # Import lib
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
@@ -65,6 +76,7 @@ configure()
 	export DESCME CACHEDIR_LIST CACHEDIR_DESC CACHEDIR_REMO
 	export ALIEN_CACHE_DIR ALIEN_VARLIB
 	export VARLIB_FETCH
+	verbose=0
 	SEP=','
 	PKG_EXT="${PKG_EXT:='chi.zst'}"
 	SITE="${PKG_SITE:=http://chililinux.com}"
@@ -2982,9 +2994,8 @@ parsestdin()
 
 configure
 checkDependencies
-setvarcolors
 
-if [[ $1 = "" ]]; then
+if [[ -z "${1-}" ]]; then
 	die "no operation specified (use -h for help)"
 fi
 

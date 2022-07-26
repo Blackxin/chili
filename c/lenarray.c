@@ -1,3 +1,5 @@
+// LenArray, Vilmar Catafesta <vcatafesta@gmail.com>
+
 #include <stdio.h>
 
 int LenArray(char *a[])

@@ -36,8 +36,6 @@
 #fg=${cores[bla]}
 #bg=${cores[red]}
 #export PS4=$'+\t${0##*/}[$LINENO] '
-setvarcolors
-export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 #set -Eeuo pipefail
 #trap 'echo "${BASH_SOURCE}:${LINENO}:${FUNCNAME:-}"' ERR
@@ -46,6 +44,11 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 source "${LIBRARY}"/core.sh
+# debug
+setvarcolors
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
+# end debug
 #set -a 						# Enable allexport using single letter syntax
 #set -o allexport 		# Enable using full option name syntax
 #set +a 						# Disable allexport using single letter syntax
@@ -60,8 +63,8 @@ configure()
 	unset CDPATH
 	unset GREP_OPTIONS
 
-	[[ -e  "${SYSCONFDIR}"/fetch.conf ]] || sh_touchconf
-	source "${SYSCONFDIR}"/fetch.conf
+	[[ -e  "$SYSCONFDIR/fetch.conf" ]] || sh_touchconf
+	source "$SYSCONFDIR/fetch.conf"
 
 	# files
    FOLDERS_METAPACKAGES='folders_metapackages.csv'
@@ -193,7 +196,7 @@ sh_arraypkgfull()
 {
 	OLDIFS=$IFS
 	local file_list_packages="$1"
-   [[ $# -eq 0 ]] && file_list_packages=$CACHEDIR_SEARCH/$PACKAGES_SPLIT
+   [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 
 	public_len_count_main=0
 	public_len_count_pkg=0
@@ -241,7 +244,7 @@ sh_arraypkgfull()
 sh_arraypkgfullAWK()
 {
 	local file_list_packages=$1
-   [[ $# -eq 0 ]] && file_list_packages=$CACHEDIR_SEARCH/$PACKAGES_SPLIT
+   [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 
 	public_len_count_main=0
 	public_len_count_pkg=0
@@ -374,8 +377,8 @@ sh_list()
 		cListSearch+="$s "
 	done
 
-	if (( $LALL )) || [[ "$cListSearch" == "" ]]; then
-		if (( $LALL )); then
+	if (( LALL )) || [[ "$cListSearch" == "" ]]; then
+		if (( LALL )); then
 			pkg=$(cat $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1)
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
@@ -383,7 +386,7 @@ sh_list()
 		fi
 	else
 		for x in ${cListSearch}; do
-			if (( $LEXACT )); then
+			if (( LEXACT )); then
 				pkg+="$(grep ^$x$SEP $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1) "
 			else
 				pkg+="$(grep $x $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1) "
@@ -410,7 +413,7 @@ sh_list()
 					else
 						status=' A '
 					fi
-					[[ $LLIST = $true ]] && sh_write $i '0' $pkgCheckNumber "$status"
+					[[ LLIST = $true ]] && sh_write $i '0' $pkgCheckNumber "$status"
 				fi
 			done
 		fi
@@ -479,8 +482,8 @@ sh_listpkgdisp()
 		AWK_CUT='$5'
 	fi
 
-	if (( $LALL )) || [[ "$public_ListSearch" == "" ]]; then
-		if (( $LALL )); then
+	if (( LALL )) || [[ "$public_ListSearch" == "" ]]; then
+		if (( LALL )); then
 #			public_pkg=$(grep ^ $file_list_package | cut -d$SEP $SEARCH_CUT)
 			public_pkg=$(awk -F$SEP '{print '$AWK_CUT'}' $file_list_package)
 		else
@@ -489,7 +492,7 @@ sh_listpkgdisp()
 		fi
 	else
 		for x in ${public_ListSearch}; do
-			if (( $LEXACT )); then
+			if (( LEXACT )); then
 				pkg_grep=$(grep ^$x$SEP $file_list_package | cut -d$SEP $SEARCH_CUT)
 			else
 #				public_pkg="$public_pkg $(grep $x $file_list_package | cut -d$SEP -f5)"
@@ -499,8 +502,8 @@ sh_listpkgdisp()
 			if [[ -n "$pkg_grep" ]]; then
 				public_pkg+="$pkg_grep "
 			else
-				if !(( $LSKIPERROR )); then
-					if (( $LREMOVE )); then
+				if ! (( LSKIPERROR )); then
+					if (( LREMOVE )); then
 						log_failure_msg "${red}error: ${orange}$x ${reset}target was ${red}NOT INSTALLED. ${reset}Use the ${yellow}${0##*/} -Sr ${reset}option to rebuild installed packages."
 					else
 						log_failure_msg "${red}error: ${orange}$x ${reset}target was ${red}NOT found. ${reset}Use the ${yellow}--skiperror ${reset}option to force install. "
@@ -511,7 +514,7 @@ sh_listpkgdisp()
 				fi
 				public_pkg_not_found+=("$x")
 			fi
-			if !(( $LSEARCHONLY )); then
+			if ! (( LSEARCHONLY )); then
 				pkginstalled=$(grep ^$x$SEP $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP $SEARCH_CUT)
 				sh_splitpkg ${pkginstalled}
 				if [[ -n "$pkginstalled" && "$pkg_grep" = "$pkginstalled" ]]; then
@@ -524,8 +527,8 @@ sh_listpkgdisp()
 	nfilesfound=$(lenarraystr "$public_pkg")
 
 	if (( $nfilesfound )); then # package's found?
-		if !(( $LREMOVE )); then
-			if (( $LDEPS )); then
+		if ! (( LREMOVE )); then
+			if (( LDEPS )); then
 				sh_getdeps $LDEPS
 			fi
 		fi
@@ -568,13 +571,13 @@ sh_selfupdate()
 {
 	local param=$@
 
-	if !(( $LAUTO )) || !(( $LFORCE)); then
+	if ! (( LAUTO )) || ! (( LFORCE)); then
 		echo
 		conf "Update ${0##*/} from internet?"
 		LAUTO=$?
 	fi
 
-	if (( $LAUTO )) || (( $LFORCE )); then
+	if (( LAUTO )) || (( LFORCE )); then
 		local link="$PKG_RAW/updater/src/fetch"
 		local tmp_dir_full="/tmp/${APP}"
 		local tmp_dir="/tmp/${APP}/src"
@@ -615,13 +618,13 @@ sh_clean()
 	local param=$@
 	local	nfiles=$(find $CACHEDIR_ARCHIVES -type f -iname "*.${PKG_EXT}" -type f  | wc -l)
 
-	if !(( $nfiles )); then
+	if ! (( $nfiles )); then
 		printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
 		log_msg "${yellow}($nfiles) ${cyan}find packages in cache"
 		return $lRetval
 	fi
 
-	if !(( $LAUTO )); then
+	if ! (( LAUTO )); then
 		printf "Pacotes a serem mantidos:\n"
       printf "      Todos os pacotes instalados localmente\n"
 		printf "\n"
@@ -630,7 +633,7 @@ sh_clean()
 		LAUTO=$?
 	fi
 
-	if (( $LAUTO )); then
+	if (( LAUTO )); then
 		log_msg "${pink}Deleting downloaded package files"
 		[[ -d $CACHEDIR_ARCHIVES ]] && rm -f $CACHEDIR_ARCHIVES/*.${PKG_EXT}* || mkdir -p $CACHEDIR_ARCHIVES
 		printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
@@ -668,7 +671,7 @@ sh_checkdir()
 # -Sy
 sh_updaterepo()
 {
-	if (( $LSELF )); then
+	if (( LSELF )); then
 		sh_selfupdate "$@"
 		return $?
 	fi
@@ -722,7 +725,7 @@ sh_update()
              $CACHEDIR_SEARCH/$METAPACKAGES
             )
 
-	if (( $LSELF )); then
+	if (( LSELF )); then
 		sh_selfupdate "$@"
 		return $?
 	fi
@@ -811,7 +814,7 @@ sh_update()
 
 sh_updateOLD()
 {
-	if (( $LSELF )); then
+	if (( LSELF )); then
 		sh_selfupdate "$@"
 		return $?
 	fi
@@ -928,13 +931,13 @@ sh_FilesInCache()
       local item
    	for item in ${aCache[*]}; do
        	echo $item >> $CACHEDIR_SEARCH/$PACKAGES_IN_CACHE
-         if (( $LLIST )); then
+         if (( LLIST )); then
             printf "%s\n" "$item"
             ((index++))
          fi
    	done
    fi
-   if (( $LLIST )); then
+   if (( LLIST )); then
       printf "${yellow}($nfilesincache) ${cyan}packages IN CACHE $CACHEDIR_ARCHIVES\n"
    fi
    return $nfilesincache
@@ -970,7 +973,7 @@ sh_pkgoutcache()
 		fi
 	done
 	local nfilesoutcache=${#aPkgOut[*]}
-	[ $nfilesoutcache <> 0 ] || maxcol; replicate "=" $?
+	(( nfilesoutcache != 0 )) || maxcol; replicate "=" $?
    index=1
 	for y in ${aPkgOut[*]}
 	do
@@ -978,7 +981,7 @@ sh_pkgoutcache()
 		#log_msg "NOT IN CACHE: [$index]${orange}$y${reset}"
 		((index++))
 	done
-	[ $nfilesoutcache <> 0 ] || maxcol; replicate "=" $?
+	(( nfilesoutcache != 0 )) || maxcol; replicate "=" $?
 	echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
 	echo -e "${yellow}($nfilesoutcache) ${cyan}packages in the repository e out cache"
 	return 0
@@ -991,7 +994,7 @@ sh_CatAndSizePkg()
 	local retval=0
 
 	source "$cpacote"
-	if (( $LSHOW )); then
+	if (( LSHOW )); then
 		printf "${cyan}BaseName     : ${yellow}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${aPKGSPLIT[$PKG_FULLNAME]}\n"
 		printf "${cyan}Name         : ${yellow}${pkgname}\n"
 		printf "${cyan}Version      : ${yellow}${version}\n"
@@ -1024,7 +1027,7 @@ sh_ShortCatPkg()
 	local pkginstalled=
 
   	source "$cpacote"
-	if (( $LSHOW )); then
+	if (( LSHOW )); then
 		pkginstalled=$(grep ^$cpackage$SEP $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP $SEARCH_CUT)
 		if [[ -z $pkginstalled ]]; then
 			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${white}${desc::40}"
@@ -1066,7 +1069,7 @@ sh_show()
 	    	local error_value=0
 
 			cpacote=$CACHEDIR_ARCHIVES/$cfullname
-			if [[ $LFORCE = $true ]] || ! [[ -e ${cpacote} ]]; then
+			if [[ LFORCE ]] || ! [[ -e ${cpacote} ]]; then
 				sh_wgetdesc
 	    		error_value="${?}"
 			fi
@@ -1098,13 +1101,13 @@ sh_remove()
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
 	if (( $ntotal_pkg_listed )); then
-		if !(( $LAUTO )); then
+		if ! (( LAUTO )); then
 			echo
 			confno "${blue}::${reset} Remove package(s)?"
 			LAUTO=$?
 		fi
 
-		if (( $LAUTO )); then
+		if (( LAUTO )); then
 			for cPkgFullFilename in $public_pkg
 			do
 				sh_splitpkg $cPkgFullFilename
@@ -1126,7 +1129,7 @@ sh_doremove()
 
 	log_wait_msg "Wait, Removing package ${orange}$cPkgFullFilename"
 	if sh_removepkg $cPkgBaseVersion $cPkgFullFilename; then
-		if (( $LLIST )); then
+		if (( LLIST )); then
 			log_success_msg2 "${green}$cPkgFullFilename${reset} Done. Removal of the package successfully completed"
 		fi
 		return $ERR_OK
@@ -1260,7 +1263,7 @@ sh_download()
 			sh_splitpkg $i
 			local cfullname="${aPKGSPLIT[$PKG_FULLNAME]}"
 
-    		if (( $LFORCE )); then
+    		if (( LFORCE )); then
 				sh_wgetdesc $i
 				sh_wgetfull $i
 				[[ $? -eq 0 ]] && (( nFilesDownloaded++ ))
@@ -1304,7 +1307,7 @@ sh_getdeps()
 	   test -e $CACHEDIR_ARCHIVES/$cfullfilename.desc || sh_wgetdesc
 		if test -e $CACHEDIR_ARCHIVES/$cfullfilename.desc; then
 	   	source $CACHEDIR_ARCHIVES/$cfullfilename.desc
-			if (( $LDEPS )); then
+			if (( LDEPS )); then
 	   	  	deps="${dep[*]} "
       		deps+="$(grep ^depend $CACHEDIR_ARCHIVES/${cfullfilename}.desc | awk -F"'" '{print $2}')"
       	fi
@@ -1352,7 +1355,7 @@ sh_wgetresponse()
 	if [[ $response -eq 404 ]]; then
 		rm -f $cfullfilename &> /dev/null
 
-		if !(( $LSKIPERROR )); then
+		if ! (( LSKIPERROR )); then
 			log_failure_msg "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/ - Use the ${yellow}--skiperror ${reset}option to force install. "
 			exit 1
 		else
@@ -1371,7 +1374,7 @@ sh_wgetdesc()
 	local cRaw
    local nretval
 
-	if !(( $GITSITE )); then
+	if ! (( $GITSITE )); then
 		cRaw=$SITE 	#site normal
 	else
 		cRaw=$RAW	#github
@@ -1389,7 +1392,7 @@ sh_wgetfull()
 	local cRaw
    local nretval
 
-	if !(( $GITSITE )); then
+	if ! (( $GITSITE )); then
 		cRaw=$SITE	#site normal
 	else
 		cRaw=$RAW	#github
@@ -1404,7 +1407,7 @@ sh_wgetpartial()
 	local cfullfilename=$1
 	local cRaw
 
-	if !(( $GITSITE )); then
+	if ! (( $GITSITE )); then
 		cRaw=$SITE	#site normal
 	else
 		cRaw=$RAW	#github
@@ -1515,13 +1518,13 @@ sh_splitpkgIFS()
 	pkg_base_version="${pkg_base}-${pkg_version}-${pkg_build}"
 	[[ $pkg_folder = "" ]] && pkg_folder=$pkg_fullname
 
-	aPKGSPLIT=(	$pkg_folder_dir
-					$pkg_fullname
-					$pkg_arch
-					$pkg_base
-					$pkg_base_version
-					$pkg_version-$pkg_build
-					$pkg_build
+	aPKGSPLIT=(	"$pkg_folder_dir"
+					"$pkg_fullname"
+					"$pkg_arch"
+					"$pkg_base"
+					"$pkg_base_version"
+					"$pkg_version-$pkg_build"
+					"$pkg_build"
 				)
 
 #	aPKGLIST=${aPKGSPLIT[*]}
@@ -1580,7 +1583,7 @@ sh_install()
 		[[ -d $CACHEDIR_ARCHIVES/ ]] || mkdir -p $CACHEDIR_ARCHIVES/
 		cd $CACHEDIR_ARCHIVES/
 
-		if !(( $LAUTO )); then
+		if ! (( LAUTO )); then
 			echo
 			read -e -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
 			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
@@ -1636,7 +1639,7 @@ sh_installdoinstallpkg()
 
 		local cpacoteinstalled=$(grep ^$cpacotebase$SEP ${CACHEDIR_SEARCH}/$PACKAGES_INSTALLED_SPLIT | cut -d$SEP -f6)
 		[[ "$cpacoteinstalled" == "$cBaseVersion" ]] && LINSTALLED=$true || LINSTALLED=$false
-		if (( $LINSTALLED )) && !(( $LFORCE )); then
+		if (( LINSTALLED )) && ! (( LFORCE )); then
 			log_failure_msg2 "${orange}${cBaseVersion} ${reset}Package is already installed. Use the -f option to force reinstallation."
 			continue
 		fi
@@ -1671,7 +1674,7 @@ sh_search()
 			local	error_value=0
 
 			cpacote=$CACHEDIR_ARCHIVES/$cfullname
-			if [[ $LFORCE = $true ]] || ! [[ -e $cpacote ]]; then
+			if [[ LFORCE = $true ]] || ! [[ -e $cpacote ]]; then
 				sh_wgetdesc
 	    		error_value=$?
 			fi
@@ -1701,8 +1704,8 @@ sh_listmeta()
 		log_msg "Reading meta package lists in the repository..."
 	fi
 
-	if (( $LALL )) || [[ -z "$cListSearch" ]]; then
-		if (( $LALL )); then
+	if (( LALL )) || [[ -z "$cListSearch" ]]; then
+		if (( LALL )); then
 			metapkg=$(cat $CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES)
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
@@ -1710,7 +1713,7 @@ sh_listmeta()
 		fi
 	else
 		for x in $cListSearch; do
-			if (( $LEXACT )); then
+			if (( LEXACT )); then
 				cfile="$(grep "\/$x.meta$" $CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES)"
 				metapkg="$metapkg $(echo $cfile)"
 			else
@@ -1719,7 +1722,7 @@ sh_listmeta()
 			fi
 
 			if [[ -z $cfile ]]; then
-				if !(( $LSKIPERROR )); then
+				if ! (( LSKIPERROR )); then
 					log_failure_msg "${red}error${reset}: ${orange}${x} ${reset}target was ${red}NOT ${reset}found. Use the ${yellow}--skiperror ${reset}option to force install. "
 					exit 1
 				else
@@ -1755,7 +1758,7 @@ sh_installmeta()
 	public_ntotal_pkg_meta=$?
 
 	if (( $public_ntotal_pkg_meta )); then
-		if !(( $LAUTO )); then
+		if ! (( LAUTO )); then
 			echo
 			read -e -p "$(DOT)continue installation? [Y/n]" LDOWNLOAD
 			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
@@ -1769,7 +1772,7 @@ sh_installmeta()
 			local cmetabase=$(echo $cmetafile | cut -d/ -f1)
 			local cmetapackage=$(echo $cmetafile | cut -d/ -f2)
 
-			if !(( $GITSITE )); then
+			if ! (( $GITSITE )); then
             curl --silent -k -O "${SITE}/packages/$cmetafile"
 			else
 				curl --silent -k -O "${RAW}/packages/$cmetafile"
@@ -1790,7 +1793,7 @@ sh_installmeta()
 			[[ -d $CACHEDIR_ARCHIVES/ ]] || mkdir -p $CACHEDIR_ARCHIVES/
 			cd $CACHEDIR_ARCHIVES/
 
-			if !(( $LAUTO )); then
+			if ! (( LAUTO )); then
 				echo
 				read -e -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
 				if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
@@ -1899,8 +1902,8 @@ sh_listforinstall()
 		cListSearch+="$s "
 	done
 
-	if (( $LALL )) || [[ -z "$cListSearch" ]]; then
-		if (( $LALL )); then
+	if (( LALL )) || [[ -z "$cListSearch" ]]; then
+		if (( LALL )); then
 			public_pkg=$(grep ^ $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f5)
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
@@ -1908,7 +1911,7 @@ sh_listforinstall()
 		fi
 	else
 		for x in $cListSearch; do
-			if (( $LEXACT )); then
+			if (( LEXACT )); then
 				if [[ "$SPLITPOS" == "0" ]]; then
 					public_pkg="$public_pkg $(grep ^$x: $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f1)"
 				else
@@ -1924,7 +1927,7 @@ sh_listforinstall()
 		done
 	fi
 
-	if (( $LLIST )); then
+	if (( LLIST )); then
    	arr=(${public_pkg[*]})
    	ncontapkg=${#arr[*]}
 		if [[ "${#public_pkg}" -gt 0 ]]; then # pacote?
@@ -1943,10 +1946,10 @@ sh_listforinstall()
 		for i in $public_pkg; do
 			((pkgNumber++))
 		done
-		public_ntotal_pkg_listed=$pkgNumber
+		public_ntotal_pkg_listed="$pkgNumber"
 	fi
 	sh_cdroot
-	return $pkgNumber
+	return "$pkgNumber"
 }
 
 sh_list_archives_directories()
@@ -2081,7 +2084,7 @@ sh_create_list()
 {
 	local packname=$1
 
-	if ! tar	--use-compress-program=zstd --force-local --list --file $packname > "${CACHEDIR_LIST}/${name_version_build}.list"; then
+	if ! tar	--use-compress-program=zstd --force-local --list --file "$packname" > "${CACHEDIR_LIST}/${name_version_build}.list"; then
 		log_failure_msg2 "ERROR! Can not create ${CACHEDIR_LIST}/${name_version_build}.list"
 		return 1
 	fi
@@ -2130,7 +2133,7 @@ _GENERATE_DESC()
 
 	if [ -e info/desc ]; then
 		(( ncount++ ))
-		if !(( $LFORCE )); then
+		if ! (( LFORCE )); then
 			if (( verbose >= 2 )); then
 				log_msg "$(fmt)${orange} info/desc ${reset}already exist. Skipping... Use the -f option to force recreate."
 			fi
@@ -2232,12 +2235,12 @@ sh_initinstallpkg()
 	local arr=
 	local nfiles=
 
-	if !(( $LALL )); then
+	if ! (( LALL )); then
 		test $# -lt 1 && die "Missing value for the required argument '$param'. ${yellow}Try ${0##*/} -Sl <package>" 1; _arg_unit="$2"
 	fi
 
 	shopt -s nullglob       # enable suppress error message of a command
-	if (( $LALL )); then
+	if (( LALL )); then
 		pkg="$pkg $(find "$PWD/" "$CACHEDIR_ARCHIVES/" -type f -iname "*.${PKG_EXT}")"
 	else
 		for s in ${param[@]}; do
@@ -2258,14 +2261,14 @@ sh_initinstallpkg()
 		done
 
 		if (( $pkgCheckNumber )); then
-			if !(( $LAUTO )); then
+			if ! (( LAUTO )); then
 				echo
 				conf "$(DOT)continue installation?"
 				LAUTO=$?
 			fi
 		fi
 
-		if (( $LAUTO )); then
+		if (( LAUTO )); then
 			for package in $pkg
 			do
 				log_wait_msg "Installing local package ${orange}$package"
@@ -2288,12 +2291,12 @@ sh_installpkg()
 		sh_doinstallpkg "$fullname" || return 1
 		local erro=$?
 
-		if !(( $erro )); then
+		if ! (( erro )); then
          sh_splitpkg $fullname
 			local cfileinstalled=${aPKGSPLIT[$PKG_BASE_VERSION]}
 			local _pkg=${aPKGSPLIT[$PKG_BASE_VERSION]}
 			cline=$(clinesplit)
-			if !(( $erro )); then
+			if ! (( erro )); then
 				sed -i '/'${_pkg}'/d' $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
 				echo "${cline}" >> $CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT
 			fi
@@ -2393,14 +2396,14 @@ sh_create_pkg()
 	local package=$1
 	local ext_desc='desc'
 
-	if tar --force-local --use-compress-program="zstd --ultra" --create --file ../"${package}" .; then
-		cp "$DESCME" ../${package}.${ext_desc} &>/dev/null
+	if tar --force-local --use-compress-program="zstd --ultra" --create --file ../"$package" .; then
+		cp "$DESCME" ../"$package.$ext_desc" &>/dev/null
 		pushd .. &>/dev/null
 		if (( $CREATE_SHA256 )); then
-			sha256sum ${package} > ${package}.sha256
+			sha256sum "$package" > "$package".sha256
 		fi
 		if (( $GPG_SIGN )); then
-			_GPG_SIGN "${package}" || return 1
+			_GPG_SIGN "$package" || return 1
 			popd &>/dev/null
 		else
 			return 0
@@ -2434,22 +2437,22 @@ sh_generatepkg()
 		LFORCE=$true
 	fi
 
-	if (( $LAUTO )) || (( $LFORCE )); then
+	if (( LAUTO )) || (( LFORCE )); then
 		if [[ -z "$DESC_PACKNAME" ]]; then
-			sh_splitpkg ${pkg}
-			field_pkgname=${aPKGSPLIT[$PKG_BASE]}
-			field_pkgver=${aPKGSPLIT[$PKG_VERSION]}
-			field_version=${aPKGSPLIT[$PKG_VERSION]}
-			field_pkgrel=${aPKGSPLIT[$PKG_BUILD]}
-			field_build=${aPKGSPLIT[$PKG_BUILD]}
+			sh_splitpkg "$pkg"
+			field_pkgname="${aPKGSPLIT[$PKG_BASE]}"
+			field_pkgver="${aPKGSPLIT[$PKG_VERSION]}"
+			field_version="${aPKGSPLIT[$PKG_VERSION]}"
+			field_pkgrel="${aPKGSPLIT[$PKG_BUILD]}"
+			field_build="${aPKGSPLIT[$PKG_BUILD]}"
 	    else
-    		field_pkgname=${DESC_PACKNAME}
-    		field_pkgver=${DESC_VERSION}
-    		field_version=${DESC_VERSION}
-	    	field_pkgrel=${DESC_BUILD}
-	    	field_build=${DESC_BUILD}
+    		field_pkgname="${DESC_PACKNAME}"
+    		field_pkgver="${DESC_VERSION}"
+    		field_version="${DESC_VERSION}"
+	    	field_pkgrel="${DESC_BUILD}"
+	    	field_build="${DESC_BUILD}"
 	   fi
-	   [[ -z "$field_build" ]] && field_build=$DESC_BUILD
+	   [[ -z "$field_build" ]] && field_build="$DESC_BUILD"
 		[[ -z "$DESC"        ]] && DESC="$field_pkgname-$field_version"
 		_GENERATE_DESC "$field_pkgname" "$field_version" "$field_build" "${field_pkgver::-2}" "$field_pkgrel" || return $ERR_ERROR
 	fi
@@ -2467,7 +2470,7 @@ sh_createpkg()
 	done
 
 	if [[ -z "$pkg" ]] ; then
-		pkg=$(echo $PWD |sed 's/\// /g'|awk '{print $NF}')
+		pkg=$(echo "$PWD" |sed 's/\// /g'|awk '{print $NF}')
 	fi
 
 	if (( verbose >= 1 )); then
@@ -2521,8 +2524,8 @@ sh_alienpkg_exec()
 		string+="$s "
 	done
 
-	if (( $LALL )); then
-		if !(( $LTIME )); then
+	if (( LALL )); then
+		if ! (( LTIME )); then
 #			pkg=$(echo $ALIEN_CACHE_DIR/*.{zst,xz})
 			pkg=$(find $ALIEN_CACHE_DIR/ -regextype posix-egrep -regex "$RE_ALIEN" -type f) ## mais rápido
 		else
@@ -2530,7 +2533,7 @@ sh_alienpkg_exec()
 		fi
 	else
   		for str in ${string[@]}; do
-			if !(( $LTIME )); then
+			if ! (( LTIME )); then
 				pkg+="$(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f) "
 			else
 				pkg+="$(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f -mtime $mtime) "
@@ -2547,7 +2550,7 @@ sh_alienpkg_exec()
 	if (( $ntotalpkg )); then # package found?
 		for package in $pkg
 		do
-			FULLDIR=$BUILDDIR/$package
+			FULLDIR="$BUILDDIR/$package"
 			ncount=0
 			pkgtar=${package##*/}                #remove diretorio deixando somente nome do pacote
 			pkgtar=${pkgtar%%.pkg.tar.zst}       #remove .ext
@@ -2555,7 +2558,7 @@ sh_alienpkg_exec()
 			cPacoteSemExt=${pkgtar%%.*}          # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
 			cPacoteSemExt=${cPacoteSemExt%-*}    # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
 
-			if !(( $LFORCELOCAL )); then
+			if ! (( LFORCELOCAL )); then
 				local firstletter=${pkgtar::1}
 				local FilteredPackage=$pkgtar.$PKG_EXT
 				local destpkgGIT="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
@@ -2570,26 +2573,26 @@ sh_alienpkg_exec()
 				fi
 			fi
 
-			destdir=$BUILDDIR/$pkgtar
+			destdir="$BUILDDIR/$pkgtar"
 			((ncount++))
 			if (( verbose >= 1 )); then
 				log_msg "$(fmt) Creating directory $destdir"
 			fi
-			mkdir -p $destdir 2>&-
+			mkdir -p "$destdir" 2>&-
 
 			((ncount++))
 			if (( verbose >= 1 )); then
 				log_msg "$(fmt) Unpacking package $package at $destdir"
 			fi
-			tar --use-compress-program=zstd --force-local --extract --file $package -C $destdir >/dev/null 2>&1
+			tar --use-compress-program=zstd --force-local --extract --file "$package" -C "$destdir" >/dev/null 2>&1
 
 			case $package in
 				luit-[0-9]* ) sed -i -e "/D_XOPEN/s/5/6/" configure ;;
 			esac
 
-			sed -i 's/ = /="/g' $destdir/.PKGINFO  >/dev/null 2>&1
-			sed -i 's/$/"/g' $destdir/.PKGINFO  >/dev/null 2>&1
-			source "$destdir/.PKGINFO"
+			sed -i 's/ = /="/g' "$destdir/.PKGINFO"  >/dev/null 2>&1
+			sed -i 's/$/"/g' "$destdir/.PKGINFO"  >/dev/null 2>&1
+			source "$destdir"/.PKGINFO
 
 			export    ALIEN_DESC_BUILD="${pkgtar: -1}"
 			export          DESC_BUILD="${pkgtar: -1}"
@@ -2611,10 +2614,10 @@ sh_alienpkg_exec()
 			export        DESC_VERSION="$pkgver"
 			export    ALIEN_DESC_BUILD="${pkgver: -1}"
 			export          DESC_BUILD="${pkgver: -1}"
-			export deps=$(grep ^depend $destdir/.PKGINFO | awk -F'"' '{print $2}')
+			export deps=$(grep ^depend "$destdir"/.PKGINFO | awk -F'"' '{print $2}')
 
-			pushd $destdir	>/dev/null 2>&1
-			rm -f $destdir/.BUILDINFO $destdir/.MTREE $destdir/.PKGINFO   >/dev/null 2>&1
+			pushd "$destdir" >/dev/null 2>&1
+			rm -f "$destdir"/.BUILDINFO "$destdir"/.MTREE "$destdir"/.PKGINFO   >/dev/null 2>&1
 
 			((ncount++))
 			sh_createpkg "${pkgtar}"
@@ -2631,7 +2634,7 @@ sh_alienpkg_exec()
 			log_msg "Total alien packages processed : $npackagesprocessed  ${green}Use the --force option to force rebuild."
 		fi
 
-		if !(( $LKEEP )); then
+		if ! (( LKEEP )); then
 			((ncount++))
 			if (( verbose >= 1 )); then
 				log_msg "Verifying candidate packages files for pruning"
@@ -2672,9 +2675,9 @@ sh_aliencheck()
 	for pkg in $allfiles
 	do
 		firstletter=${pkg::1}
-		FilteredPackage=$(echo $pkg | sed 's/\(.*\)-/\1*/'|cut -d* -f1).chi.zst
+		FilteredPackage=$(echo "$pkg" | sed 's/\(.*\)-/\1*/'|cut -d* -f1).chi.zst
 		destpkg="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
-		if [[ -e ${destpkg} ]]; then
+		if [[ -e "$destpkg" ]]; then
 			echo "file exist: ${destpkg}"
 		fi
 	done
@@ -2696,7 +2699,10 @@ sh_upgrade()
 	local ntotal_pkg_listed
 
 	[[ $verbose -gt 1 ]] || (( verbose=0 ))
-	LDEPS=$false; LEXACT=$true; LLIST=$false; sh_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" ${param}
+	LDEPS=$false
+	LEXACT=$true
+	LLIST=$false
+	sh_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
 
 	local ntotal_pkg_installed=${public_ntotal_pkg_installed}
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
@@ -2708,7 +2714,7 @@ sh_upgrade()
 		cBaseVersionInstalled=${aPKGSPLIT[PKG_BASE_VERSION]}
 		cVersionInstalled=${aPKGSPLIT[PKG_VERSION]}
 		cBuildInstalled=${aPKGSPLIT[PKG_BUILD]}
-		pkgrepo=$(grep ^$cBaseInstalled$SEP $CACHEDIR_SEARCH/$PACKAGES_SPLIT | cut -d$SEP -f4)
+		pkgrepo=$(grep ^"$cBaseInstalled$SEP $CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f4)
 		count=0
 		((ntotalconfered++))
 
@@ -2720,19 +2726,19 @@ sh_upgrade()
 				cVersion=${aPKGSPLIT[PKG_VERSION]}
 				cBuild=${aPKGSPLIT[PKG_BUILD]}
 
-				case $cBase in
+				case "$cBase" in
 					Python) continue;;
 					gtk+)   continue;;
 				esac
 
-				if [[ $cBaseInstalled == $cBase ]]; then
+				if [[ "$cBaseInstalled" == "$cBase" ]]; then
 					((count++))
-					if [[ "$(vercmp $cBaseVersionInstalled $cBaseVersion)" -lt 0 ]]; then
+					if [[ "$(vercmp "$cBaseVersionInstalled" "$cBaseVersion")" -lt 0 ]]; then
 						log_success_msg2 "[$ntotalconfered/$ntotal_pkg_listed]${orange}${cBase} ${reset}is being updated to newest version ($cVersion)."
-						sh_doremove $cBaseVersionInstalled "OFF"
+						sh_doremove "$cBaseVersionInstalled" "OFF"
 						sh_install "$cBase" -y -f --nodeps
 					elif [[ "$cBaseVersionInstalled" = "$cBaseVersion" ]]; then
-						if (( $LFORCE )); then
+						if (( LFORCE )); then
 							sh_install "$cBase" -y -f --nodeps
 							continue
 						else
@@ -2740,12 +2746,12 @@ sh_upgrade()
 							continue
 						fi
 					else
-						if (( $LFORCE )); then
+						if (( LFORCE )); then
 							sh_install "$cBase" -y -f --nodeps
 						else
 							log_success_msg2 "[$ntotalconfered/$ntotal_pkg_listed]${orange}${cBase} ${reset}is already the newest version ($cVersionInstalled)."
 						fi
-						if [ $count -gt 1 ]; then
+						if (( count > 1 )); then
 							log_warning_msg "${orange}${cBaseInstalled} ${red}WARNING!! there is more than one release of the package in the repo!"
 						fi
 					fi
@@ -2763,8 +2769,8 @@ sh_upgrade()
 		echo
 		conf "${blue}:: ${reset}Install Pakages(s)?"
 		LAUTO=$?
-		if (( $LAUTO )); then
-			sh_install $param -y -f --nodeps
+		if (( LAUTO )); then
+			sh_install "$param" -y -f --nodeps
 		fi
 	fi
 	sh_cdroot
@@ -2776,10 +2782,10 @@ checkDependencies()
    declare -a missing
 
    for d in "${DEPENDENCIES[@]}"; do
-      [[ -z $(command -v $d) ]] && missing+=($d) && errorFound=1 && printf "ERRO: não encontrei o comando '$d'\n"
+      [[ -z $(command -v "$d") ]] && missing+=("$d") && errorFound=1 && printf "ERRO: não encontrei o comando '$d'\n"
    done
    #[[ ${#missing[@]} -ne 0 ]]
-   if (( $errorFound )); then
+   if (( errorFound )); then
     echo "---IMPOSSÍVEL CONTINUAR---"
     echo "Esse script precisa dos comandos listados acima" >&2
     echo "Instale-os e/ou verifique se estão no seu \$PATH" >&2
@@ -2790,15 +2796,15 @@ checkDependencies()
 sh_cleaning()
 {
 	log_msg "${pink}Cleaning temporary files${reset}"
-	rm -rf $TMP_DIR_ROOT/ &> /dev/null
+	rm -rf "${TMP_DIR_ROOT:?}"/ &> /dev/null
 }
 
 cleanup()
 {
  	echo "** Trapped CTRL-C"
-	log_msg "${ping}Cleaning...${reset}"
-	cp -f $TMP_DIR_BACKUP/* $CACHEDIR_SEARCH/ &> /dev/null
-	rm -rf $TMP_ROOT_BACKUP/ &> /dev/null
+	log_msg "${pink}Cleaning...${reset}"
+	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ &> /dev/null
+	rm -rf "${TMP_ROOT_BACKUP:?}"/ &> /dev/null
 	rm -f /tmp/ARRAYPKGFULL
 	kill -TERM -$$
 	exit
@@ -2814,9 +2820,9 @@ sh_backup()
 	if (( verbose >= 2 )); then
 		log_msg "${pink}Making backup: $CACHEDIR_SEARCH/${reset}"
 	fi
-	mkdir -p $TMP_DIR_BACKUP/ &> /dev/null
-	mkdir -p $TMP_DIR_FOLDERS/ &> /dev/null
-	cp -f $CACHEDIR_SEARCH/* $TMP_DIR_BACKUP/ &> /dev/null
+	mkdir -p "$TMP_DIR_BACKUP"/ &> /dev/null
+	mkdir -p "$TMP_DIR_FOLDERS"/ &> /dev/null
+	cp -f "$CACHEDIR_SEARCH"/* "$TMP_DIR_BACKUP"/ &> /dev/null
 }
 
 #figlet
@@ -2877,7 +2883,7 @@ EOF
 
 sh_parseparam()
 {
-	local param="$@"
+	local param="$*"
    local s
    local newparam
 
@@ -2926,11 +2932,12 @@ sh_parseparam()
       [[ $(tolower "${s}") = "--all"        ]] && { LALL=$true; continue; }
       [[ $(tolower "${s}") = "--skiperror"  ]] && { LSKIPERROR=$true; continue; }
       [[ $(tolower "${s}") = "--nocolor"    ]] && { unsetvarcolors; continue;}
-		newparam="$newparam $(echo ${s})"
+#		newparam="$newparam $(echo ${s})"
+		newparam+="$s"
    done
 #  debug "$newparam"
 	log_prefix
-	init $newparam
+	init "$newparam"
 }
 
 init()
@@ -2941,9 +2948,8 @@ init()
 			-Si|-S|install)								shift;LSEARCHONLY=$false;sh_install "$@";return;;
 			-Sl|local)  									shift;sh_initinstallpkg "$@";exit;;
 			-Sa|alienpkg)	  		   					shift;sh_alienpkg_main "$@";return;;
-			-Sc|clean)										sh_clean;exit 0;;
-			-Sg|-g|generate)							   shift;sh_generatepkg "$@";exit;;
 			-Sc|clean)  									sh_clean "$@";exit;;
+			-Sg|-g|generate)							   shift;sh_generatepkg "$@";exit;;
 			-Ss|search)	     								shift;sh_search "$@";exit;;
 			-Sy|update)										shift;sh_updaterepo "${param}";exit;;
 			-Syy|refresh)									shift;sh_update "${param}";exit;;
@@ -2961,9 +2967,6 @@ init()
 			-Qi|show) 										shift;sh_show "$@";exit;;
 			-Su|upgrade)									shift;sh_upgrade "$@";exit;;
       	-V*|--version|version)						logo;exit 0;;
-      	-u|-unit)										test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1; _arg_unit="$2";shift;;
-			--unit=*)										_arg_unit="${_key##--unit=}";;
-			-u*)												_arg_unit="${_key##-u}";;
       	-f*|--force)									LFORCE=1;;
       	-y*|--auto)										LAUTO=1;;
       	-exact|--exact)								LEXACT=1;;
@@ -2981,8 +2984,8 @@ init()
 parsestdin()
 {
 	file=${1--} # POSIX-compliant; ${1:--} can be used either.
-	IFS='\n'
-	while read line; do
+	IFS=$'\n'
+	while read -r line; do
 		echo "$line"
 		init -a "$line"
 	done < /dev/stdin

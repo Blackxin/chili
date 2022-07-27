@@ -63,12 +63,12 @@ sh_setrand()
 		done
 	done
 
-	while true
+	while :
    do
   	nchoice=$(dialog													\
-  				--backtitle "Chili resolution" 					\
-  				--title "Chili resolution" 						\
-            --menu '\nChoose resolucion for add:'			\
+  				--backtitle	"Chili resolution" 					\
+  				--title		"Chili resolution" 					\
+            --menu		'\nChoose resolution for add:'	\
             0 0 13                                     	\
          	"${arr[@]}" 2>&1 >/dev/tty)
 

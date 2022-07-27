@@ -791,7 +791,7 @@ sh_update()
 #			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
 #ok		PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\1-\2-\5\6;p"))
 #			PackagesInFolders=($(sed -nE "s;$regex;\1-\2-\5\6;p" "$FOLDER_TEMP"))
-			mapfile -t PackagesInFolders <$(sed -nE "s;$regex;\1-\2-\5\6;p" "$FOLDER_TEMP")
+			mapfile -t PackagesInFolders <<< "$(sed -nE "s/$regex/\1-\2-\5\6/p" "$FOLDER_TEMP")"
 		else
 			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
 		fi
@@ -801,7 +801,7 @@ sh_update()
 #		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$regex;\3;p"))
 #ok	SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\9;p"))
 #		SizePkgInFolders=($(sed -nE "s;$regex;\9;p" "$FOLDER_TEMP"))
-		mapfile -t SizePkgInFolders <$(sed -nE "s;$regex;\9;p" "$FOLDER_TEMP")
+		mapfile -t SizePkgInFolders <<< "$(sed -nE "s/$regex/\9/p" "$FOLDER_TEMP")"
 
 		count=0
 		if [[ $Folders != "meta" ]]; then
@@ -966,7 +966,7 @@ sh_FilesInCache()
 	log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
 #	aCache=($(find $CACHEDIR_ARCHIVES/ -iname "*.${PKG_EXT}" -type f))
-	mapfile -t aCache < $(find "$CACHEDIR_ARCHIVES/" -iname "*.${PKG_EXT}" -type f)
+	mapfile -t aCache <<< "$(find "$CACHEDIR_ARCHIVES/" -iname "*.${PKG_EXT}" -type f)"
 	local nfilesincache=${#aCache[*]}
    local index=1
 

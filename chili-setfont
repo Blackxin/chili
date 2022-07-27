@@ -45,17 +45,17 @@ sh_setfont()
 
 	pushd "$dirfonts1" &>/dev/null || die "ERRO: no access $dirfonts1"
    fonts+="$(echo $xglob)"
-	popd &>/dev/null
+	popd &>/dev/null || return 1
 
 	pushd "$dirfonts2" &>/dev/null || msg "ERRO: no access $dirfonts2"
-   fonts+="$(echo $xglob)"
-	popd &>/dev/null
+	fonts+="$(echo $xglob)"
+	popd &>/dev/null || return 1
 
   if [[ ${#fonts[*]} -eq 0 ]] ; then
 		die "no fonts found in:\n$dirfonts1\n$dirfonts2"
   fi
 
-  	for i in ${fonts[*]}
+   for i in ${fonts[*]}
 	do
       array[((n++))]="$i"
       array[((n++))]="$i"
@@ -95,7 +95,7 @@ setvarcolors()
 die()
 {
 	local msg=$1; shift
-	printf ":: ${bold}${red}$msg${reset}\n" >&2
+	printf '%s\n' ":: ${bold}${red}$msg${reset}" >&2
 	exit 1
 }
 

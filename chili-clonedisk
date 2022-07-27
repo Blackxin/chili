@@ -6,7 +6,7 @@
 #  Chili GNU/Linux - https://chilios.com.br
 #
 #  Created: 2019/04/05
-#  Altered: 2022/07/12
+#  Altered: 2022/07/27
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,13 +32,18 @@
 #set -e
 #declare -r APP="${0##*/}"
 declare -r _APP_="chili-clonedisk"
-declare -r _VERSION_="3.40.20220712"
+declare -r _VERSION_="3.41.20220727"
 readonly DEPENDENCIES=(which echo printf lsblk cut dialog whiptail pv grep sed cat awk tput dd)
+
+# debug
+setvarcolors
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
 
 # Import lib
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
-source "${LIBRARY}"/core.sh
+source "${LIBRARY}/core.sh"
 
 sh_ascii-lines()
 {

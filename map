@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+file='/var/cache/fetch/search/packages-installed-split.csv'
+mapfile -t valores < "$file"
+echo ${valores[@]}
+echo ${#valores[*]}
+

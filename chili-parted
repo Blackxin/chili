@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 chili-image()
 {
@@ -55,7 +55,7 @@ chili-setup-img()
 }
 
 if [[ $# -eq 0 ]]; then
-	printf "Usage: $0 /dev/sdX\n"
+	printf '%s\n' "Usage: $0 /dev/sdX"
 	exit 1;
 fi
 
@@ -69,11 +69,11 @@ fi
 #   align-check optimal 1
 #parted --script $sd -- print
 
-sd=$1
-parted --script $sd -- 																\
+sd="$1"
+parted --script "$sd" -- 															\
    mklabel gpt             					 									\
    mkpart primary fat32      1MiB 2MiB set 1 bios on name 1 BIOS  	\
    mkpart primary fat32      2MiB 50MiB set 2 esp  on name 2 EFI   	\
    mkpart primary ext4       50MiB 100%                name 3 ROOT  	\
    align-check optimal 1
-parted --script $sd -- print
+parted --script "$sd" -- print

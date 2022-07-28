@@ -291,15 +291,12 @@ sh_arraypkgfullIFS()
 	IFS=$OLDIFS
 }
 
-sh_arraypkgfullAWK()
+sh_arraypkgfull()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
-	public_len_count_pkg=0
-
 	(( verbose >= 2 )) && log_msg "Checking packages"
 
-	public_pkg_base=${public_pkg_base[@]//,*}
 	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
 	public_pkg_version=($(awk -F$SEP '{ print $2 }' $file_list_packages))
 	public_pkg_build=($(awk -F$SEP '{ print $3 }' $file_list_packages))
@@ -333,7 +330,7 @@ sh_arraypkgfullAWK()
 	return "$public_len_count_pkg"
 }
 
-sh_arraypkgfull()
+sh_arraypkgfullMAPFILE()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
@@ -3185,3 +3182,8 @@ fi
 # jq -r '.listaDezenas[1]' temp
 # grep -Po '"descricaoFaixa":.*?[^\\]",' temp
 # cat temp | python -c "import json,sys;obj=json.load(sys.stdin);print(obj['listaDezenas']);"
+
+#public_pkg_base=${public_pkg_base[@]//,*}
+#IN="bla@some.com;john@home.com"
+#arrIN=(${IN//;/ })
+#echo ${arrIN[1]}                  # Output: john@home.com

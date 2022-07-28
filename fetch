@@ -291,7 +291,7 @@ sh_arraypkgfullIFS()
 	IFS=$OLDIFS
 }
 
-sh_arraypkgfull()
+sh_arraypkgfullAWK()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
@@ -333,26 +333,48 @@ sh_arraypkgfull()
 	return "$public_len_count_pkg"
 }
 
-sh_arraypkgfullmap()
+sh_arraypkgfull()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 	public_len_count_pkg=0
 
 	(( verbose >= 2 )) && log_msg "Checking packages"
-
 #	foo() { echo "|$2|"; }; mapfile -t -d, -n7 -c1 -C 'foo' <"$file_list_packages"
+#	public_pkg_base=${public_pkg_base[@]//,*}
 
-	mapfile -t public_pkg_main < "file_list_packages"
-	public_pkg_base=${public_pkg_base[@]//,*}
-	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
-	public_pkg_version=($(awk -F$SEP '{ print $2 }' $file_list_packages))
-	public_pkg_build=($(awk -F$SEP '{ print $3 }' $file_list_packages))
-	public_pkg_fullname=($(awk -F$SEP '{ print $4 }' $file_list_packages))
-	public_pkg_dirfullname=($(awk -F$SEP '{ print $5 }' $file_list_packages))
-	public_pkg_base_version=($(awk -F$SEP '{ print $6 }' $file_list_packages))
-	public_pkg_size=($(awk -F$SEP '{ print $7 }' $file_list_packages))
-	public_pkg_site=($(awk -F$SEP '{ print $8 }' $file_list_packages))
+	callback(){
+		local IFS=,
+		eval linha$1=\($2\)
+	}
+	mapfile -t -c1 -C callback < "$file_list_packages"
+	#declare -p linha{0..2}
+	#L=1;	C=4; eval echo "\${linha$L[C]}"
+
+campo=( base version build fullname dirfullname base_version size site )
+
+for i in {0..5386}
+do
+	for j in ${!campo[*]}
+	{
+  		eval public_pkg_${campo[j]}+=\("\${linha$i[j]}"\)
+	}
+done
+
+#	for i in {0..5386}
+#	do
+#		#  eval echo "\${linha$i[6]}"
+#		#  eval val="\${linha$i[6]}"
+#		#  pkg_size+=("$val")
+#		eval public_pkg_base+=("\${linha$i[0]}")
+#		eval public_pkg_version+=("\${linha$i[1]}")
+#		eval public_pkg_build+=("\${linha$i[2]}")
+#		eval public_pkg_fullname+=("\${linha$i[3]}")
+#		eval public_pkg_dirfullname+=("\${linha$i[4]}")
+#		eval public_pkg_base_version+=("\${linha$i[5]}")
+#		eval public_pkg_size+=("\${linha$i[6]}")
+#		eval public_pkg_site+=("\${linha$i[7]}")
+#	done
 
 	public_pkg_main=(
 		public_pkg_base[@]
@@ -1036,18 +1058,20 @@ sh_updateOLD()
 	popd &>/dev/null || return 1
 }
 
+# -Lc
 sh_FilesInCache()
 {
-	local aCache
+	local nfilesincache
+   local index=1
+   local item
+
 	log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-#	aCache=($(find $CACHEDIR_ARCHIVES/ -iname "*.${PKG_EXT}" -type f))
-	mapfile -t aCache <<< "$(find "$CACHEDIR_ARCHIVES/" -iname "*.${PKG_EXT}" -type f)"
-	local nfilesincache=${#aCache[*]}
-   local index=1
+#	aCache=($(find $CACHEDIR_ARCHIVES/ -iname "*.$PKG_EXT" -type f))
+	mapfile -t aCache < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
+	nfilesincache=${#aCache[*]}
 
    if (( nfilesincache )); then
-      local item
    	for item in ${aCache[*]}; do
        	echo "$item" >> "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
          if (( LLIST )); then
@@ -1056,10 +1080,11 @@ sh_FilesInCache()
          fi
    	done
    fi
+
    if (( LLIST )); then
       printf '%s\n' "${yellow}($nfilesincache) ${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
    fi
-   return "$nfilesincache"
+   return $nfilesincache
 }
 
 sh_pkgoutcache()
@@ -1074,7 +1099,8 @@ sh_pkgoutcache()
 
 	log_wait_msg "Ok, let's do it..."
 	log_info_msg "Wait, doing some calculations..."
-	sh_FilesInCache "OFF"
+	mapfile -t aCache < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
+	sh_FilesInCache
 	nfilesincache=$?
 	evaluate_retval
 #	aRepository=$(cat "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f1)
@@ -1083,26 +1109,30 @@ sh_pkgoutcache()
 	for x in ${aRepository[*]};do
 		lfind=$false
 		for y in ${aCache[*]};do
-			if [ "$x" = "$y" ]; then
+		info "$x \n $y"
+			if [[ "$x" = "$y" ]]; then
 				lfind=$true
 				break
 			fi
 		done
-		if [ $lfind = $false ]; then
-			aPkgOut[$index]=$x
+		if ! (( lfind )); then
+			aPkgOut[$index]="$x"
 			((index++))
 		fi
 	done
+
 	local nfilesoutcache=${#aPkgOut[*]}
-	(( nfilesoutcache != 0 )) || maxcol; replicate "=" $?
+	(( nfilesoutcache )) || maxcol; replicate "=" $?
    index=1
+   sh_arraypkgfull
 	for y in ${aPkgOut[*]}
 	do
 		sh_write "$y" "0" "$index"
 		#log_msg "NOT IN CACHE: [$index]${orange}$y${reset}"
 		((index++))
 	done
-	(( nfilesoutcache != 0 )) || maxcol; replicate "=" $?
+
+	(( nfilesoutcache )) || maxcol; replicate "=" $?
 	echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
 	echo -e "${yellow}($nfilesoutcache) ${cyan}packages in the repository e out cache"
 	return 0
@@ -3067,19 +3097,19 @@ init()
 			-Sc|clean)  									shift;sh_clean "$@";exit;;
 			-Sg|-g|generate)							   shift;sh_generatepkg "$@";exit;;
 			-Ss|search)	     								shift;sh_search "$@";exit;;
-			-Sy|update)										shift;sh_updaterepo "${param}";exit;;
-			-Syy|refresh)									shift;sh_update "${param}";exit;;
-			-c|-C|create)					   			shift;sh_createpkg "${@}";exit;;
-			-Sm|--meta|meta) 		            		shift;sh_installmeta "${@}";exit;;
+			-Sy|update)										shift;sh_updaterepo "$@";exit;;
+			-Syy|refresh)									shift;sh_update "$@";exit;;
+			-c|-C|create)					   			shift;sh_createpkg "$@";exit;;
+			-Sm|--meta|meta) 		            		shift;sh_installmeta "$@";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;
 			-Sr|recreate)									shift;sh_recreatefilepackagesinstalled;exit;;
 			-Qq|total)									   shift;sh_totalpackagesinstalled;exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;
-			-Lc|list-cache) 	        					shift;sh_FilesInCache "${param}";exit;;
-			-Li|list-installed)							shift;sh_listinstalled "${@}";exit;;
-			-Po|out-cache)	            				shift;sh_pkgoutcache "${param}";exit;;
+			-Lc|list-cache) 	        					shift;LLIST=$true;sh_FilesInCache "$@";exit;;
+			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
+			-Po|out-cache)	            				shift;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;
 			-Su|upgrade)									shift;sh_upgrade "$@";exit;;
       	-V*|--version|version)						logo;exit 0;;

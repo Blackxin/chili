@@ -199,7 +199,54 @@ clineascan()
    printf '%s' "${aPKGARRAY[0]}$SEP${aPKGARRAY[1]}$SEP${aPKGARRAY[2]}$SEP${aPKGARRAY[3]}$SEP${aPKGARRAY[4]}$SEP${aPKGARRAY[5]}$SEP${aPKGARRAY[6]}"
 }
 
-sh_arraypkgfull()
+sh_arraypkgfullVET()
+{
+	OLDIFS=$IFS
+	local file_list_packages="$1"
+   [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
+
+	public_len_count_pkg=0
+
+   declare -a public_pkg_base
+   declare -a public_pkg_version
+   declare -a public_pkg_build
+   declare -a public_pkg_fullname
+   declare -a public_pkg_dirfullname
+   declare -a public_pkg_base_version
+   declare -a public_pkg_size
+   declare -a public_pkg_site
+   declare -a public_pkg_main
+   local ind=0
+
+	(( verbose >= 2 )) && log_msg "Checking packages"
+
+	while IFS=, read -r	 	public_pkg_base[ind] \
+									public_pkg_version[ind] \
+									public_pkg_build[ind]	\
+									public_pkg_fullname[ind] \
+									public_pkg_dirfullname[ind] \
+									public_pkg_base_version[ind]\
+	   							public_pkg_size[ind] \
+	   							public_pkg_site[ind]
+	   do
+	   	((ind++))
+	done < $file_list_packages
+
+	public_pkg_main=(
+		public_pkg_base[@]
+		public_pkg_version[@]
+		public_pkg_build[@]
+		public_pkg_fullname[@]
+		public_pkg_dirfullname[@]
+		public_pkg_base_version[@]
+		public_pkg_size[@]
+		public_pkg_site[@]
+	)
+	public_len_count_pkg=${#public_pkg_base[*]}
+	IFS=$OLDIFS
+}
+
+sh_arraypkgfullIFS()
 {
 	OLDIFS=$IFS
 	local file_list_packages="$1"
@@ -217,9 +264,7 @@ sh_arraypkgfull()
    export public_pkg_site
    export public_pkg_main
 
-	if (( verbose >= 2 )); then
-		log_msg "Checking packages"
-	fi
+	(( verbose >= 2 )) && log_msg "Checking packages"
 
 	while IFS=, read -r fld1 fld2 fld3 fld4 fld5 fld6 fld7 fld8; do
 	   public_pkg_base+=("${fld1}")
@@ -245,19 +290,16 @@ sh_arraypkgfull()
 	public_len_count_pkg=${#public_pkg_base[*]}
 	IFS=$OLDIFS
 }
-:<<'comment'
-sh_arraypkgfullAWK()
+
+sh_arraypkgfull()
 {
 	local file_list_packages=$1
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 	public_len_count_pkg=0
 
-	if (( verbose >= 2 )); then
-		log_msg "Checking packages"
-	fi
+	(( verbose >= 2 )) && log_msg "Checking packages"
 
-#	mapfile -td, public_pkg_base < "file_list_packages"
-	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
+	public_pkg_base=${public_pkg_base[@]//,*}
 	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
 	public_pkg_version=($(awk -F$SEP '{ print $2 }' $file_list_packages))
 	public_pkg_build=($(awk -F$SEP '{ print $3 }' $file_list_packages))
@@ -290,7 +332,41 @@ sh_arraypkgfullAWK()
 #	done
 	return "$public_len_count_pkg"
 }
-comment
+
+sh_arraypkgfullmap()
+{
+	local file_list_packages=$1
+   [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
+	public_len_count_pkg=0
+
+	(( verbose >= 2 )) && log_msg "Checking packages"
+
+#	foo() { echo "|$2|"; }; mapfile -t -d, -n7 -c1 -C 'foo' <"$file_list_packages"
+
+	mapfile -t public_pkg_main < "file_list_packages"
+	public_pkg_base=${public_pkg_base[@]//,*}
+	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
+	public_pkg_version=($(awk -F$SEP '{ print $2 }' $file_list_packages))
+	public_pkg_build=($(awk -F$SEP '{ print $3 }' $file_list_packages))
+	public_pkg_fullname=($(awk -F$SEP '{ print $4 }' $file_list_packages))
+	public_pkg_dirfullname=($(awk -F$SEP '{ print $5 }' $file_list_packages))
+	public_pkg_base_version=($(awk -F$SEP '{ print $6 }' $file_list_packages))
+	public_pkg_size=($(awk -F$SEP '{ print $7 }' $file_list_packages))
+	public_pkg_site=($(awk -F$SEP '{ print $8 }' $file_list_packages))
+
+	public_pkg_main=(
+		public_pkg_base[@]
+		public_pkg_version[@]
+		public_pkg_build[@]
+		public_pkg_fullname[@]
+		public_pkg_dirfullname[@]
+		public_pkg_base_version[@]
+		public_pkg_size[@]
+		public_pkg_site[@]
+	)
+	public_len_count_pkg=${#public_pkg_base[*]}
+	return "$public_len_count_pkg"
+}
 
 sh_ascanpkg()
 {

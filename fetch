@@ -868,7 +868,7 @@ sh_update()
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
 	#sh_recreatefilepackagesinstalled
-	sh_FilesInCache
+	sh_pkgincache
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -988,7 +988,7 @@ sh_updateOLD()
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
 	#sh_recreatefilepackagesinstalled
-	sh_FilesInCache
+	sh_pkgincache
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -1005,51 +1005,51 @@ sh_updateOLD()
 }
 
 # -Lc
-sh_FilesInCache()
+sh_pkgincache()
 {
 	local nfilesincache
    local item
    local pkg_base
    local cline
    local aCacheFullname
-   local index=1
 
-	(( LLIST)) && log_msg "Recreating IN CACHE packages list"
+	(( verbose >= 2 || LLIST)) && log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-	mapfile -t aCacheFullname < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
+	mapfile -t aCacheFullname < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f | sort)
 	nfilesincache=${#aCacheFullname[*]}
 
    if (( nfilesincache )); then
+   	nfilesincache=0
    	for item in ${aCacheFullname[*]}; do
+         ((nfilesincache++))
 			sh_splitpkg "$item"
 			pkg_base="${aPKGSPLIT[$PKG_BASE]}"
 			aCache+=("$pkg_base")
 			cline=$(clinesplit)
        	echo "$cline" >> "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-#        (( LLIST )) && sh_write "$pkg_base" "0" "$index"; ((index++))
-         (( LLIST )) &&	log_msg "IN CACHE: [$index]${orange}$pkg_base${reset}"; ((index++))
+#        (( verbose >= 2 || LLIST )) && sh_write "$pkg_base" "0" "$nfilesincache"
+         (( verbose >= 2 || LLIST )) && log_msg "IN CACHE: [$nfilesincache]${orange}$pkg_base${reset}"
    	done
    fi
 
-   (( LLIST )) && printf '%s\n' "${yellow}($nfilesincache) ${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
+	(( verbose >= 2 || LLIST )) && printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
    return $nfilesincache
 }
 
 sh_pkgoutcache()
 {
-	local aPkgOut=()
-	local x
-	local y
-	local lfind=$false
-	local nfilesincache
 	local lfind=$false
 	local nfilesoutcache=0
+	local nfilesincache=0
+	local aPkgOut
+	local x
+	local y
 
 	(( verbose >= 2 || LLIST )) && log_wait_msg "Ok, let's do it..."
 	(( verbose >= 2 || LLIST )) && log_wait_msg "Wait, doing some calculations..."
 
 	LLIST=$false
-	sh_FilesInCache
+	sh_pkgincache
 #	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
 
 	for y in ${public_pkg_base[*]};do
@@ -1059,10 +1059,10 @@ sh_pkgoutcache()
 			(( verbose >= 2 || LLIST )) && log_msg "NOT IN CACHE: [$nfilesoutcache]${orange}$y${reset}"
 		else
 			aPkgOut+=("$y")
+			((nfilesincache++))
 		fi
 	done
 
-	nfilesincache=${#aPkgOut[*]}
 	#	for y in ${aPkgOut[*]};do
 	#		((nfilesincache++))
 	#		sh_write "$y" "0" "$nfilesincache"
@@ -1070,7 +1070,7 @@ sh_pkgoutcache()
 	#	done
 
 	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
-	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages out cache"
+	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
 	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
 	return 0
 }
@@ -3044,7 +3044,7 @@ init()
 			-Qq|total)									   shift;sh_totalpackagesinstalled;exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;
-			-Lc|list-cache) 	        					shift;LLIST=$true;sh_FilesInCache "$@";exit;;
+			-Lc|list-cache) 	        					shift;LLIST=$true;sh_pkgincache "$@";exit;;
 			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
 			-Po|out-cache)	            				shift;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;

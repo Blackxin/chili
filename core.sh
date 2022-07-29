@@ -1324,10 +1324,10 @@ function ascan2()
 
 	case "${myarray[@]}" in
 		*"$match"*)
-			return $true
+			return 0
 			;;
 	esac
-	return $false
+	return 1
 }
 
 #array=("something to search for" "a string" "test2000")
@@ -1336,8 +1336,8 @@ function ascan2()
 function ascan() {
   local e match="$1"
   shift
-  for e; do [[ "$e" == "$match" ]] && return $true; done
-  return $false
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
 }
 
 function contains()

@@ -215,7 +215,6 @@ sh_arraypkgfullVET()
    declare -a public_pkg_base_version
    declare -a public_pkg_size
    declare -a public_pkg_site
-   declare -a public_pkg_main
    local ind=0
 
 	(( verbose >= 2 )) && log_msg "Checking packages"
@@ -231,19 +230,9 @@ sh_arraypkgfullVET()
 	   do
 	   	((ind++))
 	done < $file_list_packages
-
-	public_pkg_main=(
-		public_pkg_base[@]
-		public_pkg_version[@]
-		public_pkg_build[@]
-		public_pkg_fullname[@]
-		public_pkg_dirfullname[@]
-		public_pkg_base_version[@]
-		public_pkg_size[@]
-		public_pkg_site[@]
-	)
 	public_len_count_pkg=${#public_pkg_base[*]}
 	IFS=$OLDIFS
+	return $public_len_count_pkg
 }
 
 sh_arraypkgfullIFS()
@@ -262,7 +251,6 @@ sh_arraypkgfullIFS()
    export public_pkg_base_version
    export public_pkg_size
    export public_pkg_site
-   export public_pkg_main
 
 	(( verbose >= 2 )) && log_msg "Checking packages"
 
@@ -277,18 +265,9 @@ sh_arraypkgfullIFS()
 	   public_pkg_site+=("${fld8}")
 	done < $file_list_packages
 
-	public_pkg_main=(
-		public_pkg_base[@]
-		public_pkg_version[@]
-		public_pkg_build[@]
-		public_pkg_fullname[@]
-		public_pkg_dirfullname[@]
-		public_pkg_base_version[@]
-		public_pkg_size[@]
-		public_pkg_site[@]
-	)
 	public_len_count_pkg=${#public_pkg_base[*]}
 	IFS=$OLDIFS
+	return $public_len_count_pkg
 }
 
 sh_arraypkgfull()
@@ -297,37 +276,17 @@ sh_arraypkgfull()
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 	(( verbose >= 2 )) && log_msg "Checking packages"
 
-	public_pkg_base=($(awk -F$SEP '{ print $1 }' $file_list_packages))
-	public_pkg_version=($(awk -F$SEP '{ print $2 }' $file_list_packages))
-	public_pkg_build=($(awk -F$SEP '{ print $3 }' $file_list_packages))
-	public_pkg_fullname=($(awk -F$SEP '{ print $4 }' $file_list_packages))
-	public_pkg_dirfullname=($(awk -F$SEP '{ print $5 }' $file_list_packages))
+	public_pkg_base=($(        awk -F$SEP '{ print $1 }' $file_list_packages))
+	public_pkg_version=($(     awk -F$SEP '{ print $2 }' $file_list_packages))
+	public_pkg_build=($(       awk -F$SEP '{ print $3 }' $file_list_packages))
+	public_pkg_fullname=($(    awk -F$SEP '{ print $4 }' $file_list_packages))
+	public_pkg_dirfullname=($( awk -F$SEP '{ print $5 }' $file_list_packages))
 	public_pkg_base_version=($(awk -F$SEP '{ print $6 }' $file_list_packages))
-	public_pkg_size=($(awk -F$SEP '{ print $7 }' $file_list_packages))
-	public_pkg_site=($(awk -F$SEP '{ print $8 }' $file_list_packages))
+	public_pkg_size=($(        awk -F$SEP '{ print $7 }' $file_list_packages))
+	public_pkg_site=($(        awk -F$SEP '{ print $8 }' $file_list_packages))
 
-	public_pkg_main=(
-		public_pkg_base[@]
-		public_pkg_version[@]
-		public_pkg_build[@]
-		public_pkg_fullname[@]
-		public_pkg_dirfullname[@]
-		public_pkg_base_version[@]
-		public_pkg_size[@]
-		public_pkg_site[@]
-	)
 	public_len_count_pkg=${#public_pkg_base[*]}
-
-#	for ((i=0; i<=$public_len_count_pkg; i++))
-#	do
-#		for ((x=0; x<=$public_len_count_main; x++))
-#		do
-#	w
-#		printf ":${!public_pkg_main[x]:$i:1}"
-#		done
-#		echo
-#	done
-	return "$public_len_count_pkg"
+	return $public_len_count_pkg
 }
 
 sh_arraypkgfullMAPFILE()
@@ -373,28 +332,18 @@ done
 #		eval public_pkg_site+=("\${linha$i[7]}")
 #	done
 
-	public_pkg_main=(
-		public_pkg_base[@]
-		public_pkg_version[@]
-		public_pkg_build[@]
-		public_pkg_fullname[@]
-		public_pkg_dirfullname[@]
-		public_pkg_base_version[@]
-		public_pkg_size[@]
-		public_pkg_site[@]
-	)
 	public_len_count_pkg=${#public_pkg_base[*]}
-	return "$public_len_count_pkg"
+	return $public_len_count_pkg
 }
 
 sh_ascanpkg()
 {
 	local pkgsearch="$1"
-	local pkgfile="$2"
+	local pos="$2"
 	local indice=0
 	aPKGARRAY=()
 
-	case $pkgfile in
+	case $pos in
 		0)	indice=$( printf "%s\n" "${public_pkg_base[@]}" | grep -n -m 1 "^${pkgsearch}$" | cut -d ":" -f1 );;
 		1)	indice=$( printf "%s\n" "${public_pkg_version[@]}" | grep -n -m 1 "^${pkgsearch}$" | cut -d ":" -f1 );;
 		2)	indice=$( printf "%s\n" "${public_pkg_build[@]}" | grep -n -m 1 "^${pkgsearch}$" | cut -d ":" -f1 );;
@@ -406,7 +355,7 @@ sh_ascanpkg()
 	esac
 
 	if [[ -z $indice ]]; then
-		return $false
+		return 1
 	fi
 
 	(( indice-- ))
@@ -419,7 +368,7 @@ sh_ascanpkg()
 					"${public_pkg_size[$indice]}"
 					"${public_pkg_site[$indice]}"
 					)
-	return $true
+	return 0
 }
 
 sh_cabec() #$1 nfiles
@@ -430,13 +379,13 @@ sh_cabec() #$1 nfiles
 sh_write()
 {
 	local pkgsearch=$1
-	local pkgfile=$2
+	local pos=$2
 	local pkgCheckNumber=$3
 	local strstatus='         '
    local status=$4
 
    [[ -z $status ]] && status=' A '
-	sh_ascanpkg "$pkgsearch" "$pkgfile"
+	sh_ascanpkg "$pkgsearch" "$pos"
 	[[ $status = ' I ' ]] && strstatus='installed'
 	printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
 			 ""		 																												\
@@ -1059,79 +1008,70 @@ sh_updateOLD()
 sh_FilesInCache()
 {
 	local nfilesincache
-   local index=1
    local item
+   local pkg_base
+   local cline
+   local aCacheFullname
+   local index=1
 
-	log_msg "Recreating IN CACHE packages list"
+	(( LLIST)) && log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-#	aCache=($(find $CACHEDIR_ARCHIVES/ -iname "*.$PKG_EXT" -type f))
-	mapfile -t aCache < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
-	nfilesincache=${#aCache[*]}
+	mapfile -t aCacheFullname < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
+	nfilesincache=${#aCacheFullname[*]}
 
    if (( nfilesincache )); then
-   	for item in ${aCache[*]}; do
-       	echo "$item" >> "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-         if (( LLIST )); then
-            printf "%s\n" "$item"
-            ((index++))
-         fi
+   	for item in ${aCacheFullname[*]}; do
+			sh_splitpkg "$item"
+			pkg_base="${aPKGSPLIT[$PKG_BASE]}"
+			aCache+=("$pkg_base")
+			cline=$(clinesplit)
+       	echo "$cline" >> "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
+#        (( LLIST )) && sh_write "$pkg_base" "0" "$index"; ((index++))
+         (( LLIST )) &&	log_msg "IN CACHE: [$index]${orange}$pkg_base${reset}"; ((index++))
    	done
    fi
 
-   if (( LLIST )); then
-      printf '%s\n' "${yellow}($nfilesincache) ${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
-   fi
+   (( LLIST )) && printf '%s\n' "${yellow}($nfilesincache) ${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
    return $nfilesincache
 }
 
 sh_pkgoutcache()
 {
-	local aRepository
 	local aPkgOut=()
 	local x
 	local y
-	local index=0
 	local lfind=$false
 	local nfilesincache
+	local lfind=$false
+	local nfilesoutcache=0
 
-	log_wait_msg "Ok, let's do it..."
-	log_info_msg "Wait, doing some calculations..."
-	mapfile -t aCache < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f)
+	(( verbose >= 2 || LLIST )) && log_wait_msg "Ok, let's do it..."
+	(( verbose >= 2 || LLIST )) && log_wait_msg "Wait, doing some calculations..."
+
+	LLIST=$false
 	sh_FilesInCache
-	nfilesincache=$?
-	evaluate_retval
-#	aRepository=$(cat "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f1)
-	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
+#	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
 
-	for x in ${aRepository[*]};do
-		lfind=$false
-		for y in ${aCache[*]};do
-		info "$x \n $y"
-			if [[ "$x" = "$y" ]]; then
-				lfind=$true
-				break
-			fi
-		done
-		if ! (( lfind )); then
-			aPkgOut[$index]="$x"
-			((index++))
+	for y in ${public_pkg_base[*]};do
+		if ! ascan "$y" "${aCache[@]}"; then
+			((nfilesoutcache++))
+#			sh_write "$y" "0" "$nfilesoutcache"
+			(( verbose >= 2 || LLIST )) && log_msg "NOT IN CACHE: [$nfilesoutcache]${orange}$y${reset}"
+		else
+			aPkgOut+=("$y")
 		fi
 	done
 
-	local nfilesoutcache=${#aPkgOut[*]}
-	(( nfilesoutcache )) || maxcol; replicate "=" $?
-   index=1
-   sh_arraypkgfull
-	for y in ${aPkgOut[*]}
-	do
-		sh_write "$y" "0" "$index"
-		#log_msg "NOT IN CACHE: [$index]${orange}$y${reset}"
-		((index++))
-	done
+	nfilesincache=${#aPkgOut[*]}
+	#	for y in ${aPkgOut[*]};do
+	#		((nfilesincache++))
+	#		sh_write "$y" "0" "$nfilesincache"
+	#		log_msg "IN CACHE: [$nfilesincache]${orange}$y${reset}"
+	#	done
 
-	(( nfilesoutcache )) || maxcol; replicate "=" $?
-	echo -e "${yellow}($nfilesincache)  ${cyan}packages in cache"
-	echo -e "${yellow}($nfilesoutcache) ${cyan}packages in the repository e out cache"
+	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
+	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages out cache"
+	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
 	return 0
 }
 
@@ -3157,6 +3097,7 @@ fi
 
 sh_checkroot "$@"
 sh_checkdir
+sh_arraypkgfull
 
 if [ -p /dev/stdin ]; then
 	#for FILE in "$@" /dev/stdin

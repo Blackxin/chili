@@ -133,7 +133,23 @@ sh_val()
    fi
 }
 
-containsElement () {
+joinBy() {
+  local IFS="$1"
+  echo "${*:2}"
+}
+
+#term='melancia'
+#fruits=(pera uva maçã laranja kiwi)
+#elementInArray3 "$term" "${fruits[@]}" && result falso
+# se extglob não estiver habilitado, basta executar:
+# shopt -s extglob
+elementInArray3() {
+  local element="$1"
+  local array=("${@:2}")
+  [[ "$element" == @($(joinBy '|' "${array[@]//|/\\|}")) ]]
+}
+
+containsElement() {
   local e match="$1"
   shift
   for e; do [[ "$e" == "$match" ]] && return 0; done
@@ -1347,10 +1363,46 @@ function contains()
 
 	for ((i=1;i < $#;i++)) {
 		if [ "${!i}" == "${value}" ]; then
-			return $i
+			echo $i
 		fi
 	}
-	return $n
+	echo $n
+}
+
+#array=("a" "b" "c" "d" "e")
+#seekinarray "c" ${array[@]}"
+# 3
+seekinarray() {
+   local arr=("${@:2}")
+   local search="$1"
+
+#  [[ "${@:2}" =~ $1 ]]
+#  search=${BASH_REMATCH[0]}
+
+#  solucao 1
+ 	local -i indice
+ 	indice=$(printf "%s\n" "${@:2}" | grep -n "^$search$" | cut -d: -f1)
+	((--indice)); echo $indice
+
+#  solucao 2
+#	declare -p arr | grep -Po "\[\K[0-9]+(?=\]=\"$search\")"
+}
+
+#arr=({a..z})
+#search=v
+#echo $(seekascan "${arr[@]}" $search)
+function seekascan()
+{
+   local n=$#
+   local value=${!n}
+
+   for ((i=1;i < $#;i++)) {
+      if [ "${!i}" == "${value}" ]; then
+         echo $i
+         return 0
+      fi
+   }
+   return 1
 }
 
 function ex()

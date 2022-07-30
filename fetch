@@ -389,15 +389,19 @@ sh_write()
    local status=$4
 
    [[ -z $status ]] && status=' A '
-	sh_ascanpkg "$pkgsearch" "$pos"
-	[[ $status = ' I ' ]] && strstatus='installed'
-	printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
-			 ""		 																												\
-			 "$pkgCheckNumber" 																									\
-			 "${aPKGARRAY[0]}"																									\
-			 "${aPKGARRAY[1]}"																									\
-			 "$(size_to_human "${aPKGARRAY[6]}")"			 															   \
-			 "${aPKGARRAY[3]}"
+	if sh_ascanpkg "$pkgsearch" "$pos"; then
+		[[ $status = ' I ' ]] && strstatus='installed'
+		log_msg "[$pkgCheckNumber]${orange}${aPKGARRAY[0]}" # resumido
+#		printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
+#				 ""		 																												\
+#				 "$pkgCheckNumber" 																									\
+#				 "${aPKGARRAY[0]}"																									\
+#				 "${aPKGARRAY[1]}"																									\
+#				 "$(size_to_human "${aPKGARRAY[6]}")"			 															   \
+#			 	"${aPKGARRAY[3]}"
+		return 0
+	fi
+	return 1
 }
 
 sh_footer()
@@ -1941,34 +1945,28 @@ sh_recreatefilepackagesinstalled()
 	log_msg "Reading lists of installed packages"
 
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
-#1	local aCache=$(printf '%s\n' $CACHEDIR_DESC/* | awk -F "$re" 'list[$1]++')
-#2	local aCache=$(grep -Po "$re" < <(printf '%s\n' $CACHEDIR_DESC/*) )
-	aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f | sort -V)
+	aCache=$(printf '%s\n' $CACHEDIR_DESC/* | awk -F "$re" 'list[$1]++')
+#2	aCache=$(grep -Po "$re" < <(printf '%s\n' $CACHEDIR_DESC/*) )
+#	aCache=$(find $CACHEDIR_DESC/ -regextype posix-egrep -regex "$re" -type f | sort -V)
 	nfiles=$(lenarray "$aCache")
 
    if (( nfiles )); then
 		log_msg "Checking installed packages"
 		#sh_arraypkgfull
-		if (( verbose >= 2 )); then
-			sh_cabec "$nfiles"
-		fi
+		(( verbose >= 2 )) && sh_cabec "$nfiles"
 
    	for item in $aCache; do
 			[[ -z "$item" ]] && continue;
  	     	package=${item##*/}
 			package=${package%.desc*}
-   		sh_ascanpkg "$package" '5'
-	      cline=$(clineascan)
-
-			if (( verbose >= 2 )); then
-				sh_write "$cbase" '0' $((++pkgNumber))
-			fi
-
-			echo "$cline" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
+			(( verbose >= 2 )) && sh_write "$package" '5' $((++pkgNumber))
+			echo "$(clineascan)" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
    	done
+	   log_msg "${yellow}($nfiles) ${cyan}packages installed\n"
+   	return 0
    fi
    log_msg "${yellow}($nfiles) ${cyan}packages installed\n"
-	return "$nfiles"
+	return 1
 }
 
 # -Qq

@@ -417,39 +417,48 @@ sh_list()
 	local status=' A '
 	local	SEARCH_CUT='-f1'
 	local pkg
+	local	cListSearch
 
 	LLIST=$true
+	(( LLIST && verbose >= 2 )) && log_msg "Reading package lists in the repository"
 
-	if (( LLIST )); then
-		if (( verbose >= 2 )); then
-			log_msg "Reading package lists in the repository"
-		fi
+	if (( $# )); then
+		for s in "${param[@]}"; do
+			cListSearch+="$s "
+		done
 	fi
 
-	for s in "${param[@]}"; do
-		cListSearch+="$s "
-	done
-
-	if (( LALL )) || [[ "$cListSearch" == "" ]]; then
+	if [[ -z "$cListSearch" ]]; then
 		if (( LALL )); then
-#			pkg=$(cat "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f1)
-			pkg=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
+			pkg=($(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"))
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
-			exit 1
+			return 1
 		fi
 	else
 		for x in ${cListSearch}; do
 			if (( LEXACT )); then
-				pkg+="$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f1) "
+				#pkg+=("$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"|cut -d$SEP -f1)")
+				if tmp=$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then
+					pkg+=($(cut -d$SEP -f1 <<< $tmp))
+				else
+					log_failure_msg "${red}error${reset}: alvo não encontrado: $x"
+				fi
 			else
-				pkg+="$(grep "$x" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" | cut -d$SEP -f1) "
+				#pkg+=("$(grep "$x" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"|cut -d$SEP -f1)")
+				if tmp=$(grep "$x" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then
+					pkg+=($(cut -d$SEP -f1 <<< $tmp))
+				else
+					log_failure_msg "${red}error${reset}: alvo não encontrado: $x"
+				fi
 			fi
 		done
 	fi
 
-	arr=("${pkg[*]}")
-	nfiles=${#arr[*]}
+	nfiles=${#pkg[*]}
+	if ! (( nfiles )); then
+		return 1
+	fi
 
 	if (( LLIST )); then
 		pkgCheckNumber=0
@@ -459,7 +468,7 @@ sh_list()
 				sh_cabec "$nfiles"
 			fi
 
-			for i in $pkg; do
+			for i in ${pkg[*]}; do
 				((pkgCheckNumber++))
 				if (( verbose )); then
 					if grep -q ^"$i$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"; then
@@ -472,7 +481,7 @@ sh_list()
 			done
 		fi
 	fi
-	sh_cdroot
+	return 0
 }
 
 # -Li
@@ -591,7 +600,7 @@ sh_listpkgdisp()
 
 			for i in ${public_pkg[*]}
 			do
-				sh_write "$i" "$SPLITPOS" $((++pkgNumber))
+				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) ' I '
 #				((++pkgNumber))
 #          	(( verbose >= 2 || LLIST )) && log_msg "[$pkgNumber]${orange}$i${reset}"
 			done
@@ -601,7 +610,7 @@ sh_listpkgdisp()
 				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "dep"
 #				((++pkgNumber))
 #          	(( verbose >= 2 || LLIST )) && log_msg "[$pkgNumber]${orange}$i${reset}"
- 			done
+			done
 		fi
 		return 0
 	fi
@@ -1135,7 +1144,7 @@ sh_ShortCatPkg()
 	fi
 	retval=$size
 	unset pkgname version desc arch url license depend dep size maintainer distro lfs_init lfs_version
-	return $retval
+	return 0
 }
 
 sh_show()
@@ -2897,7 +2906,7 @@ cleanup()
  	echo "Interrupt signal received"
 	log_msg "${pink}Cleaning...${reset}"
 	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ &> /dev/null
-	rm -rf "${TMP_ROOT_BACKUP:?}"/ &> /dev/null
+	rm -rf "${TMP_ROOT_BACKUP}"/ &> /dev/null
 	rm -f "/tmp/ARRAYPKGFULL"
 	kill -TERM -$$
 	exit

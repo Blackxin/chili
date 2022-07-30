@@ -411,9 +411,7 @@ sh_list()
 {
 	local param="$@"
 	local nfiles
-	local arr
-	local s
-	local x
+	local s x y
 	local status=' A '
 	local	SEARCH_CUT='-f1'
 	local pkg
@@ -432,26 +430,15 @@ sh_list()
 		if (( LALL )); then
 			pkg=($(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"))
 		else
-			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
+			log_failure_msg "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
 			return 1
 		fi
 	else
 		for x in ${cListSearch}; do
-			if (( LEXACT )); then
-				#pkg+=("$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"|cut -d$SEP -f1)")
-				if tmp=$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then
-					pkg+=($(cut -d$SEP -f1 <<< $tmp))
-				else
-					log_failure_msg "${red}error${reset}: alvo não encontrado: $x"
-				fi
-			else
-				#pkg+=("$(grep "$x" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"|cut -d$SEP -f1)")
-				if tmp=$(grep "$x" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then
-					pkg+=($(cut -d$SEP -f1 <<< $tmp))
-				else
-					log_failure_msg "${red}error${reset}: alvo não encontrado: $x"
-				fi
-			fi
+			#pkg+=("$(grep ^"$x$SEP" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"|cut -d$SEP -f1)")
+			(( LEXACT )) && y="^$x$SEP" || y="$x"
+			if tmp=$(grep "$y" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then pkg+=($(cut -d$SEP -f1 <<< $tmp));
+			else log_failure_msg "${red}error${reset}: alvo não encontrado: $x";	fi
 		done
 	fi
 

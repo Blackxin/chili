@@ -1381,24 +1381,49 @@ seekinarray() {
 
 #  solucao 1
  	local -i indice
- 	indice=$(printf "%s\n" "${@:2}" | grep -n "^$search$" | cut -d: -f1)
+ 	indice=$(printf "%s\n" "${@:2}" | grep -n -m 1 "^$search$" | cut -d: -f1)
 	((--indice)); echo $indice
 
 #  solucao 2
 #	declare -p arr | grep -Po "\[\K[0-9]+(?=\]=\"$search\")"
 }
 
+#arr=(a b 'c d' e)
+#search=e
+# get_index $search "${arr[@]}"
+get_index()
+{
+   local lresult=1
+   for ((i=2; i<=$#; i++))
+   do
+      [[ "${@:i:1}" == "$1" ]] && {
+         echo $((i-2));
+         lresult=0
+         break;
+         };
+   done
+   return $lresult
+}
+
 #arr=({a..z})
 #search=v
 #echo $(seekascan "${arr[@]}" $search)
-function seekascan()
+seekascan()
 {
-   local n=$#
+   local n=$(($#-1))
    local value=${!n}
+
+	array=("${@:1}")
+	unset array[$n]
+#	echo "${array[@]}"
+#	echo "tamanho: $n"
+#	echo "search : $value"
+#	echo "search: ${!n}"
+#	declare -p array
 
    for ((i=1;i < $#;i++)) {
       if [ "${!i}" == "${value}" ]; then
-         echo $i
+         ((--i)); echo $i
          return 0
       fi
    }

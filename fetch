@@ -422,9 +422,11 @@ sh_write()
 	local pkgCheckNumber=$3
 	local strstatus='         '
    local status=$4
+   local listing=$5
 
    [[ -z $status ]] && status=' A '
 	if sh_ascanpkg "$pkgsearch" "$pos"; then
+		[[ -z "$listing" ]] && return 0
 		[[ $status = ' I ' ]] && strstatus='installed'
 		if (( verbose >= 2 )); then
 			printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
@@ -503,7 +505,7 @@ sh_list()
 			done
 		fi
 	else
-		printf "${orange}%s\n" "${pkg[@]}"
+		printf "${orange}%s\n" ${pkg[*]}
 	fi
 	printf "${yellow}(%05d) %s\n" "$nfiles" "${cyan}packages listed${reset}"
 	return 0
@@ -1972,9 +1974,9 @@ sh_recreatefilepackagesinstalled()
    local aCache
    local lresult=1
 
-	(( verbose >= 2 )) && log_msg "Recreating installed packages list"
+	(( LLIST )) && log_msg "Recreating installed packages list"
 	sh_recreateFilesFromArch
-	(( verbose >= 2 )) && log_msg "Reading lists of installed packages"
+	(( LLIST )) && log_msg "Reading lists of installed packages"
 
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
 	aCache=$(printf '%s\n' $CACHEDIR_DESC/* | awk -F "$re" 'list[$1]++')
@@ -1983,7 +1985,7 @@ sh_recreatefilepackagesinstalled()
 	nfiles=$(lenarray "$aCache")
 
    if (( nfiles )); then
-		(( verbose >= 2 )) && log_msg "Checking installed packages"
+		(( LLIST )) && log_msg "Checking installed packages"
 		#sh_arraypkgfull
 		(( verbose >= 2 )) && sh_cabec "$nfiles"
 
@@ -1991,7 +1993,9 @@ sh_recreatefilepackagesinstalled()
 			[[ -z "$item" ]] && continue;
  	     	package=${item##*/}
 			package=${package%.desc*}
-			if sh_write "$package" '5' $((++pkgNumber)); then
+			clisting=''
+			(( verbose >= 2 )) && clisting='S'
+			if sh_write "$package" '5' $((++pkgNumber)) '' "$clisting"; then
 				echo "$(clineascan)" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
 			fi
    	done
@@ -3075,7 +3079,7 @@ init()
 			-Sm|--meta|meta) 		            		shift;sh_installmeta "$@";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;
-			-Sr|recreate)									shift;sh_recreatefilepackagesinstalled;exit;;
+			-Sr|recreate)									shift;LLIST=$true;sh_recreatefilepackagesinstalled;exit;;
 			-Qq|total)									   shift;sh_totalpackagesinstalled;exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;

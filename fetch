@@ -348,14 +348,14 @@ sh_ascanpkg()
 	aPKGARRAY=()
 
 	case $pos in
-		0) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_base[@]}"));;
-		1) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_version[@]}"));;
-		2) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_build[@]}"));;
-		3) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_fullname[@]}"));;
-		4) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_dirfullname[@]}"));;
-		5) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_base_version[@]}"));;
-		6) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_size[@]}"));;
-		7) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< $(printf '%s\n' "${public_pkg_site[@]}"));;
+		0) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_base[@]}")");;
+		1) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_version[@]}")");;
+		2) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_build[@]}")");;
+		3) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_fullname[@]}")");;
+		4) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_dirfullname[@]}")");;
+		5) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_base_version[@]}")");;
+		6) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_size[@]}")");;
+		7) indice=$(grep -Po -n -m 1 "^$pkgsearch$" <<< "$(printf '%s\n' "${public_pkg_site[@]}")");;
 	esac
 
 	if [[ -z $indice ]]; then
@@ -641,12 +641,14 @@ sh_listpkgdisp()
 				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "dep"
 			done
 		else
-			apkg=(${public_pkg[*]})
-			if (( LCOLUMN )); then
-				printf "${bold}${black}%s\n" ${apkg[*]}
-				printf "%s\n" "${reset}Packages ($ncontapkg)"
-			else
-				printf "${bold}${black}%s\n${reset}Packages ($ncontapkg)" "${apkg[*]}"
+			if (( LLIST )); then
+				apkg=(${public_pkg[*]})
+				if (( LCOLUMN )); then
+					printf "${bold}${black}%s\n" ${apkg[*]}
+					printf "%s\n" "${reset}Packages ($ncontapkg)"
+				else
+					printf "${bold}${black}%s\n${reset}Packages ($ncontapkg)" "${apkg[*]}"
+				fi
 			fi
 			return 0
 		fi
@@ -834,9 +836,9 @@ sh_updaterepo()
 sh_update()
 {
 	if [[ "$PKG_EXT" == 'mz' ]]; then        # http://mazonos.com
-		sh_updateMazon
+		sh_updateMazon "$@"
 	else
-		sh_updateChili
+		sh_updateChili "$@"
 	fi
 }
 
@@ -1249,49 +1251,41 @@ sh_ShortCatPkg()
 	return 0
 }
 
+# -Qi
 sh_show()
 {
 	local param="$@"
-	local error_value=0
 	local saveverbose=$verbose
+	local ntotal_pkg_listed
+	local cpacote
+	local lresult=$ERR_ERROR
 
-	if (( verbose >= 2  )); then
-		log_msg "Reading package list..."
-	fi
-
+	(( verbose >= 2  )) && log_msg "Reading package list..."
 	verbose=0
 	LDEPS=$false
 	LEXACT=$true
 	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
-	local ntotal_pkg_listed="$public_ntotal_pkg_listed"
+	ntotal_pkg_listed="$public_ntotal_pkg_listed"
 	verbose=$saveverbose
 
-	if [[ $public_pkg != "" ]]; then
-		for i in $public_pkg; do
+	if (( ntotal_pkg_listed )); then
+		for i in ${public_pkg[*]}; do
 			sh_splitpkg "$i"
-			local cfullname="${aPKGSPLIT[1]}.desc"
-			local cBase="${aPKGSPLIT[$PKG_BASE]}"
-			local cBaseVersion="${aPKGSPLIT[$PKG_BASE_VERSION]}"
-			local cpacote="${aPKGSPLIT[$PKG_BASE_VERSION]}.desc"
-			local cVersion="${aPKGSPLIT[$PKG_VERSION]}"
-	    	local error_value=0
+			cpacote="$CACHEDIR_ARCHIVES/${aPKGSPLIT[1]}.desc"
 
-			cpacote="$CACHEDIR_ARCHIVES/$cfullname"
-			if [[ $LFORCE ]] || ! [[ -e "$cpacote" ]]; then
-				sh_wgetdesc
-	    		error_value="${?}"
-			fi
-
-    		if [ ${error_value} = 0 ]; then
-				sh_CatAndSizePkg "$cpacote" $true
-			else
-				if (( verbose < 2 )); then
-					log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
+			if (( LFORCE )) || ! [[ -e "$cpacote" ]]; then
+				if ! sh_wgetdesc "$i"; then
+					if (( verbose < 2 )); then
+						log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
+					fi
+					continue
 				fi
     		fi
+			sh_CatAndSizePkg "$cpacote" $true
 		done
+		lresult=$ERR_OK
 	fi
-	sh_cdroot
+	return $lresult
 }
 
 # -R
@@ -1587,9 +1581,9 @@ sh_wgetresponse()
 
 sh_wgetdesc()
 {
-	local cfullfilename=$1
+	local cfullfilename="$1"
 	local cRaw
-   local nretval
+   local nretval=1
 
 	if ! (( GITSITE )); then
 		cRaw=$SITE 	#site normal
@@ -1597,7 +1591,7 @@ sh_wgetdesc()
 		cRaw=$RAW	#github
 	fi
 	pushd "$CACHEDIR_ARCHIVES/" &>/dev/null || return 1
-	sh_wgetresponse "${i}.desc"
+	sh_wgetresponse "$i.desc"
 	nretval=$?
 	popd &>/dev/null || return 1
 	return $nretval
@@ -1644,7 +1638,6 @@ sh_splitpkg()
 {
 	file=$1
 	aPKGSPLIT=()
-
 	pkg_folder_dir=${file%/*}										#remove arquivo deixando somente o diretorio/repo
 	pkg_fullname=${file##*/}			    						#remove diretorio deixando somente nome do pacote
 
@@ -1873,6 +1866,7 @@ sh_search()
 	local param="$@"
 	local oldverbose=$verbose
 
+	LLIST=$false
 	[[ $verbose -gt 1 ]] || (( verbose=0 ))
 	LDEPS=$false
 	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"

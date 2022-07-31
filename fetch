@@ -422,11 +422,11 @@ sh_write()
 	local pkgCheckNumber=$3
 	local strstatus='         '
    local status=$4
-   local listing=$5
+   local clisting=$5
 
    [[ -z $status ]] && status=' A '
 	if sh_ascanpkg "$pkgsearch" "$pos"; then
-		[[ -z "$listing" ]] && return 0
+		[[ "$clisting" == 'N' ]] && return 0
 		[[ $status = ' I ' ]] && strstatus='installed'
 		if (( verbose >= 2 )); then
 			printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
@@ -618,24 +618,23 @@ sh_listpkgdisp()
 		ncontapkg=$(( nfilesfound + $(lenarraystr "$public_pkg_deps") ))
 		public_ntotal_pkg_listed="$ncontapkg"
 
-		if (( verbose )); then
+		if (( verbose >= 2)); then
 			sh_cabec "$ncontapkg"
 			pkgNumber=0
 
 			for i in ${public_pkg[*]}
 			do
 				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) ' I '
-#				((++pkgNumber))
-#          	(( verbose >= 2 || LLIST )) && log_msg "[$pkgNumber]${orange}$i${reset}"
 			done
 
 			for i in ${public_pkg_deps[*]}
 			do
 				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "dep"
-#				((++pkgNumber))
-#          	(( verbose >= 2 || LLIST )) && log_msg "[$pkgNumber]${orange}$i${reset}"
 			done
+		else
+			printf "${orange}%s\n" ${public_pkg[*]}
 		fi
+		printf "${yellow}(%05d) %s\n" "$nfilesfound" "${cyan}packages listed${reset}"
 		return 0
 	fi
 	return 1
@@ -1046,8 +1045,7 @@ sh_updateOLD()
 	popd &>/dev/null || return 1
 }
 
-# -Lc
-sh_pkgincache()
+sh_filesincache()
 {
 	local -i nfilesincache
    local item
@@ -1055,7 +1053,7 @@ sh_pkgincache()
    local cline
    local aCacheFullname
 
-	(( verbose >= 2 || LLIST)) && log_msg "Recreating IN CACHE packages list"
+	(( LLIST)) && log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
 	mapfile -t aCacheFullname < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f | sort)
 	nfilesincache=${#aCacheFullname[*]}
@@ -1069,48 +1067,85 @@ sh_pkgincache()
 			aCache+=("$pkg_base")
 			cline=$(clinesplit)
        	echo "$cline" >> "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
-#        (( verbose >= 2 || LLIST )) && sh_write "$pkg_base" "0" "$nfilesincache"
-         (( verbose >= 2 || LLIST )) && log_msg "IN CACHE: [$nfilesincache]${orange}$pkg_base${reset}"
+#			(( verbose >= 2 )) && sh_write "$pkg_base" "0" "$nfilesincache"
    	done
    fi
-
-	(( verbose >= 2 || LLIST )) && printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
+#	(( verbose >= 2 )) && printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages IN CACHE $CACHEDIR_ARCHIVES"
    return 0
 }
 
+# -Lc
+sh_pkgincache()
+{
+	local lfind=$false
+	local nfilesoutcache=0
+	local nfilesincache=0
+	local aPkgOut
+	local aPkgIn
+	local x
+	local y
+
+	(( LLIST )) && log_msg "Ok, let's do it..."
+	(( LLIST )) && log_msg "Wait, doing some calculations..."
+
+	sh_filesincache
+#	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
+
+	for y in ${public_pkg_base[*]};do
+		if ! ascan "$y" "${aCache[@]}"; then
+			((++nfilesoutcache))
+			aPkgOut+=("$y")
+		else
+			((++nfilesincache))
+			(( verbose >= 2 )) && sh_write "$y" "0" "$nfilesincache"
+			aPkgIn+=("$y")
+		fi
+	done
+
+	if ((LLIST && verbose < 2)); then
+		if ((nfilesoutcache)); then
+			printf "${green}%s\n" ${aPkgIn[*]}
+		fi
+	fi
+	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
+	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
+	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
+	return 0
+}
+
+# -Po
 sh_pkgoutcache()
 {
 	local lfind=$false
 	local nfilesoutcache=0
 	local nfilesincache=0
 	local aPkgOut
+	local aPkgIn
 	local x
 	local y
 
-	(( verbose >= 2 || LLIST )) && log_wait_msg "Ok, let's do it..."
-	(( verbose >= 2 || LLIST )) && log_wait_msg "Wait, doing some calculations..."
+	(( LLIST )) && log_msg "Ok, let's do it..."
+	(( LLIST )) && log_msg "Wait, doing some calculations..."
 
-	LLIST=$false
-	sh_pkgincache
+	sh_filesincache
 #	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
 
 	for y in ${public_pkg_base[*]};do
 		if ! ascan "$y" "${aCache[@]}"; then
 			((++nfilesoutcache))
-#			sh_write "$y" "0" "$nfilesoutcache"
-			(( verbose >= 2 || LLIST )) && log_msg "NOT IN CACHE: [$nfilesoutcache]${orange}$y${reset}"
-		else
+			(( verbose >= 2 )) && sh_write "$y" "0" "$nfilesoutcache"
 			aPkgOut+=("$y")
+		else
+			aPkgIn+=("$y")
 			((++nfilesincache))
 		fi
 	done
 
-	#	for y in ${aPkgOut[*]};do
-	#		((nfilesincache++))
-	#		sh_write "$y" "0" "$nfilesincache"
-	#		log_msg "IN CACHE: [$nfilesincache]${orange}$y${reset}"
-	#	done
-
+	if ((LLIST)); then
+		if ((nfilesoutcache)); then
+			printf "${orange}%s\n" ${aPkgOut[*]}
+		fi
+	fi
 	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
 	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
 	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
@@ -1993,8 +2028,8 @@ sh_recreatefilepackagesinstalled()
 			[[ -z "$item" ]] && continue;
  	     	package=${item##*/}
 			package=${package%.desc*}
-			clisting=''
-			(( verbose >= 2 )) && clisting='S'
+			clisting='N'
+			(( verbose >= 2 )) && clisting=''
 			if sh_write "$package" '5' $((++pkgNumber)) '' "$clisting"; then
 				echo "$(clineascan)" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
 			fi
@@ -3085,7 +3120,7 @@ init()
 			-La|avaiable) 									shift;sh_list "$@";exit;;
 			-Lc|list-cache) 	        					shift;LLIST=$true;sh_pkgincache "$@";exit;;
 			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
-			-Po|out-cache)	            				shift;sh_pkgoutcache "$@";exit;;
+			-Po|out-cache)	            				shift;LLIST=$true;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;
 			-Su|upgrade)									shift;sh_upgrade "$@";exit;;
       	-V*|--version|version)						logo;exit 0;;

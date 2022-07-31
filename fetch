@@ -505,13 +505,18 @@ sh_list()
 			done
 		fi
 	else
-		printf "${orange}%s\n" ${pkg[*]}
+		if (( LCOLUMN )); then
+			printf "${bold}${black}%s\n" ${pkg[*]}
+			printf "%s\n" "${reset}Packages ($nfiles)"
+		else
+			printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${pkg[*]}"
+		fi
+		return 0
 	fi
 	printf "${yellow}(%05d) %s\n" "$nfiles" "${cyan}packages listed${reset}"
 	return 0
 }
 
-# -Li
 sh_listinstalled()
 {
 	local param="$@"
@@ -632,7 +637,14 @@ sh_listpkgdisp()
 				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "dep"
 			done
 		else
-			printf "${orange}%s\n" ${public_pkg[*]}
+			apkg=(${public_pkg[*]})
+			if (( LCOLUMN )); then
+				printf "${bold}${black}%s\n" ${apkg[*]}
+				printf "%s\n" "${reset}Packages ($ncontapkg)"
+			else
+				printf "${bold}${black}%s\n${reset}Packages ($ncontapkg)" "${apkg[*]}"
+			fi
+			return 0
 		fi
 		printf "${yellow}(%05d) %s\n" "$nfilesfound" "${cyan}packages listed${reset}"
 		return 0
@@ -1053,7 +1065,7 @@ sh_filesincache()
    local cline
    local aCacheFullname
 
-	(( LLIST)) && log_msg "Recreating IN CACHE packages list"
+	(( verbose >= 2 )) && log_msg "Recreating IN CACHE packages list"
 	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_IN_CACHE"
 	mapfile -t aCacheFullname < <(find "$CACHEDIR_ARCHIVES/" -iname "*.$PKG_EXT" -type f | sort)
 	nfilesincache=${#aCacheFullname[*]}
@@ -1084,32 +1096,41 @@ sh_pkgincache()
 	local aPkgIn
 	local x
 	local y
+	local indice=0
 
-	(( LLIST )) && log_msg "Ok, let's do it..."
-	(( LLIST )) && log_msg "Wait, doing some calculations..."
-
+	(( verbose >= 2 )) && log_msg "Ok, let's do it..."
+	(( verbose >= 2 )) && log_msg "Wait, doing some calculations..."
 	sh_filesincache
-#	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
 
 	for y in ${public_pkg_base[*]};do
 		if ! ascan "$y" "${aCache[@]}"; then
 			((++nfilesoutcache))
-			aPkgOut+=("$y")
+			#aPkgOut+=("$y")
+  		   aPkgOut+=("${public_pkg_base_version[$indice]}")
 		else
 			((++nfilesincache))
 			(( verbose >= 2 )) && sh_write "$y" "0" "$nfilesincache"
-			aPkgIn+=("$y")
+			#aPkgIn+=("$y")
+			aPkgIn+=("${public_pkg_base_version[$indice]}")
 		fi
+		((++indice))
 	done
 
-	if ((LLIST && verbose < 2)); then
-		if ((nfilesoutcache)); then
-			printf "${green}%s\n" ${aPkgIn[*]}
+	if ((LLIST)); then
+		if ((nfilesincache)); then
+			if (( LCOLUMN )); then
+				printf "${bold}${black}%s\n" ${aPkgIn[*]}
+				printf "%s\n" "${reset}Packages ($nfilesincache)"
+			else
+				printf "${bold}${black}%s\n${reset}Packages ($nfilesincache)" "${aPkgIn[*]}"
+			fi
 		fi
 	fi
-	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
-	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
-	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
+	if (( verbose >= 2 )); then
+		printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
+		printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
+		printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
+	fi
 	return 0
 }
 
@@ -1123,32 +1144,41 @@ sh_pkgoutcache()
 	local aPkgIn
 	local x
 	local y
+	local indice=0
 
-	(( LLIST )) && log_msg "Ok, let's do it..."
-	(( LLIST )) && log_msg "Wait, doing some calculations..."
-
+	(( verbose >= 2 )) && log_msg "Ok, let's do it..."
+	(( verbose >= 2 )) && log_msg "Wait, doing some calculations..."
 	sh_filesincache
-#	aRepository=$(cut -d$SEP -f1 "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
 
 	for y in ${public_pkg_base[*]};do
 		if ! ascan "$y" "${aCache[@]}"; then
 			((++nfilesoutcache))
 			(( verbose >= 2 )) && sh_write "$y" "0" "$nfilesoutcache"
-			aPkgOut+=("$y")
+#			aPkgOut+=("$y")
+			aPkgOut+=("${public_pkg_base_version[$indice]}")
 		else
-			aPkgIn+=("$y")
 			((++nfilesincache))
+#			aPkgIn+=("$y")
+			aPkgIn+=("${public_pkg_base_version[$indice]}")
 		fi
+		((++indice))
 	done
 
 	if ((LLIST)); then
 		if ((nfilesoutcache)); then
-			printf "${orange}%s\n" ${aPkgOut[*]}
+			if (( LCOLUMN )); then
+				printf "${bold}${black}%s\n" ${aPkgOut[*]}
+				printf "%s\n" "${reset}Packages ($nfilesoutcache)"
+			else
+				printf "${bold}${black}%s\n${reset}Packages ($nfilesoutcache)" "${aPkgOut[*]}"
+			fi
 		fi
 	fi
-	printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
-	printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
-	printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
+	if (( verbose >= 2 )); then
+		printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
+		printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
+		printf "${yellow}(%05d) %s\n" "$public_len_count_pkg" "${cyan}packages in the repository${reset}"
+	fi
 	return 0
 }
 
@@ -3022,6 +3052,8 @@ ${red}  -Po, out-cache      ${reset}- list packages out-cache
 ${red}  -Qi, show           ${reset}- show package details
 ${red}  -Qq, total          ${reset}- total packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
+${red}  --nocolor           ${reset}- remove color from output
+${red}  --column            ${reset}- output in columns
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy ${reset} self ${yellow}=> Update self fetch via internet
   ${reset}fetch ${pink}-Sy ${reset}      ${yellow}=> Update database
@@ -3059,6 +3091,7 @@ sh_parseparam()
 	LTIME=$false
 	LSEARCHONLY=$true
 	LSKIPERROR=$false
+	LCOLUMN=$false
 
 	for s in $param
    do
@@ -3090,6 +3123,7 @@ sh_parseparam()
       [[ $(tolower "${s}") = "--all"        ]] && { LALL=$true; continue; }
       [[ $(tolower "${s}") = "--skiperror"  ]] && { LSKIPERROR=$true; continue; }
       [[ $(tolower "${s}") = "--nocolor"    ]] && { unsetvarcolors; continue;}
+      [[ $(tolower "${s}") = "--column"     ]] && { LCOLUMN=$true; continue;}
 #		newparam="$newparam $(echo ${s})"
 		newparam+="$s "
    done
@@ -3129,6 +3163,7 @@ init()
       	-exact|--exact)								LEXACT=1;;
       	-q|--quiet)										verbose=0;;
       	--nocolor)										unsetvarcolors;;
+      	--column)										LCOLUMN=1;;
       	-v*|--no-verbose|--verbose)				(( ++verbose ));test "${1:0:5}" = "--no-" && verbose=0;;
       	-h|--help)										usage;exit $(( $# ? 0 : 1 ));;
 #      	*)													usage;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;
@@ -3189,16 +3224,3 @@ else
 fi
 
 # vim:set ts=3 sw=3 et:
-
-#converter .desc para pacotes instalado
-#for i in *.desc; do echo $i; var=(${i/%-any.chi.zst.desc/.desc}); cp $i $var;done
-# '["]listaDezenas["]:\s*[[]\s+["]\K([0-9]{2})(["],?\s+["])((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))+(?2)+((?1))'
-# wget https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/ --no-check-certificate -qO - | jq -r '.numero'
-# jq -r '.listaDezenas[1]' temp
-# grep -Po '"descricaoFaixa":.*?[^\\]",' temp
-# cat temp | python -c "import json,sys;obj=json.load(sys.stdin);print(obj['listaDezenas']);"
-
-#public_pkg_base=${public_pkg_base[@]//,*}
-#IN="bla@some.com;john@home.com"
-#arrIN=(${IN//;/ })
-#echo ${arrIN[1]}                  # Output: john@home.com

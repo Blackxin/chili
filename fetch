@@ -833,6 +833,15 @@ sh_updaterepo()
 
 sh_update()
 {
+	if [[ "$PKG_EXT" == 'mz' ]]; then        # http://mazonos.com
+		sh_updateMazon
+	else
+		sh_updateChili
+	fi
+}
+
+sh_updateChili()
+{
 	local Folders
 	local FoldersInRepo
 	local PackagesInFolders
@@ -939,7 +948,7 @@ sh_update()
 	popd &>/dev/null || return 1
 }
 
-sh_updateOLD()
+sh_updateMazon()
 {
 	local nfilesInReposit
 	local nfilesInstalled
@@ -1007,7 +1016,7 @@ sh_updateOLD()
 					mapfile -t MetaPkgInFolders < <(grep -E '.meta\"' "$FOLDER_TEMP" | cut -d'"' -f2 )
 				fi
 #				SizePkgInFolders=($(grep -E "$GREP_RE $FOLDER_TEMP" | awk '{print $5}' ))
-				mapfile -t SizePkgInFolders < <(grep -E "$GREP_RE $FOLDER_TEMP" | awk '{print $5}' )
+				mapfile -t SizePkgInFolders < <(grep -E "$GREP_RE" "$FOLDER_TEMP" | awk '{print $5}' )
 				;;
 			LiteSpeed|GitHub.com|cloudflare)
 				if [[ $Folders != "meta" ]]; then
@@ -1090,7 +1099,7 @@ sh_filesincache()
    return 0
 }
 
-# -Lc
+# -Lc/-Pi
 sh_pkgincache()
 {
 	local lfind=$false
@@ -3053,6 +3062,7 @@ ${red}  -La, list-avaiable  ${reset}- list avaiable packages based on package na
 ${red}  -Lc, list-cache     ${reset}- list downloaded packages in cache
 ${red}  -Li, list-installed ${reset}- list installed packages
 ${red}  -Po, out-cache      ${reset}- list packages out-cache
+${red}  -Pi, in-cache       ${reset}- list downloaded packages in cache
 ${red}  -Qi, show           ${reset}- show package details
 ${red}  -Qq, total          ${reset}- total packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
@@ -3157,6 +3167,7 @@ init()
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;
 			-Lc|list-cache) 	        					shift;LLIST=$true;sh_pkgincache "$@";exit;;
+			-Pi|in-cache) 	        						shift;LLIST=$true;sh_pkgincache "$@";exit;;
 			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
 			-Po|out-cache)	            				shift;LLIST=$true;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;

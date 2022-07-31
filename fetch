@@ -459,6 +459,7 @@ sh_list()
 	local status=' A '
 	local	SEARCH_CUT='-f1'
 	local pkg
+	local aout
 	local	cListSearch
 
 	LLIST=$true
@@ -472,6 +473,7 @@ sh_list()
 	if [[ -z "$cListSearch" ]]; then
 		if (( LALL )); then
  			pkg=${public_pkg_base[@]}
+ 			aout=${public_pkg_base_version[@]}
 		else
 			log_failure_msg "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
 			return 1
@@ -479,8 +481,10 @@ sh_list()
 	else
 		for x in ${cListSearch}; do
 			(( LEXACT )) && y="^$x$SEP" || y="$x"
-			if tmp=$(grep "$y" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"); then pkg+=($(cut -d$SEP -f1 <<< $tmp));
-			else log_failure_msg "${red}error${reset}: alvo não encontrado: $x";	fi
+			if tmp=$(grep "$y" "$CACHEDIR_SEARCH/$PACKAGES_SPLIT");
+			then pkg+=($(cut -d$SEP -f1 <<< $tmp)); aout+=($(cut -d$SEP -f5 <<< $tmp));
+			else log_failure_msg "${red}error${reset}: alvo não encontrado: $x";
+			fi
 		done
 	fi
 
@@ -506,10 +510,10 @@ sh_list()
 		fi
 	else
 		if (( LCOLUMN )); then
-			printf "${bold}${black}%s\n" ${pkg[*]}
+			printf "${bold}${black}%s\n" ${aout[*]}
 			printf "%s\n" "${reset}Packages ($nfiles)"
 		else
-			printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${pkg[*]}"
+			printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${aout[*]}"
 		fi
 		return 0
 	fi
@@ -3053,7 +3057,7 @@ ${red}  -Qi, show           ${reset}- show package details
 ${red}  -Qq, total          ${reset}- total packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
 ${red}  --nocolor           ${reset}- remove color from output
-${red}  --column            ${reset}- output in columns
+${red}  --table             ${reset}- output in columns
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy ${reset} self ${yellow}=> Update self fetch via internet
   ${reset}fetch ${pink}-Sy ${reset}      ${yellow}=> Update database
@@ -3123,7 +3127,7 @@ sh_parseparam()
       [[ $(tolower "${s}") = "--all"        ]] && { LALL=$true; continue; }
       [[ $(tolower "${s}") = "--skiperror"  ]] && { LSKIPERROR=$true; continue; }
       [[ $(tolower "${s}") = "--nocolor"    ]] && { unsetvarcolors; continue;}
-      [[ $(tolower "${s}") = "--column"     ]] && { LCOLUMN=$true; continue;}
+      [[ $(tolower "${s}") = "--table"      ]] && { LCOLUMN=$true; continue;}
 #		newparam="$newparam $(echo ${s})"
 		newparam+="$s "
    done
@@ -3163,7 +3167,7 @@ init()
       	-exact|--exact)								LEXACT=1;;
       	-q|--quiet)										verbose=0;;
       	--nocolor)										unsetvarcolors;;
-      	--column)										LCOLUMN=1;;
+      	--table)											LCOLUMN=1;;
       	-v*|--no-verbose|--verbose)				(( ++verbose ));test "${1:0:5}" = "--no-" && verbose=0;;
       	-h|--help)										usage;exit $(( $# ? 0 : 1 ));;
 #      	*)													usage;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;

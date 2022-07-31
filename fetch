@@ -1201,54 +1201,60 @@ sh_CatAndSizePkg()
 {
 	local cpacote="$1"
 	local LSHOW="$2"
-	local retval=0
+	local lresult=$ERR_OK
 
-	source "$cpacote"
-	if (( LSHOW )); then
-		printf '%s\n' "${cyan}BaseName     : ${yellow}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${aPKGSPLIT[$PKG_FULLNAME]}"
-		printf '%s\n' "${cyan}Name         : ${yellow}${pkgname}"
-		printf '%s\n' "${cyan}Version      : ${yellow}${version}"
-		printf '%s\n' "${cyan}Build        : ${yellow}${build}"
-		printf '%s\n' "${cyan}Description  : ${yellow}${desc}"
-		printf '%s\n' "${cyan}Architecture : ${yellow}${arch}"
-		printf '%s\n' "${cyan}URL          : ${yellow}${url}"
-		printf '%s\n' "${cyan}Licenses     : ${yellow}${license}"
-		printf '%s\n' "${cyan}Dependencies : ${yellow}${depend}"
-		printf '%s\n' "${cyan}Dependencies : ${yellow}${dep}"
-		printf '%s\n' "${cyan}Size         : ${yellow}$(size_to_human "$size")"
-		printf '%s\n' "${cyan}Packer       : ${yellow}${maintainer}"
-		printf '%s\n' "${cyan}Distro       : ${yellow}${distro}"
-		printf '%s\n' "${cyan}Init         : ${yellow}${lfs_init}"
-		printf '%s\n' "${cyan}LSB          : ${yellow}${lfs_version}"
-    	printf '%s\n' "${reset}"
-	fi
-	retval=${size}
-	unset pkgname version build desc arch url license depend dep size mainteiner distro lfs_init lfs_version
-	return 0
+  	if [[ -e "$cpacote" ]]; then
+  		source "$cpacote"
+		if (( LSHOW )); then
+			printf '%s\n' "${cyan}BaseName     : ${yellow}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${aPKGSPLIT[$PKG_FULLNAME]}"
+			printf '%s\n' "${cyan}Name         : ${yellow}${pkgname}"
+			printf '%s\n' "${cyan}Version      : ${yellow}${version}"
+			printf '%s\n' "${cyan}Build        : ${yellow}${build}"
+			printf '%s\n' "${cyan}Description  : ${yellow}${desc}"
+			printf '%s\n' "${cyan}Architecture : ${yellow}${arch}"
+			printf '%s\n' "${cyan}URL          : ${yellow}${url}"
+			printf '%s\n' "${cyan}Licenses     : ${yellow}${license}"
+			printf '%s\n' "${cyan}Dependencies : ${yellow}${depend}"
+			printf '%s\n' "${cyan}Dependencies : ${yellow}${dep}"
+			printf '%s\n' "${cyan}Size         : ${yellow}$(size_to_human "$size")"
+			printf '%s\n' "${cyan}Packer       : ${yellow}${maintainer}"
+			printf '%s\n' "${cyan}Distro       : ${yellow}${distro}"
+			printf '%s\n' "${cyan}Init         : ${yellow}${lfs_init}"
+			printf '%s\n' "${cyan}LSB          : ${yellow}${lfs_version}"
+	    	printf '%s\n' "${reset}"
+		fi
+		unset pkgname version build desc arch url license depend dep size mainteiner distro lfs_init lfs_version
+  	else
+  		lresult=$ERR_ERROR
+  	fi
+	return $lresult
 }
 
 sh_ShortCatPkg()
 {
 	local cpacote="$1"
 	local LSHOW=$2
-	local retval=0
+	local lresult=$ERR_OK
 	local cpackage="${aPKGSPLIT[$PKG_BASE]}"
 	local SEARCH_CUT='-f5'
 	local pkginstalled=
 
-  	source "$cpacote"
-	if (( LSHOW )); then
-		pkginstalled=$(grep ^"$cpackage$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" | cut -d"$SEP" "$SEARCH_CUT")
-		if [[ -z $pkginstalled ]]; then
-			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${white}${desc::40}"
-		else
-			printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${cyan}[installed] ${white}${desc::40}"
+  	if [[ -e "$cpacote" ]]; then
+  		source "$cpacote"
+		if (( LSHOW )); then
+			pkginstalled=$(grep ^"$cpackage$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" | cut -d"$SEP" "$SEARCH_CUT")
+			if [[ -z "$pkginstalled" ]]; then
+				printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${white}${desc::40}"
+			else
+				printf "%s  %s %s\n" "${pink}${aPKGSPLIT[$PKG_FOLDER_DIR]}/${yellow}${aPKGSPLIT[$PKG_BASE]}" "${green}${aPKGSPLIT[$PKG_VERSION]}" "${cyan}[installed] ${white}${desc::40}"
+			fi
+	    	printf '%s' "${reset}"
 		fi
-    	printf '%s' "${reset}"
-	fi
-	retval=$size
-	unset pkgname version desc arch url license depend dep size maintainer distro lfs_init lfs_version
-	return 0
+		unset pkgname version desc arch url license depend dep size maintainer distro lfs_init lfs_version
+  	else
+  		lresult=$ERR_ERROR
+  	fi
+	return $lresult
 }
 
 # -Qi
@@ -1282,6 +1288,43 @@ sh_show()
 				fi
     		fi
 			sh_CatAndSizePkg "$cpacote" $true
+		done
+		lresult=$ERR_OK
+	fi
+	return $lresult
+}
+
+# -Ss
+sh_search()
+{
+	local param="$@"
+	local saveverbose=$verbose
+	local ntotal_pkg_listed
+	local cpacote
+	local lresult=$ERR_ERROR
+
+	(( verbose >= 2  )) && log_msg "Reading package list..."
+	verbose=0
+	LDEPS=$false
+	LEXACT=$true
+	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
+	ntotal_pkg_listed="$public_ntotal_pkg_listed"
+	verbose=$saveverbose
+
+	if (( ntotal_pkg_listed )); then
+		for i in ${public_pkg[*]}; do
+			sh_splitpkg "$i"
+			cpacote="$CACHEDIR_ARCHIVES/${aPKGSPLIT[1]}.desc"
+
+			if (( LFORCE )) || ! [[ -e "$cpacote" ]]; then
+				if ! sh_wgetdesc "$i"; then
+					if (( verbose < 2 )); then
+						log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
+					fi
+					continue
+				fi
+    		fi
+         sh_ShortCatPkg "$cpacote" $true
 		done
 		lresult=$ERR_OK
 	fi
@@ -1858,46 +1901,6 @@ sh_installdoinstallpkg()
 			log_success_msg2 "${green}${cpacote} ${reset}Done. package installation successfully."
 		fi
 	done
-}
-
-# -Ss
-sh_search()
-{
-	local param="$@"
-	local oldverbose=$verbose
-
-	LLIST=$false
-	[[ $verbose -gt 1 ]] || (( verbose=0 ))
-	LDEPS=$false
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
-	local ntotal_pkg_listed="$public_ntotal_pkg_listed"
-
-	if [[ -n $public_pkg ]]; then
-		for i in $public_pkg; do
-			sh_splitpkg "$i"
-			local cfullname="${aPKGSPLIT[1]}.desc"
-			local cBase="${aPKGSPLIT[$PKG_BASE]}"
-			local cBaseVersion="${aPKGSPLIT[$PKG_BASE_VERSION]}"
-			local cpacote="${aPKGSPLIT[$PKG_BASE_VERSION]}.desc"
-			local cVersion="${aPKGSPLIT[$PKG_VERSION]}"
-			local	error_value=0
-
-			cpacote=$CACHEDIR_ARCHIVES/$cfullname
-			if [[ $LFORCE = "$true" ]] || ! [[ -e $cpacote ]]; then
-				sh_wgetdesc
-	    		error_value=$?
-			fi
-
-    		if [[ $error_value = 0 ]]; then
-				sh_ShortCatPkg "$cpacote" $true
-    		else
-				if (( verbose < 2 )); then
-					log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfullname} ${reset}at $SITE/packages/"
-				fi
-			fi
-		done
-	fi
-	verbose=$oldverbose
 }
 
 sh_listmeta()

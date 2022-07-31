@@ -7,7 +7,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/07/30
+# 	Altered: 2022/07/31
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -68,7 +68,7 @@ configure()
 {
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.24.20220730"
+	readonly _VERSION_="3.24.20220731"
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee lynx)
 	unset CDPATH
 	unset GREP_OPTIONS

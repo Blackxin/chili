@@ -1281,9 +1281,6 @@ sh_show()
 
 			if (( LFORCE )) || ! [[ -e "$cpacote" ]]; then
 				if ! sh_wgetdesc "$i"; then
-					if (( verbose < 2 )); then
-						log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
-					fi
 					continue
 				fi
     		fi
@@ -1318,9 +1315,6 @@ sh_search()
 
 			if (( LFORCE )) || ! [[ -e "$cpacote" ]]; then
 				if ! sh_wgetdesc "$i"; then
-					if (( verbose < 2 )); then
-						log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
-					fi
 					continue
 				fi
     		fi
@@ -1611,7 +1605,7 @@ sh_wgetresponse()
 
 		if ! (( LSKIPERROR )); then
 			log_failure_msg "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/ - Use the ${yellow}--skiperror ${reset}option to force install. "
-			exit 1
+			return 1
 		else
 			if (( verbose >= 2 )); then
 				log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"

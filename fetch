@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#set -x
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
 # 	Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
@@ -87,9 +88,11 @@ configure()
 	export PKG_EXT SEP SITE GITSITE RAW APP
 	export CACHEDIR CACHEDIR_ARCHIVES CACHEDIR_SEARCH
 	export CACHEDIR_LIST CACHEDIR_DESC CACHEDIR_REMO
-	export ALIEN_CACHE_DIR ALIEN_VARLIB
 	export VARLIB_FETCH
 	export DESCME
+	export ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
+	export ALIEN_VARLIB="/var/lib/pacman/local"
+
 	verbose=0
 	SEP=','
 	PKG_EXT="${PKG_EXT:='chi.zst'}"
@@ -104,9 +107,8 @@ configure()
 	CACHEDIR_DESC="$CACHEDIR/desc"
 	CACHEDIR_REMO="$CACHEDIR/remove"
 	DESCME='info/desc'
-	ALIEN_CACHE_DIR="${ALIEN_CACHE_DIR:=/var/cache/pacman/pkg}"
-	ALIEN_VARLIB="/var/lib/pacman/local"
 	VARLIB_FETCH="/var/lib/$APP"
+	CHILI_OS=$true
 
 	#temporary
 	TMP_DIR_ROOT="$(mktemp -d -u)"
@@ -120,6 +122,7 @@ configure()
 	RE_ALIEN='.+\.(zst|xz)$'   						#Bagatini/Blau
 
 	if [[ "$PKG_EXT" = "chi.zst" ]]; then
+		CHILI_OS=$true
 		#PKG_RE='^([a-z-]+)(-)([0-9\\.]+)(-)([0-9])(-)(.*)(.chi.zst)$'
 		#PKG_RE='([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)-(([0-9]+(\.[0-9]+)*)(-([0-9]+))?)-([^.]+).*'
 		#PKG_RE='(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst' 				#SOEN
@@ -129,11 +132,14 @@ configure()
 #		PKG_RE_FULL1='(?:")(.+)-(([^-]+)-([0-9]+))-([^.]+)\.chi\.zst(?="><a)'
 #		PKG_RE_FULL2='(?:e">)(.+)-(([^-]+)-([0-9]+))-([^.]+)(\.chi)(\.zst)(?=<\/a)'
 		GREP_RE='.chi\.zst\"'
+		SED_RE='^.*>(.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).*[ ]([0-9]+k?)(.*)'
 	else
+		CHILI_OS=$false
 		#PKG_RE='(.+)-(([^-]+)-([0-9]+))\.mz' 						#SOEN
 		PKG_RE='(.+)-(([^-]+)-([0-9]))\.mz' 						#VC
 #		PKG_RE_LYNX='(?!.*\/)(.+)-(([^-]+)-([0-9]))\.mz$'		#VC
 		GREP_RE='.mz\"'
+		SED_RE='^.+href="(.+)-(([^-]+)-([0-9]))()(\.mz\b)".+([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2})[ ]+([0-9]+[.]?[0-9]+.?).+'
 	fi
 }
 
@@ -835,15 +841,6 @@ sh_updaterepo()
 
 sh_update()
 {
-	if [[ "$PKG_EXT" == 'mz' ]]; then        # http://mazonos.com
-		sh_updateMazon "$@"
-	else
-		sh_updateChili "$@"
-	fi
-}
-
-sh_updateChili()
-{
 	local Folders
 	local FoldersInRepo
 	local PackagesInFolders
@@ -884,40 +881,45 @@ sh_updateChili()
       printf '' >| "$i"
    done
 
-	log_msg "${pink}Updating folders from ${SITE}${reset}"
-	FoldersInRepo=$(lynx -listonly -nonumbers -dump -justify "${SITE}/packages/" | grep -P -o '.*packages\/\K.*?(?=\/)')
+	log_msg "${pink}Updating folders from ${SITE}"
+	FoldersInRepo=$(lynx -listonly -nonumbers -dump -justify "${SITE}/packages/" | grep -Po '.*packages\/\K.*?(?=\/)')
 
 	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
-	regex='^.*>(.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).*[ ]([0-9]+k?)(.*)'
-	for Folders in ${FoldersInRepo}; do
+	for Folders in ${FoldersInRepo[*]}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
-		response=$(curl --compressed --insecure -s -w "%{http_code}\n" -k --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP")
-#		wget https://chiliLinux.com/packages/a/ -qO - | sed -nE "s;$regex;\1 - \2 - \3;p"
+		response=$(curl --compressed -k -s -w "%{http_code}\n" --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP")
+		if [[ $response -eq 404 ]]; then
+			log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/$Folders/"
+			exit 1
+		fi
 
 		if [[ $Folders != "meta" ]]; then
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" |	grep File | awk '{print $2}')
 #			PackagesInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po "$PKG_RE_LYNX")
-#			PackagesInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex"))
-#			PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex"))
-#ok		PackagesInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\1-\2-\5\6;p"))
-#			PackagesInFolders=($(sed -nE "s;$regex;\1-\2-\5\6;p" "$FOLDER_TEMP"))
-			mapfile -t PackagesInFolders <<< "$(sed -nE "s/$regex/\1-\2-\5\6/p" "$FOLDER_TEMP")"
+#			PackagesInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$SED_RE"))
+#			PackagesInFolders=($(curl --compressed -k -s --url "$SITE/packages/$Folders/" | grep -Po "$SED_RE"))
+#ok		PackagesInFolders=($(curl --compressed -k -s --url "$SITE/packages/$Folders/" | sed -nE "s;$SED_RE;\1-\2-\5\6;p"))
+			if (( CHILI_OS )); then
+				mapfile -t PackagesInFolders <<< "$(sed -nE "s/$SED_RE/\1-\2-\5\6/p" "$FOLDER_TEMP")"
+			else
+				mapfile -t PackagesInFolders <<< "$(sed -nE "s/$SED_RE/\1-\2\6/p" "$FOLDER_TEMP")"
+			fi
 		else
 			MetaPkgInFolders=$(lynx -listonly -nonumbers -dump "$SITE/packages/$Folders/" | grep -Po '.*\/\K.*')
 		fi
 #		SizePkgInFolders=$(lynx -nonumbers -dump "$SITE/packages/$Folders/" | grep File | awk '{print $5}')
-#		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$regex" | awk '{print $5*1024}'))
-#		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$regex" | awk '{print $5*1024}'))
-#		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$regex;\3;p"))
-#ok	SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$regex;\9;p"))
-#		SizePkgInFolders=($(sed -nE "s;$regex;\9;p" "$FOLDER_TEMP"))
-		mapfile -t SizePkgInFolders <<< "$(sed -nE "s/$regex/\9/p" "$FOLDER_TEMP")"
+#		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | grep -Po "$SED_RE" | awk '{print $5*1024}'))
+#		SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | grep -Po "$SED_RE" | awk '{print $5*1024}'))
+#		SizePkgInFolders=($(wget "$SITE/packages/$Folders/" -qO - | sed -nE "s;$SED_RE;\3;p"))
+#ok	SizePkgInFolders=($(curl --compressed --insecure --silent --url "$SITE/packages/$Folders/" | sed -nE "s;$SED_RE;\9;p"))
+		mapfile -t SizePkgInFolders <<< "$(sed -nE "s/$SED_RE/\9/p" "$FOLDER_TEMP")"
 
 		count=0
 		if [[ $Folders != "meta" ]]; then
 			for pkgInFolder in "${PackagesInFolders[@]}"; do
 				sh_splitpkg "$pkgInFolder"
-				pkg_size=$(kbytestobytes "${SizePkgInFolders[$count]}")
+#				pkg_size=$(kbytestobytes "${SizePkgInFolders[$count]}")
+				pkg_size=$(human_to_bytes "${SizePkgInFolders[$count]}")
 				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
 				((count++))
 			done
@@ -950,7 +952,7 @@ sh_updateChili()
 	popd &>/dev/null || return 1
 }
 
-sh_updateMazon()
+sh_updateOLD()
 {
 	local nfilesInReposit
 	local nfilesInstalled
@@ -959,6 +961,10 @@ sh_updateMazon()
 	local response
 	local Folders
 	local count
+	local dw=("$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
+             "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES"
+             "$CACHEDIR_SEARCH/$METAPACKAGES"
+            )
 
 	if (( LSELF )); then
 		sh_selfupdate "$@"
@@ -980,23 +986,23 @@ sh_updateMazon()
 	sh_backup
 
 	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
-	printf '' >| "$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
-	printf '' >| "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES"
-	printf '' >| "$CACHEDIR_SEARCH/$METAPACKAGES"
-	HTTP_SERVER="$(string_alltrim "$(curl --compressed -s -k --insecure --head -w '%{http_code}\n' --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}')" | cut -d/ -f1)"
+   for i in "${dw[@]}"; do
+      printf '' >| "$i"
+   done
+	HTTP_SERVER="$(string_alltrim "$(curl --compressed -s -k --head -w '%{http_code}\n' --url "${SITE}" | grep '^[Ss]erver' | awk '{print $2}')" | cut -d/ -f1)"
 
 	#debug "${HTTP_SERVER}"
 	#debug "$(string_len "${HTTP_SERVER}")"
 	log_msg "${pink}Updating folders from ${SITE}${reset}"
 	case ${HTTP_SERVER} in
 		Apache|nginx)
-			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
+			FoldersInRepo=$(curl --compressed -k -s --url "${SITE}/packages/"|grep -Po '>[[:alnum:]]*/'|sed 's/>//g;s/\///g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
 			;;
 		LiteSpeed|cloudflare)
-			FoldersInRepo=$(curl --compressed --insecure --silent --url "${SITE}/packages/"|grep -E -o 'packages\/[a-z]+'|sed 's/packages\///g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
+			FoldersInRepo=$(curl --compressed -k -s --url "${SITE}/packages/"|grep -Po 'packages\/[a-z]+'|sed 's/packages\///g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
 			;;
 		GitHub.com)
-			FoldersInRepo=$(curl --compressed --insecure --silent --url "$SITE/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
+			FoldersInRepo=$(curl --compressed -k -s --url "$SITE/packages/"|grep /packages/ |sed 's/<[^>]*>//g;s/ //g' | tee "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES")
 			;;
 	esac
 
@@ -1011,13 +1017,10 @@ sh_updateMazon()
 		case ${HTTP_SERVER} in
 			Apache|nginx)
 				if [[ $Folders != "meta" ]]; then
-#				   PackagesInFolders=($(grep -E -o '>'"$PKG_RE"'<' "$FOLDER_TEMP" | sed 's/>//g; s/<//g'))
-				   mapfile -t PackagesInFolders < <(grep -E -o '>'"$PKG_RE"'<' "$FOLDER_TEMP" | sed 's/>//g; s/<//g')
+				   mapfile -t PackagesInFolders < <(grep -Eo '>'"$PKG_RE"'<' "$FOLDER_TEMP" | sed 's/>//g; s/<//g')
 				else
-#					MetaPkgInFolders=($(grep -E '.meta\"' "$FOLDER_TEMP" | cut -d'"' -f2 ))
 					mapfile -t MetaPkgInFolders < <(grep -E '.meta\"' "$FOLDER_TEMP" | cut -d'"' -f2 )
 				fi
-#				SizePkgInFolders=($(grep -E "$GREP_RE $FOLDER_TEMP" | awk '{print $5}' ))
 				mapfile -t SizePkgInFolders < <(grep -E "$GREP_RE" "$FOLDER_TEMP" | awk '{print $5}' )
 				;;
 			LiteSpeed|GitHub.com|cloudflare)
@@ -1030,7 +1033,6 @@ sh_updateMazon()
 #					MetaPkgInFolders=$(cat "$FOLDER_TEMP" | sed 's/^.*href="//' | sed 's/".*$//' | sed 's/\// /g' | grep -E ".meta$" | awk '{print $NF}')
 					MetaPkgInFolders=$(sed 's/^.*href="//' "$FOLDER_TEMP" | sed 's/".*$//' | sed 's/\// /g' | grep -E ".meta$" | awk '{print $NF}')
 				fi
-#				SizePkgInFolders=($(grep -E "$GREP_RE $FOLDER_TEMP" | awk '{print $9}' | cut -d'"' -f2))
 				mapfile -t SizePkgInFolders < <(grep -E "$GREP_RE $FOLDER_TEMP" | awk '{print $9}' | cut -d'"' -f2)
 				;;
 		esac
@@ -1436,7 +1438,7 @@ sh_pre_remove()
 		log_failure_msg2 "Error, file not found: ${red}$CACHEDIR_LIST/$cExtList"
 		return $ERR_ERROR
 	fi
-	sh_subshell_status
+	fn_subshell_status
 }
 
 sh_pre_removeOLD()
@@ -1482,7 +1484,7 @@ sh_pre_removeOLD()
 
 	[[ $inc -gt 0 ]] && { log_failure_msg2 "NOT FOUND ${cPkgBaseVersion}"; return 1 ;}
 	)
-	sh_subshell_status
+	fn_subshell_status
 }
 
 sh_download()
@@ -2230,7 +2232,7 @@ sh_list_archives_directories()
 	done < "$CACHEDIR_LIST/$packname"
 }
 
-sh_subshell_status()
+fn_subshell_status()
 {
 	[[ "$?" -ne '0' ]] && return 1 || return 0
 }
@@ -2309,7 +2311,7 @@ sh_input_null_parameter()
 	return 0
 }
 
-sh_name_format_pkg()
+fn_name_format_pkg()
 {
 	local packname="$1"
 
@@ -2321,7 +2323,7 @@ sh_name_format_pkg()
 	return 0
 }
 
-_GENERATE_DESC()
+fn_generate_desc()
 {
 	local i
 	local DESC_PACKNAME=$1
@@ -2329,6 +2331,7 @@ _GENERATE_DESC()
 	local DESC_BUILD=$3
    local field_pkgver=$4
    local field_pkgrel=$5
+   local cdep
 	#DESC=$(echo "${DESC//\'}") 		# remove apostrofe. ex: let´s => lets
 	DESC=${DESC//\'} 						# remove apostrofe. ex: let´s => lets
 
@@ -2347,7 +2350,7 @@ _GENERATE_DESC()
 			fi
 		fi
 	fi
-	_CAT > "info/desc" << EOF
+	cat > "info/desc" << EOF
 ######################################################################
 # Generated with fetch    - https://chilinux.com
 # Generated with alienpkg - https://chilinux.com
@@ -2373,7 +2376,11 @@ EOF
 
 	for i in ${deps[*]}
 	do
-		echo depend="'$i'" >> $DESCME
+		cdep="${i%%=*}"
+		cdep="${cdep%%.so*}"
+		cdep="${cdep#lib}"
+#		echo depend="'$i'" >> $DESCME
+		echo depend="'$cdep'" >> $DESCME
 	done
 	return 0
 }
@@ -2425,7 +2432,7 @@ sh_doinstallpkg()
 	sh_manage_scripts_and_archives "${packname}" || return 1
 	sh_list_archives_directories "${name_version_build}"
 	)
-	sh_subshell_status
+	fn_subshell_status
 }
 
 # -Sl
@@ -2532,7 +2539,7 @@ _GPG_SIGN()
 	return 0
 }
 
-sh_verify_on()
+fn_verify_on()
 {
 	local package=$1
    local dir_info='info'
@@ -2554,7 +2561,7 @@ sh_verify_on()
 		source "$dir_info/$info_desc"
 
 		if [[ -z "$maintainer" ]]; then
-			log_failure_msg2 "Check ${pink}${info_desc}${end}, sh_VARIABLE ${blue}maintainer${end} null"
+			log_failure_msg2 "Check ${pink}${info_desc}${end}, VARIABLE ${blue}maintainer${end} null"
 			log_failure_msg2 "Enter the name of the package maintainer into variable maintainer."
 			#exit 1
 		elif [[ -z "$pkgname" ]]; then
@@ -2588,10 +2595,10 @@ sh_verify_on()
       	fi
    	fi
    done
-	sh_subshell_status
+	fn_subshell_status
 }
 
-sh_create_pkg()
+fn_create_pkg()
 {
 	local package=$1
 	local ext_desc='desc'
@@ -2612,30 +2619,21 @@ sh_create_pkg()
 	evaluate_retval
 }
 
-sh_generatepkg()
+fn_generatepkg()
 {
 	local param="$@"
-	local inc=0
 
 	if [[ ${#param} -eq 0 ]]; then # run standalone
 		LAUTO=$true
 		LLIST=$false
-		pkg="${PWD##*/}.${PKG_EXT}"
+		pkg="${PWD##*/}.$PKG_EXT"
 	else
-		for s in "${param[@]}"; do
-			pkg="$s"
-			continue
-		done
+		for s in "${param[@]}"; do	pkg="$s"; continue; done
 	fi
 
-	(( ncount++ ))
-	if (( verbose >= 1 )); then
-		log_msg "$(fmt) Generating info for package $pkg"
-	fi
-
-	if [[ ! -e "info/desc" ]]; then
-		LFORCE=$true
-	fi
+	((++ncount))
+	(( verbose >= 1 )) && log_msg "$(fmt) Generating info for package $pkg"
+	[[ ! -e "info/desc" ]] && LFORCE=$true
 
 	if (( LAUTO )) || (( LFORCE )); then
 		if [[ -z "$DESC_PACKNAME" ]]; then
@@ -2654,55 +2652,45 @@ sh_generatepkg()
 	   fi
 	   [[ -z "$field_build" ]] && field_build="$DESC_BUILD"
 		[[ -z "$DESC"        ]] && DESC="$field_pkgname-$field_version"
-		_GENERATE_DESC "$field_pkgname" "$field_version" "$field_build" "${field_pkgver::-2}" "$field_pkgrel" || return $ERR_ERROR
+		fn_generate_desc "$field_pkgname" "$field_version" "$field_build" "${field_pkgver::-2}" "$field_pkgrel" || return $ERR_ERROR
 	fi
-	return $true
+	return $ERR_OK
 }
 
-sh_createpkg()
+fn_createpkg()
 {
    local param="$@"
 	local s
 	local pkg=()
 
-	for s in "${param[@]}"; do
-      pkg="$s"
-	done
+	for s in "${param[@]}"; do pkg="$s"; done
+	[[ -z "$pkg" ]] 		&& pkg=$(echo "$PWD" |sed 's/\// /g'|awk '{print $NF}')
+	(( verbose >= 1 )) 	&& log_msg "$(fmt) Building package $pkg"
 
-	if [[ -z "$pkg" ]] ; then
-		pkg=$(echo "$PWD" |sed 's/\// /g'|awk '{print $NF}')
-	fi
-
-	if (( verbose >= 1 )); then
-		log_msg "$(fmt) Building package $pkg"
-	fi
-
-	pkg="$pkg.${PKG_EXT}"
-	sh_generatepkg "$pkg"
-   sh_name_format_pkg "$pkg" || exit 1
-   sh_verify_on "$pkg" || exit 1
-	sh_create_pkg "$pkg" || exit 1
-	(( ncount++ ))
-	if (( verbose >= 1 )); then
-		log_msg "$(fmt) Generating package ${yellow}$pkg"
-	fi
+	pkg="$pkg.$PKG_EXT"
+	fn_generatepkg "$pkg"
+   fn_name_format_pkg "$pkg" || exit 1
+   fn_verify_on "$pkg" || exit 1
+	fn_create_pkg "$pkg" || exit 1
+	((++ncount))
+	(( verbose >= 1 )) && log_msg "$(fmt) Generating package ${yellow}$pkg"
 }
 
 # -Sa
-sh_alienpkg_main()
+fn_alienpkg_main()
 {
-	sh_alienpkg_initvars "$*"
-	sh_alienpkg_exec "$*"
+	fn_alienpkg_initvars "$*"
+	fn_alienpkg_exec "$*"
 }
 
-sh_alienpkg_initvars()
+fn_alienpkg_initvars()
 {
 	BUILDDIR="${PKGCORE:=${CACHEDIR}/archives}"
-	[[ -n ${BUILDDIR} ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
-	[[ -d ${BUILDDIR} ]] || mkdir -p "${BUILDDIR}" &> /dev/null
+	[[ -n "${BUILDDIR}" ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
+	[[ -d "${BUILDDIR}" ]] || mkdir -p "${BUILDDIR}" &> /dev/null
 }
 
-sh_alienpkg_exec()
+fn_alienpkg_exec()
 {
 	local param="$@"
 	local pkg
@@ -2712,150 +2700,133 @@ sh_alienpkg_exec()
 	local ntotalpkg=0
 	local ntotalfindpkgs=0
 	local ncount=0
-	local arraypkg=
+	local arraypkg
 	local npackagesprocessed=0
+	local firstletter
+	local FilteredPackage
+	local destpkgGIT
+	local destpkgCORE
 	export deps
 
-	if [[ -z "${param}" ]]; then
+	if [[ -z "$param" ]]; then
 		LALL=$true
-	fi
-
-  	for s in "${param[@]}"; do
-		string+="$s "
-	done
+	else
+		LALL=$false
+  		for s in "${param[@]}"; do	string+="$s";	done
+  	fi
 
 	if (( LALL )); then
 		if ! (( LTIME )); then
-#			pkg=$(echo $ALIEN_CACHE_DIR/*.{zst,xz})
-			pkg=$(find $ALIEN_CACHE_DIR/ -regextype posix-egrep -regex "$RE_ALIEN" -type f) ## mais rápido
+			mapfile -t pkg < <(find "$ALIEN_CACHE_DIR/" -regextype posix-egrep -regex "$RE_ALIEN" -type f)
 		else
-			pkg=$(find $ALIEN_CACHE_DIR/ -regextype posix-egrep -regex "$RE_ALIEN" -type f -mtime "$mtime")
+			mapfile -t pkg < <(find "$ALIEN_CACHE_DIR/" -regextype posix-egrep -regex "$RE_ALIEN" -type f -mtime "$mtime")
 		fi
 	else
-  		for str in "${string[@]}"; do
+  		for str in $string; do
 			if ! (( LTIME )); then
-				pkg+="$(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f) "
+				pkg+=($(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f))
 			else
-				pkg+="$(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f -mtime "$mtime") "
+				pkg+=($(find $ALIEN_CACHE_DIR/ -iname "*$str*" -regextype posix-egrep -regex "$RE_ALIEN" -type f -mtime "$mtime"))
 			fi
 		done
 	fi
 
-	arraypkg=("$pkg")
-	ntotalpkg=${#arraypkg[*]}
+#	arraypkg=("$pkg")
+#	ntotalpkg=${#arraypkg[*]}
+	ntotalpkg=${#pkg[*]}
 	ntotalfindpkgs=$ntotalpkg
 	LFORCELOCAL=$LFORCE
 
 	if (( ntotalpkg )); then # package found?
-		for package in $pkg
+#		for package in $pkg
+		for package in ${pkg[*]}
 		do
 			ncount=0
 			pkgtar=${package##*/}                #remove diretorio deixando somente nome do pacote
-			pkgtar=${pkgtar%%.pkg.tar.zst}       #remove .ext
-			pkgtar=${pkgtar%%.pkg.tar.xz}        #remove .ext
+			pkgtar=${pkgtar%%.pkg.tar.zst}       #remove .tar.zst ext
+			pkgtar=${pkgtar%%.pkg.tar.xz}        #remove .tar.xz ext
+			! (( CHILI_OS )) && pkgtar=${pkgtar%%-any}
+			! (( CHILI_OS )) && pkgtar=${pkgtar%%-x86_64}
 			cPacoteSemExt=${pkgtar%%.*}          # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
 			cPacoteSemExt=${cPacoteSemExt%-*}    # https://elmord.org/blog/?entry=20121227-manipulando-strings-bash
 
 			if ! (( LFORCELOCAL )); then
-				local firstletter=${pkgtar::1}
-				local FilteredPackage=$pkgtar.$PKG_EXT
-				local destpkgGIT="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
-				local destpkgCORE="${GITDIR}/packages/core/${FilteredPackage}"
+				firstletter=${pkgtar::1}
+				FilteredPackage=$pkgtar.$PKG_EXT
+				destpkgGIT="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
+				destpkgCORE="${GITDIR}/packages/core/${FilteredPackage}"
 
-				if [[ -e ${destpkgGIT} || -e ${destpkgCORE} ]]; then
-					if (( verbose >= 2 )); then
-						log_failure_msg2 "$(fmt) ${orange}${FilteredPackage} ${reset}Package already exist in ${green}${GITDIR}/packages/${firstletter/}${reset} Use the -f option to force rebuild."
-					fi
-					(( ntotalpkg-- ))
+				if [[ -e "$destpkgGIT" || -e "$destpkgCORE" ]]; then
+					(( verbose >= 2 )) && log_failure_msg2 "$(fmt) ${orange}$FilteredPackage ${reset}Package already exist in ${green}$GITDIR/packages/$firstletter/${reset} Use the -f option to force rebuild."
+					(( --ntotalpkg ))
 					continue
 				fi
 			fi
 
 			destdir="$BUILDDIR/$pkgtar"
-			((ncount++))
-			if (( verbose >= 1 )); then
-				log_msg "$(fmt) Creating directory $destdir"
-			fi
+			(( ++ncount ))
+			(( verbose >= 1 )) && log_msg "$(fmt) Creating directory $destdir"
 			mkdir -p "$destdir" 2>&-
 
-			((ncount++))
-			if (( verbose >= 1 )); then
-				log_msg "$(fmt) Unpacking package $package at $destdir"
-			fi
+			(( ++ncount ))
+			(( verbose >= 1 )) && log_msg "$(fmt) Unpacking package $package at $destdir"
 			tar --use-compress-program=zstd --force-local --extract --file "$package" -C "$destdir" >/dev/null 2>&1
 
 			case $package in
-				luit-[0-9]* ) sed -i -e "/D_XOPEN/s/5/6/" configure ;;
+				luit-[0-9]* ) sed -i -e "/D_XOPEN/s/5/6/" configure;;
 			esac
 
 			sed -i 's/ = /="/g' "$destdir/.PKGINFO"  >/dev/null 2>&1
-			sed -i 's/$/"/g' "$destdir/.PKGINFO"  >/dev/null 2>&1
+			sed -i 's/$/"/g'    "$destdir/.PKGINFO"  >/dev/null 2>&1
 			source "$destdir/.PKGINFO"
 
-			export    ALIEN_DESC_BUILD="${pkgtar: -1}"
 			export          DESC_BUILD="${pkgtar: -1}"
-			export           ALIEN_URL="$url"
 			export                 URL="$url"
-			export       ALIEN_LICENSE="$license"
 			export             LICENSE="$license"
-			export          ALIEN_ARCH="$arch"
 			export                ARCH="$arch"
-			export          ALIEN_SIZE="$size"
 			export                SIZE="$size"
-			export          ALIEN_DESC="$pkgdesc"
 			export                DESC="$pkgdesc"
-			export           ALIEN_DEP="$depend"
 			export                 DEP="$depend"
-			export ALIEN_DESC_PACKNAME="$pkgname"
 			export       DESC_PACKNAME="$pkgname"
-			export 	ALIEN_DESC_VERSION="$pkgver"
 			export        DESC_VERSION="$pkgver"
-			export    ALIEN_DESC_BUILD="${pkgver: -1}"
 			export          DESC_BUILD="${pkgver: -1}"
 
 			deps=$(grep ^depend "$destdir"/.PKGINFO | awk -F'"' '{print $2}')
 			pushd "$destdir" >/dev/null 2>&1 || return 1
-			rm -f "$destdir"/.BUILDINFO "$destdir"/.MTREE "$destdir"/.PKGINFO   >/dev/null 2>&1
+			rm -f "$destdir"/.BUILDINFO "$destdir"/.MTREE "$destdir"/.PKGINFO >/dev/null 2>&1
 
-			((ncount++))
-			sh_createpkg "${pkgtar}"
-
-			if (( verbose >= 1 )); then
-				echo
-			fi
-			(( ntotalpkg-- ))
-			(( npackagesprocessed++ ))
+			(( ++ncount ))
+			fn_createpkg "$pkgtar"
+			(( verbose >= 1 )) && echo
+			(( --ntotalpkg ))
+			(( ++npackagesprocessed ))
 		done
 
-		if (( verbose >= 1 )); then
-			log_msg "Total alien packages found     : $ntotalfindpkgs"
-			log_msg "Total alien packages processed : $npackagesprocessed  ${green}Use the --force option to force rebuild."
-		fi
+		(( verbose >= 1 )) && log_msg "Total alien packages found     : $ntotalfindpkgs"
+		(( verbose >= 1 )) && log_msg "Total alien packages processed : $npackagesprocessed  ${green}Use the --force option to force rebuild."
 
 		if ! (( LKEEP )); then
-			((ncount++))
-			if (( verbose >= 1 )); then
-				log_msg "Verifying candidate packages files for pruning"
-			fi
+			(( ++ncount ))
+			(( verbose >= 1 )) && log_msg "Verifying candidate packages files for pruning"
 			#removeoldpkgchili $cPacoteSemExt
 #			fetchpack -q -c "$GITDIR/packages/" -m /tmp/ "$cPacoteSemExt"
 		fi
 	else
-		log_failure_msg "${red}error: ${orange}${x} ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
+		log_failure_msg "${red}error: ${orange}$x ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
 	fi
 	unset size ncount ntotalpkg
 	popd >/dev/null 2>&1 || return 1
 }
 
-sh_alienpkg_pkgsize()
+fn_alienpkg_pkgsize()
 {
 	size="$(du -sk --apparent-size)"
 	size="$(( ${size%%[^0-9]*} * 1024 ))"
 }
 
-sh_alienpkg_logo()
+fn_alienpkg_logo()
 {
-	_CAT << 'EOF'
+	cat << 'EOF'
        _ _                  _
   __ _| (_) ___ _ __  _ __ | | ____ _
  / _` | | |/ _ \ '_ \| '_ \| |/ / _` |
@@ -2864,21 +2835,6 @@ sh_alienpkg_logo()
                      |_|        |___/
 EOF
 	sh_version
-}
-
-sh_aliencheck()
-{
-	allfiles=$(ls -1 *.zst)
-
-	for pkg in $allfiles
-	do
-		firstletter=${pkg::1}
-		FilteredPackage=$(echo "$pkg" | sed 's/\(.*\)-/\1*/'|cut -d* -f1).chi.zst
-		destpkg="${GITDIR}/packages/${firstletter}/${FilteredPackage}"
-		if [[ -e "$destpkg" ]]; then
-			echo "file exist: ${destpkg}"
-		fi
-	done
 }
 
 sh_upgrade()
@@ -3020,7 +2976,7 @@ sh_backup()
 #figlet
 logo()
 {
-	_CAT << 'EOF'
+	cat << 'EOF'
   __      _       _
  / _| ___| |_ ___| |__     Copyright (c) 2019-2022 Vilmar Catafesta <vcatafesta@gmail.com>
 | |_ / _ \ __/ __| '_ \    Copyright (c) 2019-2022 Chili GNU/Linux Development Team <root@chililinux.com>
@@ -3143,13 +3099,13 @@ init()
 		case "${1}" in
 			-Si|-S|install)								shift;LSEARCHONLY=$false;sh_install "$@";return;;
 			-Sl|local)  									shift;sh_initinstallpkg "$@";exit;;
-			-Sa|alienpkg)	  		   					shift;sh_alienpkg_main "$@";return;;
+			-Sa|alienpkg)	  		   					shift;fn_alienpkg_main "$@";return;;
 			-Sc|clean)  									shift;sh_clean "$@";exit;;
-			-Sg|-g|generate)							   shift;sh_generatepkg "$@";exit;;
+			-Sg|-g|generate)							   shift;fn_generatepkg "$@";exit;;
 			-Ss|search)	     								shift;sh_search "$@";exit;;
 			-Sy|update)										shift;sh_updaterepo "$@";exit;;
 			-Syy|refresh)									shift;sh_update "$@";exit;;
-			-c|-C|create)					   			shift;sh_createpkg "$@";exit;;
+			-c|-C|create)					   			shift;fn_createpkg "$@";exit;;
 			-Sm|--meta|meta) 		            		shift;sh_installmeta "$@";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;

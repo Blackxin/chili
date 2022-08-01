@@ -33,6 +33,7 @@
 #########################################################################
 IFS=$' \t\n'
 SAVEIFS=$IFS
+# echo "$IFS" | od -h
 
 declare -i ERR_ERROR=1
 declare -i ERR_OK=0
@@ -550,9 +551,15 @@ function kbytestobytes()
 	declare -i len=$((${#str}))
 	declare -i bytes=0
 	lastletter=${str:0-1}
-	if [[ $lastletter == 'k' ]]; then
+	if [[ $lastletter == 'k' || $lastletter == 'K' ]]; then
 		bytes=${str:0:$len-1}
 		bytes=$(($bytes * 1024))
+	elif [[ $lastletter == 'm' || $lastletter == 'M' ]]; then
+		bytes=${str:0:$len-1}
+		bytes=$(($bytes * 1024 * 1024))
+	elif [[ $lastletter == 'g' || $lastletter == 'G' ]]; then
+		bytes=${str:0:$len-1}
+		bytes=$(($bytes * 1024 * 1024 * 1024))
 	else
 		bytes=$1
 	fi
@@ -875,6 +882,13 @@ function _CAT()
             echo -E "$REPLY"
         done
     done
+}
+
+function dog()
+{
+	if [ $# -ge 1 ]; then
+		echo "$(<$1)"
+	fi
 }
 
 function _cat_()
@@ -1208,7 +1222,94 @@ which2()
 	#chown -v root:root /usr/bin/which
 }
 
-function human_to_size()
+human_print()
+{
+	while read B dummy; do
+	  [ $B -lt 1024 ] && echo ${B} bytes && break
+	  KB=$(((B+512)/1024))
+	  [ $KB -lt 1024 ] && echo ${KB} kilobytes && break
+	  MB=$(((KB+512)/1024))
+	  [ $MB -lt 1024 ] && echo ${MB} megabytes && break
+	  GB=$(((MB+512)/1024))
+	  [ $GB -lt 1024 ] && echo ${GB} gigabytes && break
+	  echo $(((GB+512)/1024)) terabytes
+	done
+}
+
+#find_char_glob_expr m "mensalao"
+#retorno: posicao ou 0 se não encontrado
+#echo $?
+find_char_glob_expr()
+{
+   local char="$1"
+   local str=("${@:2}")
+#  eval expr match "$str" '.*f.*'
+#  eval expr "$str" : '.*f.*'
+
+   for i in ${str[*]}; do
+      eval expr index $i $char
+   done
+}
+
+#find_char_glob_expansao m "mensalao"
+#retorno: $?
+#echo $?
+find_char_glob_expansao()
+{
+   local char="$1"
+   local str=$2
+   [[ $str == *"$char"* ]]
+}
+
+find_char()
+{
+	local char="$1"
+   local str="$2"
+   local len=$((${#str}))
+	local size=${#str}
+	local i
+
+	for ((i=0; i<$size; i++)); do
+		if [[ "${str:$i:1}" == \. ]] ; then
+			echo $i
+			return 0
+		fi
+	done
+	return 1
+}
+
+#human_to_bytes "1K"
+#human_to_bytes "1M"
+#human_to_bytes "1G"
+#human_to_bytes "1.5M"
+#human_to_bytes "1.5K"
+human_to_bytes()
+{
+   local size="$1"
+   local lastletter=${size:0-1}
+	local count=0
+
+	case ${lastletter^^} in
+	  	B) count=0;;
+	  	K) count=1;;
+	  	M) count=2;;
+	  	G) count=3;;
+	  	T) count=4;;
+	esac
+
+	awk -v count=$count -v size=$size '
+   BEGIN {
+     while (count >= 1) {
+         size *= 1024
+         count--
+      }
+      sizestr = sprintf("%d", size)
+      sub(/\.?0+$/, "", sizestr)
+      printf("%s\n", sizestr)
+   }'
+}
+
+human_to_size()
 {
 	awk -v size="$1" '
 	BEGIN {
@@ -1232,7 +1333,7 @@ function human_to_size()
 	}'
 }
 
-function size_to_human()
+size_to_human()
 {
 	awk -v size="$1" '
 	BEGIN {

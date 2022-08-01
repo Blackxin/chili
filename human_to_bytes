@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
+
+find_char()
+{
+	local char="$1"
+   local str="$2"
+   local len=$((${#str}))
+	local size=${#str}
+	local i
+
+	for ((i=0; i<$size; i++)); do
+		if [[ "${str:$i:1}" == \. ]] ; then
+			echo $i
+			return 0
+		fi
+	done
+	return 1
+}
+
+human_to_bytes()
+{
+   local size="$1"
+   local lastletter=${size:0-1}
+	local count=1
+
+	case $lastletter in
+	  	b|B) count=0;;
+	  	k|K) count=1;;
+	  	m|M) count=2;;
+	  	g|G) count=3;;
+	  	t|T) count=4;;
+	esac
+
+	awk -v count=$count -v size=$size '
+   BEGIN {
+     while (count >= 1) {
+         size *= 1024
+         count--
+      }
+      sizestr = sprintf("%d", size)
+      sub(/\.?0+$/, "", sizestr)
+      printf("%s\n", sizestr)
+   }'
+}
+
+human_to_bytes "1K"
+human_to_bytes "1M"
+human_to_bytes "1G"
+human_to_bytes "1.5M"
+human_to_bytes "1.5K"

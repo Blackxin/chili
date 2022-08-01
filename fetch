@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
+
+#export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
+#set -e
 
 # 	fetch - search, install, create, remove, upgrade packages compatible with:
 # 	Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
@@ -8,7 +11,7 @@
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/07/31
+# 	Altered: 2022/08/01
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -32,44 +35,47 @@
 #   	gettext, gpg, grep, gzip, sed, tput (ncurses), xz
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
-# debug
-#declare -A cores=( [bla]=0 [red]=1 [gre]=2 [yel]=3 [blu]=4 [mag]=5 [cya]=6 [whi]=7 )
-#fg=${cores[bla]}
-#bg=${cores[red]}
-#export PS4=$'+\t${0##*/}[$LINENO] '
-#set -x
-#set -Eeuo pipefail
-#trap 'echo "${BASH_SOURCE}:${LINENO}:${FUNCNAME:-}"' ERR
+readonly _VERSION_="3.30.20220801"
 
-# var bool
-declare -i ERR_ERROR=1
-declare -i ERR_OK=0
-declare -i true=1
-declare -i false=0
-declare -i LINSTALLED=2
+fn_debug()
+{
+	# debug
+	#declare -A cores=( [bla]=0 [red]=1 [gre]=2 [yel]=3 [blu]=4 [mag]=5 [cya]=6 [whi]=7 )
+	#fg=${cores[bla]}
+	#bg=${cores[red]}
+	#export PS4=$'+\t${0##*/}[$LINENO] '
+	#set -x
+	#set -Eeuo pipefail
+	#trap 'echo "${BASH_SOURCE}:${LINENO}:${FUNCNAME:-}"' ERR
 
-# Import lib
-LIBRARY=${LIBRARY:-'/usr/share/fetch'}
-SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
-source "${LIBRARY}/core.sh"
+	setvarcolors
+	export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+	#set -x
+	#set -e
+	# end debug
 
-# debug
-setvarcolors
-export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
-#set -x
-#set -e
-# end debug
-
-#set -a 						# Enable allexport using single letter syntax
-#set -o allexport 		# Enable using full option name syntax
-#set +a 						# Disable allexport using single letter syntax
-#set +o allexport 		# Enable using full option name syntax
+	#set -a 						# Enable allexport using single letter syntax
+	#set -o allexport 		# Enable using full option name syntax
+	#set +a 						# Disable allexport using single letter syntax
+	#set +o allexport 		# Enable using full option name syntax
+}
 
 configure()
 {
+	# Import lib
+	LIBRARY=${LIBRARY:-'/usr/share/fetch'}
+	SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
+	source "${LIBRARY}/core.sh"
+
+	# var bool
+	declare -i ERR_ERROR=1
+	declare -i ERR_OK=0
+	declare -i true=1
+	declare -i false=0
+	declare -i LINSTALLED=2
+
 	export LC_ALL=C
 	export LANG=C
-	readonly _VERSION_="3.24.20220731"
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee lynx numfmt)
 	unset CDPATH
 	unset GREP_OPTIONS
@@ -917,17 +923,19 @@ sh_update()
 		count=0
 		if [[ $Folders != "meta" ]]; then
 			for pkgInFolder in "${PackagesInFolders[@]}"; do
-				sh_splitpkg "$pkgInFolder"
-#				pkg_size=$(kbytestobytes "${SizePkgInFolders[$count]}")
-				pkg_size=$(human_to_bytes "${SizePkgInFolders[$count]}")
-				echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
-				((count++))
+				if [[ -n "$pkgInFolder" ]]; then
+					sh_splitpkg "$pkgInFolder"
+	#				pkg_size=$(kbytestobytes "${SizePkgInFolders[$count]}")
+					pkg_size=$(human_to_bytes "${SizePkgInFolders[$count]}")
+					echo "${aPKGSPLIT[$PKG_BASE]}$SEP${aPKGSPLIT[$PKG_VERSION]}$SEP${aPKGSPLIT[$PKG_BUILD]}$SEP${aPKGSPLIT[$PKG_FULLNAME]}$SEP${Folders}/${pkgInFolder}$SEP${aPKGSPLIT[$PKG_BASE_VERSION]}$SEP${pkg_size}" >> $CACHEDIR_SEARCH/$PACKAGES_SPLIT
+					(( ++count ))
+				fi
 			done
 		else
 			for MetaInFolder in "${MetaPkgInFolders[@]}"; do
 				echo "${Folders}/${MetaInFolder}" >> "$FOLDERS_METAPACKAGES"
 				echo "${MetaInFolder}"            >> "$METAPACKAGES"
-				((count++))
+				(( ++count ))
 			done
 		fi
 		cstrvalue=$(strzero "$count" 5)
@@ -936,7 +944,7 @@ sh_update()
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
 	#sh_recreatefilepackagesinstalled
-	sh_pkgincache
+	fn_pkgincache
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -1058,7 +1066,7 @@ sh_updateOLD()
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
 	#sh_recreatefilepackagesinstalled
-	sh_pkgincache
+	fn_pkgincache
 	sh_cleaning
 	unset FOLDER_TEMP
 
@@ -1104,7 +1112,7 @@ sh_filesincache()
 }
 
 # -Lc/-Pi
-sh_pkgincache()
+fn_pkgincache()
 {
 	local lfind=$false
 	local nfilesoutcache=0
@@ -2946,23 +2954,6 @@ sh_cleaning()
 	rm -rf "${TMP_DIR_ROOT:?}"/ &> /dev/null
 }
 
-cleanup()
-{
-	echo
- 	echo "Interrupt signal received"
-	log_msg "${pink}Cleaning...${reset}"
-	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ &> /dev/null
-	rm -rf "${TMP_ROOT_BACKUP}"/ &> /dev/null
-	rm -f "/tmp/ARRAYPKGFULL"
-	kill -TERM -$$
-	exit
-}
-#trap "" 2 			# disable Ctlr+C
-#trap    2  	 		# enable Ctlr+C
-set -m
-trap - INT
-trap 'cleanup' 2 	# SIGINT SIGTERM SIGTSTP
-
 sh_backup()
 {
 	if (( verbose >= 2 )); then
@@ -2971,6 +2962,12 @@ sh_backup()
 	mkdir -p "$TMP_DIR_BACKUP"/ &> /dev/null
 	mkdir -p "$TMP_DIR_FOLDERS"/ &> /dev/null
 	cp -f "$CACHEDIR_SEARCH"/* "$TMP_DIR_BACKUP"/ &> /dev/null
+}
+
+sh_version()
+{
+   orange=$(tput setaf 166);
+	printf "${orange}${0##*/} v${_VERSION_}\n"
 }
 
 #figlet
@@ -2989,6 +2986,13 @@ EOF
 
 usage()
 {
+	tput sgr0; # reset colors
+	bold=$(tput bold);
+	reset=$(tput sgr0);
+	red=$(tput setaf 124);
+	yellow=$(tput setaf 136);
+	pink=$(tput setaf 129);
+
 	cat <<EOF
 ${cyan}Most used commands:
 ${red}  -h,  help           ${reset}- display this help and exit
@@ -3113,8 +3117,8 @@ init()
 			-Qq|total)									   shift;sh_totalpackagesinstalled;exit;;
 			-L|list)    	 								shift;sh_list "$@";exit;;
 			-La|avaiable) 									shift;sh_list "$@";exit;;
-			-Lc|list-cache) 	        					shift;LLIST=$true;sh_pkgincache "$@";exit;;
-			-Pi|in-cache) 	        						shift;LLIST=$true;sh_pkgincache "$@";exit;;
+			-Lc|list-cache) 	        					shift;LLIST=$true;fn_pkgincache "$@";exit;;
+			-Pi|in-cache) 	        						shift;LLIST=$true;fn_pkgincache "$@";exit;;
 			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
 			-Po|out-cache)	            				shift;LLIST=$true;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;
@@ -3149,23 +3153,28 @@ parsestdin()
 	#done < <(cat "$@")
 }
 
+[[ -z "${1-}" ]] && die "no operation specified (use -h for help)"
+[[ "$@" = @(-H|-h|help|-help|--help) ]] && usage
+[[ "$@" = @(-V|-v|version|-version|--version) ]] && logo; exit $(( $# ? 0 : 1 ))
+cleanup()
+{
+	echo
+ 	echo "Interrupt signal received"
+	log_msg "${pink}Cleaning...${reset}"
+	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ &> /dev/null
+	rm -rf "${TMP_ROOT_BACKUP}"/ &> /dev/null
+	rm -f "/tmp/ARRAYPKGFULL"
+	kill -TERM -$$
+	exit
+}
+#trap "" 2 				# disable Ctlr+C
+#trap    2  	 		# enable Ctlr+C
+set -m
+trap - INT
+trap 'cleanup' 2 	# SIGINT SIGTERM SIGTSTP
+
 configure
 checkDependencies
-
-if [[ -z "${1-}" ]]; then
-	die "no operation specified (use -h for help)"
-fi
-
-if [[ -z $1 || $1 = @(-h|--help) || $1 = "-h" || $1 = "--help" || $1 = "help" || $1 = "-help" ]]; then
-	usage
-	exit $(( $# ? 0 : 1 ))
-fi
-
-if [[ -z $1 || $1 = @(-v|--version) || $1 = "-v" || $1 = "--version" || $1 = "version" || $1 = "-version" ]]; then
-	logo
-	exit $(( $# ? 0 : 1 ))
-fi
-
 sh_checkroot "$@"
 sh_checkdir
 sh_arraypkgfull

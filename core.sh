@@ -1289,8 +1289,10 @@ human_to_bytes()
    local lastletter=${size:0-1}
 	local count=0
 
+#:<<'comment'
 	LC_ALL=C numfmt --from=iec "$1"
 	return $?
+#comment
 
 	case ${lastletter^^} in
 	  	B) count=0;;

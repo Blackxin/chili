@@ -57,7 +57,7 @@ inserindo_dados()
 	unset DE_NOVO
 	DE_NOVO=$(yad --title="Prosseguir?" \
 					--center \
-					--button="Sim"!gtk-ok \
+					--button="Sim"!yad-ok \
 					--button="Não"!gtk-cancel \
 					--text="Deseja <b>adicionar</b> outra entrada?" \
 					--image=gtk-execute)
@@ -93,7 +93,7 @@ procurando_dados()
    			--text="Abaixo seguem os resultados encontrados" \
 			--width=500 \
 			--height=650 \
-   			--button=gtk-ok:0 \
+   			--button=yad-ok:0 \
 			--button=gtk-print:300 \
 			--filename=result.inf
 
@@ -109,7 +109,7 @@ procurando_dados()
 		fi
 
 		unset DE_NOVO
-		DE_NOVO=`yad --center --title="Prosseguir?" --button="Sim"!gtk-ok --button="Não"!gtk-cancel --text="Deseja <b>procurar</b> outra entrada?" --image=gtk-execute`
+		DE_NOVO=`yad --center --title="Prosseguir?" --button="Sim"!yad-ok --button="Não"!gtk-cancel --text="Deseja <b>procurar</b> outra entrada?" --image=gtk-execute`
 		if [ "$?" = 0 ]; then
 			procurando_dados
 		elif [ "$?" = 1 ]; then
@@ -126,8 +126,8 @@ tela_inicio()
 		--center \
 		--width=700 \
 		--height=220 \
-		--button=gtk-close:0 \
-		--button=gtk-ok:1 \
+		--button=yad-ok:1 	\
+		--button=yad-close:0 \
 		--no-headers \
 		--dialo-sep \
 		--image=gtk-dialog-question \
@@ -160,7 +160,7 @@ sobre_about()
 		--text-align=center \
 		--image=gtk-about \
 		--text="<b>$app</b>\n \n Este é um script desenvolvido em linguagem de <b> Shell Script</b> por <b><i>Daniel Carvalho</i></b> para fins de estudo e hobbie. É gratuito e <i>open source</i>. Pode e deve ser mexido e remexido por qualquer pessoa que queria contribuir com sua melhoria.\n \n Por favor, visite 'http://https://github.com/dacarpe/' para mais informações sobre como contribuir com o código." \
-		--button=gtk-ok:0 \
+		--button=yad-ok:0 \
 		--buttons-layout=center
 	tela_inicio
 }
@@ -171,7 +171,7 @@ yad --undecorated 		\
 	--image-on-top 		\
 	--image=logo60.png 	\
 	--text-align=center \
-	--text="<b>$app</b>\n \n<b><big><big>$app</big></big></b>" \
+	--text="<b>Iniciando $app</b>\n \n<b><big><big>$app</big></big></b>" \
 	--timeout=1 		\
 	--no-buttons 		\
 	--on-top

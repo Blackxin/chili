@@ -3154,8 +3154,9 @@ parsestdin()
 }
 
 [[ -z "${1-}" ]] && die "no operation specified (use -h for help)"
-[[ "$@" = @(-H|-h|help|-help|--help) ]] && usage
-[[ "$@" = @(-V|-v|version|-version|--version) ]] && logo; exit $(( $# ? 0 : 1 ))
+[[ "$1" = @(-H|-h|help|-help|--help) ]] && { usage; exit $(( $# ? 0 : 1 ));}
+[[ "$1" = @(-V|-v|version|-version|--version) ]] && { logo; exit $(( $# ? 0 : 1 ));}
+
 cleanup()
 {
 	echo

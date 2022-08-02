@@ -109,6 +109,7 @@ sh_datetime(){ date +"%d/%m/%Y %T"; }
 sh_time(){ date +"%T"; }
 sh_date(){ date +"%d/%m/%Y"; }
 sh_filesize(){ stat -c %s "$1"; }
+sh_linecount_wc(){ wc -l < "$1";}
 sh_linecount(){ awk 'END {print NR}' "$1"; }
 alltrim(){ echo "${1// /}"; } # remover todos espacos da string
 len(){ echo "${#1}"; }
@@ -1287,22 +1288,23 @@ human_to_bytes()
 {
    local size="$1"
    local lastletter=${size:0-1}
-	local count=0
+   local count=0
+   local upper=${lastletter^^}
 
-#:<<'comment'
-	LC_ALL=C numfmt --from=iec "$1"
-	return $?
-#comment
+   size=${size/$lastletter/$upper}
 
-	case ${lastletter^^} in
-	  	B) count=0;;
-	  	K) count=1;;
-	  	M) count=2;;
-	  	G) count=3;;
-	  	T) count=4;;
-	esac
+  LC_ALL=C numfmt --from=iec "$size"
+  return $?
 
-	awk -v count=$count -v size=$size '
+   case $upper in
+      B) count=0;;
+      K) count=1;;
+      M) count=2;;
+      G) count=3;;
+      T) count=4;;
+   esac
+
+   awk -v count=$count -v size=$size '
    BEGIN {
      while (count >= 1) {
          size *= 1024
@@ -1722,20 +1724,20 @@ function DOT()
 
 function sh_adel()
 {
-	#removendo duplicados e ordenando
-	local arr=${1}
-	local item
+   local arr=("${@:1}")
+   local item
+   local nfiles=${#arr[*]}
 
-	> /tmp/.array >/dev/null 2>&1
-	for item in ${arr[*]}
-	do
-		echo $item >> /tmp/.array    #imprime o conteudo da matriz
-	done
-	unset arr
-	unset deps
-	deps=$(uniq --ignore-case <<< $(sort /tmp/.array))
-	[[ -e /tmp/.array ]] && rm /tmp/.array >/dev/null 2>&1
-	return $?
+   if (( nfiles )); then
+      for item in ${arr[*]}
+      do
+         echo $item >> /tmp/.array    #imprime o conteudo da matriz
+      done
+      deps=($(uniq --ignore-case <<< $(sort /tmp/.array)))
+      rm /tmp/.array >/dev/null 2>&1
+      return 0
+   fi
+   return 1
 }
 
 function print()

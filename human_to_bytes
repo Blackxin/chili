@@ -2,38 +2,26 @@
 export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 
-find_char()
-{
-	local char="$1"
-   local str="$2"
-   local len=$((${#str}))
-	local size=${#str}
-	local i
-
-	for ((i=0; i<$size; i++)); do
-		if [[ "${str:$i:1}" == \. ]] ; then
-			echo $i
-			return 0
-		fi
-	done
-	return 1
-}
-
 human_to_bytes()
 {
    local size="$1"
    local lastletter=${size:0-1}
-	local count=1
+   local count=0
+	local upper=${lastletter^^}
 
-	case $lastletter in
-	  	b|B) count=0;;
-	  	k|K) count=1;;
-	  	m|M) count=2;;
-	  	g|G) count=3;;
-	  	t|T) count=4;;
-	esac
+	size=${size/$lastletter/$upper}
+   LC_ALL=C numfmt --from=iec "$size"
+   return $?
 
-	awk -v count=$count -v size=$size '
+   case $upper in
+      B) count=0;;
+      K) count=1;;
+      M) count=2;;
+      G) count=3;;
+      T) count=4;;
+   esac
+
+   awk -v count=$count -v size=$size '
    BEGIN {
      while (count >= 1) {
          size *= 1024
@@ -45,8 +33,8 @@ human_to_bytes()
    }'
 }
 
-human_to_bytes "1K"
-human_to_bytes "1M"
-human_to_bytes "1G"
-human_to_bytes "1.5M"
-human_to_bytes "1.5K"
+human_to_bytes "1k"
+human_to_bytes "1m"
+human_to_bytes "1g"
+human_to_bytes "1.5m"
+human_to_bytes "1.5k"

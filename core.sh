@@ -109,6 +109,7 @@ sh_datetime(){ date +"%d/%m/%Y %T"; }
 sh_time(){ date +"%T"; }
 sh_date(){ date +"%d/%m/%Y"; }
 sh_filesize(){ stat -c %s "$1"; }
+sh_linecount_grep(){ grep -c ^ < "$1";}
 sh_linecount_wc(){ wc -l < "$1";}
 sh_linecount(){ awk 'END {print NR}' "$1"; }
 alltrim(){ echo "${1// /}"; } # remover todos espacos da string
@@ -212,15 +213,24 @@ sh_linecount()
    awk 'END {print NR}' $1
 }
 
-# echo $(lenarray "${Var[@]}")
+# echo $(lenarray ${Var[@]})
+# echo $(lenarray ${Var[*]})
 # echo $(lenarray "$Var")
 lenarray()
 {
-   local new=($1)
-   echo "${#new[@]}"
+	local new=($@:1)
+	echo ${#new[*]}
 }
 
+# echo $(lenarraystr "${Var[@]}")
+# echo $(lenarraystr "$Var")
 lenarraystr()
+{
+	local new=($1)
+	echo "${#new[@]}"
+}
+
+lenarraystr1()
 {
    local new=$1
    local count=0
@@ -1629,8 +1639,8 @@ function confok()
 function confno()
 {
 	read -p "$1 [N/y]"
-	[[ ${REPLY^} == "" ]] && return $false
-	[[ ${REPLY^} == N  ]] && return $false || return $true
+	[[ ${REPLY^} == "" ]] && return 0
+	[[ ${REPLY^} == N  ]] && return 0 || return 1
 }
 
 function limpa_tar_zst()
@@ -1724,16 +1734,33 @@ function DOT()
 
 function sh_adel()
 {
-   local arr=("${@:1}")
+#  local arr=("${@:1}")
+   local arr=($@)
+   local new=()
+   local nfiles=${#arr[*]}
+
+   if (( nfiles )); then
+#     new=($(sort -u <<< "$(printf '%s\n' "${arr[@]}")"))
+      new=($(uniq -u <<< "$(printf '%s\n' "${arr[@]}")"))
+      printf '%s\n' "${new[@]}"
+      return 0
+   fi
+   printf '%s\n' "${new[@]}"
+   return 1
+}
+
+function sh_adelOLD()
+{
+#  local arr=("${@:1}")
+	local arr=($@:1)
    local item
    local nfiles=${#arr[*]}
 
    if (( nfiles )); then
-      for item in ${arr[*]}
-      do
+      for item in ${arr[*]}; {
          echo $item >> /tmp/.array    #imprime o conteudo da matriz
-      done
-      deps=($(uniq --ignore-case <<< $(sort /tmp/.array)))
+      }
+      deps=($(sort -u /tmp/.array ))
       rm /tmp/.array >/dev/null 2>&1
       return 0
    fi

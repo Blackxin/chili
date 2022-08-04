@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+#export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
+#set -e
+
 #  chili-install - utility written in bash to install chili/mazon distro
 #  Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
 #  Chili GNU/Linux - https://chililinux.com
@@ -28,7 +33,6 @@
 #		awk, bsdtar (libarchive), bzip2, coreutils, fakeroot, file, find (findutils),
 #     gettext, gpg, grep, gzip, sed, tput (ncurses), xz, etc
 #########################################################################
-#set -e
 declare -r _APP_="${0##*/}"
 declare -r _VERSION_="4.0.20220720"
 declare -A AsUser
@@ -317,52 +321,52 @@ sh_confhost()
 
 sh_adduser()
 {
-		if ! (( LPARTITION )); then
-			if ! choosepartition; then
-				display_info "\n$cancelinst\NSem particao escolhida: L314"
-				return 1
-			fi
-		fi
-
-		if ! (( LMOUNT )); then
-			if ! sh_mountpartition; then
-				display_info "\n$cancelinst\nSem ponto de montagem: L321"
-				return 1
-			fi
-		fi
-
-		if ! sh_initbind; then
-			display_info "\n$cancelinst\nSem bind: L327"
+	if ! (( LPARTITION )); then
+		if ! choosepartition; then
+			display_info "\n$cancelinst\NSem particao escolhida: L314"
 			return 1
 		fi
+	fi
 
-		if [[ -n "${AsUser[cuser]}" ]]; then
-			msg "INFO" "$(log_info_msg "$cmsgadduser: ${AsUser[cuser]} - ${AsUser[cfullname]} ")"
-			chroot "$dir_install" /bin/bash -c "useradd -m ${AsUser[cuser]} -G ${AsUser[cgroups]} -p ${AsUser[cpass]} -c "${AsUser[cfullname]}" > /dev/null 2>&1"
-		   chroot "$dir_install" /bin/bash -c "(echo ${AsUser[cuser]}:${AsUser[cpass]}) | chpasswd -m > /dev/null 2>&1"
-		   evaluate_retval
+	if ! (( LMOUNT )); then
+		if ! sh_mountpartition; then
+			display_info "\n$cancelinst\nSem ponto de montagem: L321"
+			return 1
 		fi
+	fi
 
-		if [[ -n "${AsUser[cpassroot]}" ]]; then
-			msg "INFO" "$(log_info_msg "$cmsgadduser: root")"
-		   chroot "$dir_install" /bin/bash -c "(echo root:${AsUser[cpassroot]}) | chpasswd -m > /dev/null 2>&1"
-		   evaluate_retval
-		fi
+	if ! sh_initbind; then
+		display_info "\n$cancelinst\nSem bind: L327"
+		return 1
+	fi
 
-		msg "INFO" "$(log_info_msg "Ajustando configurações herdadas")"
-	   chroot "$dir_install" /bin/bash -c 						\
-	   	"cd /home/${AsUser[cuser]}/ > /dev/null 2>&1;	\
-	   	cp -Rpva /home/$cliveuser/. . > /dev/null 2>&1;	\
-	   	chown ${AsUser[cuser]}:${AsUser[cuser]} . -R > /dev/null 2>&1"
+	if [[ -n "${AsUser[cuser]}" ]]; then
+		msg "INFO" "$(log_info_msg "$cmsgadduser: ${AsUser[cuser]} - ${AsUser[cfullname]} ")"
+		chroot "$dir_install" /bin/bash -c "useradd -m ${AsUser[cuser]} -G ${AsUser[cgroups]} -p ${AsUser[cpass]} -c "${AsUser[cfullname]}" > /dev/null 2>&1"
+	   chroot "$dir_install" /bin/bash -c "(echo ${AsUser[cuser]}:${AsUser[cpass]}) | chpasswd -m > /dev/null 2>&1"
+	   debug "347 evaluate_retval"
+	fi
+
+	if [[ -n "${AsUser[cpassroot]}" ]]; then
+		msg "INFO" "$(log_info_msg "$cmsgadduser: root")"
+	   chroot "$dir_install" /bin/bash -c "(echo root:${AsUser[cpassroot]}) | chpasswd -m > /dev/null 2>&1"
+	   debug "354 evaluate_retval"
+	fi
+
+	msg "INFO" "$(log_info_msg "Ajustando configurações herdadas")"
+	chroot "$dir_install" /bin/bash -c 						\
+		"cd /home/${AsUser[cuser]}/ > /dev/null 2>&1;	\
+		cp -Rpva /home/$cliveuser/. . > /dev/null 2>&1;	\
+   	chown ${AsUser[cuser]}:${AsUser[cuser]} . -R > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -R live > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -r live > /dev/null 2>&1"
-	   evaluate_retval
+	   debug "363 evaluate_retval"
 
 		msg "INFO" "$(log_info_msg "Finalizando configuração de usuario")"
 	   chroot "$dir_install" /bin/bash -c "cp /etc/skel/.xinitrc /home/${AsUser[cuser]} > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -R live > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -r live > /dev/null 2>&1"
-	   evaluate_retval
+	   debug "369 evaluate_retval"
 }
 
 sh_execcopia()
@@ -1957,9 +1961,12 @@ sh_checklive()
 		if [[ -e "/run/$chili_iso/bootmnt/chili/" ]]; then
 			export LIVE_DIR="/run/$chili_iso/bootmnt/chili/x86_64/airootfs.sfs"
 			export BOOT="chili"
-		else #arch
+		elif [[ -e "/run/$chili_iso/bootmnt/arch/" ]]; then
 			export LIVE_DIR="/run/$chili_iso/bootmnt/arch/x86_64/airootfs.sfs"
 			export BOOT="arch"
+		elif [[ -e "/run/$chili_iso/bootmnt/manjaro/" ]]; then
+			export LIVE_DIR="/run/$chili_iso/bootmnt/manjaro/x86_64/rootfs.sfs"
+			export BOOT="manjaro"
 		fi
 		export ROOTSQFS="$LIVE_DIR"
 		export MEDIUM="/run/$chili_iso/airootfs"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 #set -e
 
@@ -35,7 +35,12 @@
 #   	gettext, gpg, grep, gzip, sed, tput (ncurses), xz
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
+# Import lib
 readonly _VERSION_="3.30.20220801"
+LIBRARY=${LIBRARY:-'/usr/share/fetch'}
+SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
+[[ -f "${LIBRARY}/core.sh" ]] && source "${LIBRARY}/core.sh"
+
 # var bool
 declare -i ERR_ERROR=1
 declare -i ERR_OK=0
@@ -68,11 +73,6 @@ fn_debug()
 
 configure()
 {
-	# Import lib
-	LIBRARY=${LIBRARY:-'/usr/share/fetch'}
-	SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
-	source "${LIBRARY}/core.sh"
-
 	export LC_ALL=C
 	export LANG=C
 	readonly DEPENDENCIES=(which find tar zstd curl sed grep cat awk tput stat tee lynx numfmt)
@@ -89,6 +89,15 @@ configure()
    PACKAGES_INSTALLED_SPLIT='packages-installed-split.csv'
    PACKAGES_IN_CACHE='packages-in-cache.csv'
 
+	#var public
+	declare -a public_pkg_not_found=()
+	declare -a public_pkg=()
+	declare -a public_pkg_deps=()
+	declare -i public_ntotal_pkg_installed=0
+	declare -i public_ntotal_pkg_listed=0
+	declare -a public_ListSearch=
+	declare -i public_len_count_pkg=0
+
 	# default
 	export PKG_EXT SEP SITE GITSITE RAW APP
 	export CACHEDIR CACHEDIR_ARCHIVES CACHEDIR_SEARCH
@@ -100,11 +109,12 @@ configure()
 
 	verbose=0
 	SEP=','
-	PKG_EXT="${PKG_EXT:='chi.zst'}"
+	: ${PKG_EXT:='chi.zst'} # se PKG_EXT não estiver definida, recebe 'chi.zst'
+	: ${GITSITE:=0}			# se GITSITE não estiver definida, recebe 0
 	SITE="${PKG_SITE:=http://chililinux.com}"
-	GITSITE="${GITSITE:=0}"
 	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
-	APP="fetch"	# APP="${0##*/}"
+	APP="fetch"
+	APP="${0##*/}"
 	CACHEDIR="${CACHEDIR:=/var/cache/$APP}"
 	CACHEDIR_ARCHIVES="$CACHEDIR/archives"
 	CACHEDIR_SEARCH="$CACHEDIR/search"
@@ -151,7 +161,7 @@ configure()
 }
 
 sh_touchconf(){
-	[[ -d "${SYSCONFDIR}" ]] || mkdir -p "$SYSCONFDIR" &> /dev/null
+	[[ -d "${SYSCONFDIR}" ]] || mkdir -p 2>&-
 	cat > "$SYSCONFDIR/fetch.conf" << '_EOF_'
 ######################################################################
 # fetch.conf
@@ -259,7 +269,6 @@ sh_arraypkgfullIFS()
    [[ $# -eq 0 ]] && file_list_packages="$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
 
 	public_len_count_pkg=0
-
    export public_pkg_base
    export public_pkg_version
    export public_pkg_build
@@ -443,15 +452,16 @@ sh_write()
 
    [[ -z "$status"       ]] && status=' A '
 	[[ "$clisting" == 'N' ]] && return 0
-	[[ $status = ' I '    ]] && strstatus='installed'
+	[[ "$status" = ' I '  ]] && strstatus='installed'
 
 	if (( verbose >= 2 )); then
-		printf "${green}%s(%04d) ${cyan}$status ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"		\
-				 ""		 																												\
-				 "$pkgCheckNumber" 																									\
-				 "${aPKGARRAY[0]}"																									\
-			 	 "${aPKGARRAY[1]}"																									\
-			 	 "$(size_to_human "${aPKGARRAY[6]}")"			 															   \
+		printf "${green}%s(%04d) ${cyan}%-3s ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"	\
+				 ""		 																										\
+				 "$pkgCheckNumber" 																							\
+				 "$status"	   																								\
+				 "${aPKGARRAY[0]}"																							\
+			 	 "${aPKGARRAY[1]}"																							\
+			 	 "$(size_to_human "${aPKGARRAY[6]}")"			 														\
 		 	 	 "${aPKGARRAY[3]}"
 	else
  		log_msg "[$pkgCheckNumber]${orange}${aPKGARRAY[0]}" # resumido
@@ -541,6 +551,7 @@ sh_listinstalled()
 	local param="$@"
 	local pkgNumber=0
 	local s
+	local n
 	local cListSearch
 	local ntotalpkg=0
 	local arr
@@ -555,29 +566,34 @@ sh_listinstalled()
 		LALL=$true
 	fi
 
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
+	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
 }
 
 # -Li
-sh_listpkgdisp()
+function fn_listpkgdisp()
 {
 	local file_list_package="$1"; shift
 	local file_list_installed="$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
 	local param="$*"
 	local s
+	local i
 	local SEARCH_CUT="-f5"
+	local nstatus=0
+	local pgk_grep
 	local ncontapkg=0
-	local arr
-	public_ListSearch=
-	public_pkg_not_found=()
 
 	[[ -e $file_list_installed ]] || printf '' > "${file_list_installed}"
-   sh_arraypkgfull "$file_list_package"
-	public_ntotal_pkg_installed=$(grep -c ^ $file_list_installed)
+
+	#TODO: verificar necessidade
+	#sh_arraypkgfull "$file_list_package"
+	#TODO: verificar necessidade
+
+	public_ntotal_pkg_installed=$(sh_linecount "$file_list_installed")
 	public_ntotal_pkg_listed=$public_ntotal_pkg_installed
-	public_pkg=
+	public_pkg=()
 	public_pkg_deps=()
 	public_ListSearch=$param
+	public_pkg_not_found=()
 
 	if [[ "$SPLITPOS" == "" ]]; then
       SPLITPOS='4'
@@ -589,24 +605,29 @@ sh_listpkgdisp()
    elif [[ "$SPLITPOS" == "4" ]]; then
       SEARCH_CUT='-f5'
       AWK_CUT='$5'
+   elif [[ "$SPLITPOS" == "5" ]]; then
+      SEARCH_CUT='-f6'
+      AWK_CUT='$6'
    fi
 
 	if (( LALL )) || [[ -z "$public_ListSearch" ]]; then
 		if (( LALL )); then
-			public_pkg=$(awk -F$SEP '{print '$AWK_CUT'}' "$file_list_package")
+			mapfile -t public_pkg < <(awk -F$SEP '{print '$AWK_CUT'}' "$file_list_package")
 		else
 			log_failure_msg2 "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
 			exit 1
 		fi
 	else
-		for x in $public_ListSearch; do
+		for x in ${public_ListSearch[*]}; do
 			if (( LEXACT )); then
 				pkg_grep=$(grep ^"$x$SEP" "$file_list_package" | cut -d$SEP "$SEARCH_CUT")
 			else
 				pkg_grep=$(grep "$x" "$file_list_package" | cut -d$SEP "$SEARCH_CUT")
 			fi
 			if [[ -n "$pkg_grep" ]]; then
-				public_pkg+="$pkg_grep "
+				for n in ${pkg_grep[*]}; {
+					public_pkg+=("$n")
+				}
 			else
 				if ! (( LSKIPERROR )); then
 					if (( LREMOVE )); then
@@ -620,55 +641,52 @@ sh_listpkgdisp()
 				fi
 				public_pkg_not_found+=("$x")
 			fi
-			if ! (( LSEARCHONLY )); then
-				pkginstalled=$(grep ^"$x"$SEP "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" | cut -d$SEP "$SEARCH_CUT")
-				sh_splitpkg "$pkginstalled"
-				if [[ -n "$pkginstalled" && "$pkg_grep" = "$pkginstalled" ]]; then
-					log_failure_msg "${yellow}attention${reset}: ${orange}${aPKGSPLIT[$PKG_BASE_VERSION]} ${reset}está atualizado -- reinstalando."
+
+			if ! (( LREMOVE )); then
+				if ! (( LSEARCHONLY )); then
+					pkginstalled=$(grep ^"$x"$SEP "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" | cut -d$SEP "$SEARCH_CUT")
+					if [[ -n "$pkginstalled" && "${pkginstalled##*/} = ${pkg_grep##*/}" ]]; then
+						log_failure_msg "${yellow}atenção${reset}: ${orange}${pkginstalled##*/} ${reset}está atualizado -- reinstalando."
+		 			fi
 	  			fi
-  			fi
+ 			fi
 		done
 	fi
 
-	nfilesfound=$( lenarray "$public_pkg")
-
-	if (( nfilesfound )); then # package's found?
+	if ((public_ntotal_pkg_listed=$(lenarray "${public_pkg[*]}"))); then
+		nstatus=$public_ntotal_pkg_listed
 		if ! (( LREMOVE )); then
 			if (( LDEPS )); then
-				sh_getdeps $LDEPS
+				sh_getdeps $LDEPS || return 1
+				public_pkg+=(${public_pkg_deps[*]})
 			fi
 		fi
-
-#		ncontapkg=$(( nfilesfound + $(lenarraystr "$public_pkg_deps") ))
-		ncontapkg=$(( nfilesfound + $(lenarray "$public_pkg_deps") ))
-		public_ntotal_pkg_listed="$ncontapkg"
+		#sanitize
+		public_pkg=($(sh_adel ${public_pkg[*]}))
+		public_ntotal_pkg_listed=$(lenarray "${public_pkg[*]}")
 
 		if (( verbose >= 2)); then
-			sh_cabec "$ncontapkg"
+			sh_cabec "$public_ntotal_pkg_listed"
 			pkgNumber=0
 
-			for i in ${public_pkg[*]}
-			do
-				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) ' I '
-			done
-
-			for i in ${public_pkg_deps[*]}
-			do
-				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "dep"
-			done
+			for i in ${public_pkg[*]};{
+				((pkgNumber > nstatus)) && cst='dep' || cst=' S '
+				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "$cst"
+			}
 		else
 			if (( LLIST )); then
-				apkg=(${public_pkg[*]})
 				if (( LCOLUMN )); then
-					printf "${bold}${black}%s\n" ${apkg[*]}
-					printf "%s\n" "${reset}Packages ($ncontapkg)"
+					printf "${bold}${black}%s\n" ${public_pkg[*]}
+					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
+					echo
 				else
-					printf "${bold}${black}%s\n${reset}Packages ($ncontapkg)" "${apkg[*]}"
+					printf "${bold}${black}%s\n${reset}Packages ($public_ntotal_pkg_listed)" "${public_pkg[*]}"
+					echo
 				fi
 			fi
 			return 0
 		fi
-		printf "${yellow}(%05d) %s\n" "$nfilesfound" "${cyan}packages listed${reset}"
+		printf "${yellow}(%05d) %s\n" "$public_ntotal_pkg_listed" "${cyan}packages listed${reset}"
 		return 0
 	fi
 	return 1
@@ -677,15 +695,15 @@ sh_listpkgdisp()
 sh_checknet()
 {
 	# have internet?
-	log_info_msg "${cyan}Testing internet from ${SITE}"
-	curl --insecure $SITE >/dev/null 2>&1 ||
+	(( verbose >= 2 )) && log_info_msg "${cyan}Testing internet from ${SITE}"
+	curl --insecure $SITE 2>&- ||
 	{
-		evaluate_retval
+		(( verbose >= 2 )) && evaluate_retval
 		log_failure_msg2 "No route to server ($SITE) - ABORTED."
 		return 1
 	}
-	evaluate_retval
-	return $?
+	(( verbose >= 2 )) && evaluate_retval
+	return 0
 }
 
 sh_selfupdate()
@@ -704,13 +722,13 @@ sh_selfupdate()
 		local tmp_dir="/tmp/${APP}/src"
 
 		#internet?
-		[[ ! sh_checknet ]] && return 1
+		sh_checknet || return 1
 
 		log_msg "Ok, let's do it..."
 		#Ok, Puxe o arquivo do repositorio agora!
 		[[ -d "${tmp_dir_full}" ]] && rm -r "${tmp_dir_full}"
 		[[ -d "${tmp_dir}" ]] || mkdir -p "${tmp_dir}"
-		pushd "${tmp_dir}" &>/dev/null || return 1
+		pushd "${tmp_dir}" 2>&- || return 1
 		log_info_msg "${cyan}Clonando $link"
 		curl --insecure --silent --remote-name "${link}"
 		evaluate_retval
@@ -789,7 +807,7 @@ sh_checkdir()
 		if [[ -d "$i" ]]; then
 			(( verbose >= 2 )) && evaluate_retval
 		else
-			mkdir -p "$i"  >/dev/null 2>&1
+			mkdir -p "$i"  2>&-
 			(( verbose >= 2 )) && evaluate_retval
 		fi
 	done
@@ -815,7 +833,7 @@ fn_updaterepo()
 		 		 "$PACKAGES_SPLIT"
 		 		)
 	#internet?
-	[[ ! sh_checknet ]] && return 1
+	sh_checknet || return 1
 
 	response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/repo/")
 	if [[ $response -eq 404 ]]; then
@@ -823,7 +841,7 @@ fn_updaterepo()
 		return 1
 	fi
 
-	pushd "$CACHEDIR_SEARCH/" &>/dev/null 2>&- || return 1
+	pushd "$CACHEDIR_SEARCH/" 2>&- || return 1
 	sh_backup
 
 	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
@@ -843,7 +861,7 @@ fn_updaterepo()
 	log_msg "${green}($(strzero "$nfilesInstalled" 5)) installed packages${reset}"
 	echo
 	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
-	popd &>/dev/null 2>&- || return 1
+	popd 2>&- || return 1
 }
 
 # -Syy
@@ -871,14 +889,14 @@ fn_update()
 	fi
 
 	#internet?
-	[[ ! sh_checknet ]] && return 1
+	sh_checknet || return 1
 
 	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "$SITE/packages/") -eq 404 ]]; then
 		log_failure_msg "${red}error${reset}: $response Not Found $orange==> $SITE/packages/"
 		exit 1
 	fi
 
-	pushd "$CACHEDIR_SEARCH/" &>/dev/null || return 1
+	pushd "$CACHEDIR_SEARCH/" 2>&- || return 1
 	sh_backup
 
 	log_msg "${pink}Cleaning up $CACHEDIR_SEARCH/"
@@ -943,7 +961,7 @@ fn_update()
 	log_msg "${red}$(strzero "$nfilesInCache" 5) ${bold}${green}packages in cache $CACHEDIR_ARCHIVES"
 	echo
 	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
-	popd &>/dev/null || return 1
+	popd 2>&- || return 1
 }
 
 fn_updateOLD()
@@ -970,14 +988,14 @@ fn_updateOLD()
 	fi
 
 	#internet?
-	[[ ! sh_checknet ]] && return 1
+	sh_checknet || return 1
 
 	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/") -eq 404 ]]; then
 		log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/"
 		exit 1
 	fi
 
-	pushd "$CACHEDIR_SEARCH/" &>/dev/null || return 1
+	pushd "$CACHEDIR_SEARCH/" 2>&- || return 1
 	sh_backup
 
 	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
@@ -1072,7 +1090,7 @@ comment
 	log_msg "${green}($(strzero "$nfilesInCache" 5)) packages in cache $CACHEDIR_ARCHIVES${reset}"
 	echo
 	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
-	popd &>/dev/null || return 1
+	popd 2>&- || return 1
 }
 
 fn_updateMazon()
@@ -1095,9 +1113,7 @@ fn_updateMazon()
 	fi
 
 	#internet?
-	if ! sh_checknet; then
-		return 1
-	fi
+	sh_checknet ||	return 1
 
 	response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/")
 	if [[ $response -eq 404 ]]; then
@@ -1105,7 +1121,7 @@ fn_updateMazon()
 		exit 1
 	fi
 
-	pushd "$CACHEDIR_SEARCH/" &>/dev/null || return 1
+	pushd "$CACHEDIR_SEARCH/" 2>&- || return 1
 	sh_backup
 
 	log_msg "${pink}Cleaning up ${CACHEDIR_SEARCH}/${reset}"
@@ -1194,7 +1210,7 @@ fn_updateMazon()
 	log_msg "${green}($(strzero "$nfilesInCache" 5)) packages in cache $CACHEDIR_ARCHIVES${reset}"
 	echo
 	log_msg "${reset}Use: # ${0##*/} --help for helping${reset}"
-	popd &>/dev/null || return 1
+	popd 2>&- || return 1
 }
 
 sh_filesincache()
@@ -1395,7 +1411,7 @@ sh_show()
 	verbose=0
 	LDEPS=$false
 	LEXACT=$true
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
+	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
 	ntotal_pkg_listed="$public_ntotal_pkg_listed"
 	verbose=$saveverbose
 
@@ -1429,7 +1445,7 @@ sh_search()
 	verbose=0
 	LDEPS=$false
 #	LEXACT=$true
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
+	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
 	ntotal_pkg_listed="$public_ntotal_pkg_listed"
 	verbose=$saveverbose
 
@@ -1456,12 +1472,13 @@ sh_remove()
 	local param="$@"
 	local x
 	local cPkgFullFilename
+	local ntotal_pkg_listed
 
 	LDEPS=$false
 	LEXACT=$true
 	LREMOVE=$true
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
-	local ntotal_pkg_listed="$public_ntotal_pkg_listed"
+	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
+	ntotal_pkg_listed="$public_ntotal_pkg_listed"
 
 	if (( ntotal_pkg_listed )); then
 		if ! (( LAUTO )); then
@@ -1471,7 +1488,7 @@ sh_remove()
 		fi
 
 		if (( LAUTO )); then
-			for cPkgFullFilename in $public_pkg
+			for cPkgFullFilename in ${public_pkg[*]}
 			do
 				sh_splitpkg "$cPkgFullFilename"
 				sh_doremove "${aPKGSPLIT[$PKG_BASE_VERSION]}" "$cPkgFullFilename"
@@ -1504,16 +1521,13 @@ sh_removepkg()
 {
 	local cPkgBaseVersion="$1"
 	local cPkgFullFilename="$2"
-	local retval=0
 
 	sh_pre_remove "$cPkgBaseVersion" || return $ERR_ERROR
-	sh_splitpkg "$cPkgBaseVersion"
-	retval=$?
-
-	if [[ $retval -eq $ERR_OK ]] ; then
-		sed -i  '/'"$cPkgBaseVersion"'/d' "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
+#	sh_splitpkg "$cPkgFullFilename"  || return $ERR_ERROR
+	if sed -i  '/'"$cPkgBaseVersion"'/d' "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"; then
+		return $ERR_OK
 	fi
-	return $ERR_OK
+	return $ERR_ERROR
 }
 
 sh_remove_now()
@@ -1521,31 +1535,31 @@ sh_remove_now()
 	local cPkgBaseVersion="${1/%.${PKG_EXT}/}"
 	local thefile
 
-	pushd "/" &>/dev/null || return 1
+	pushd "/" 2>&- || return 1
 
 	if [[ -e "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm" ]]; then
-		sed -E "/rm[[:space:]]+\-(rf|fr)/d" "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm" &>/dev/null
+		sed -E "/rm[[:space:]]+\-(rf|fr)/d" "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm" 2>&-
 		bash "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm"
-		rm "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm" &>/dev/null
+		rm "${CACHEDIR_REMO}/${cPkgBaseVersion}.rm" 2>&-
 	fi
 
 	while IFS= read -r thefile; do
 		if [[ -f "$thefile" ]]; then
-			rm "$thefile" &>/dev/null && print "Delete\t${thefile}"
+			rm "$thefile" 2>&- && print "Delete\t${thefile}"
 		fi
 		if [[ -L "$thefile" ]]; then
-			unlink "$thefile" &>/dev/null
+			unlink "$thefile" 2>&-
 		fi
 		if [[ -d "$thefile" ]] && [[ -z "$(ls -A "$thefile")" ]]; then
-			rmdir -p "${thefile}" &>/dev/null
+			rmdir -p "${thefile}" 2>&-
 		fi
 	done < "${CACHEDIR_LIST}/${cPkgBaseVersion}.list"
 
-	popd &>/dev/null || return 1
+	popd 2>&- || return 1
 	IFS=$SAVEIFS
 
-	if ! rm "$CACHEDIR_DESC/$cPkgBaseVersion.desc" &>/dev/null; then { log_failure_msg2 "Error, It was not possible remove $CACHEDIR_DESC/$cPkgBaseVersion.desc" ; return 1; } fi
-	if ! rm "$CACHEDIR_LIST/$cPkgBaseVersion.list" &>/dev/null; then { log_failure_msg2 "Error, It was not possible remove $CACHEDIR_LIST/$cPkgBaseVersion.list" ; return 1; } fi
+	if ! rm "$CACHEDIR_DESC/$cPkgBaseVersion.desc" 2>&-; then { log_failure_msg2 "Error, It was not possible remove $CACHEDIR_DESC/$cPkgBaseVersion.desc" ; return 1; } fi
+	if ! rm "$CACHEDIR_LIST/$cPkgBaseVersion.list" 2>&-; then { log_failure_msg2 "Error, It was not possible remove $CACHEDIR_LIST/$cPkgBaseVersion.list" ; return 1; } fi
 	return $ERR_OK
 }
 
@@ -1578,7 +1592,7 @@ sh_pre_removeOLD()
 	local q
 	local alldesc=$cPkgBaseVersion.desc
 
-	pushd "$CACHEDIR_DESC" 1>/dev/null || return 1
+	pushd "$CACHEDIR_DESC" 2>&- || return 1
 	for search_pack in $alldesc; do
 		if [[ "$search_pack" =~ ^${re}.* ]]; then
 			for q in *; do
@@ -1589,7 +1603,7 @@ sh_pre_removeOLD()
 
 			[[ -e "$CACHEDIR_DESC/$search_pack" ]] && source "$CACHEDIR_DESC/$search_pack"
 			name_version_build="$cPkgBaseVersion"
-			pushd "${CACHEDIR_LIST}" 1>/dev/null || return 1
+			pushd "${CACHEDIR_LIST}" 2>&- || return 1
 			search_pack="${search_pack/%.desc/.list}" # se terminar com .desc substitua por .list
 #			[[ -e "${search_pack}" ]] && { sh_remove_now "$name_version_build"; return 0 ;} || { log_failure_msg2 "ERROR: FILE NOT FOUND ${CACHEDIR_LIST}/${search_pack}"; return 1;}
 			if [[ -e "${search_pack}" ]]; then
@@ -1618,15 +1632,13 @@ sh_download()
 
 	LDEPS=$false
 	LEXACT=$true
-	sh_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
+	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
 	local ntotal_pkg_listed="${public_ntotal_pkg_listed}"
 
 	if [[ $public_pkg != "" ]]; then
-		pushd "$CACHEDIR_ARCHIVES/" &>/dev/null || return 1
+		pushd "$CACHEDIR_ARCHIVES/" 2>&- || return 1
 		#internet?
-		if ! sh_checknet; then
-			return 1
-		fi
+		sh_checknet || return 1
 
 		if (( verbose )); then
 			log_msg "Downloading package..."
@@ -1653,7 +1665,7 @@ sh_download()
 			fi
 		done
 		log_msg "${cyan}($nFilesDownloaded) packages(s) downloaded."
-		popd &>/dev/null || return 1
+		popd 2>&- || return 1
 	fi
 }
 
@@ -1685,48 +1697,42 @@ sh_getdeps()
   	deps=()
 
 	(( verbose >= 2 )) && log_msg "Solving dependencies"
-#  for i in $public_pkg
+
    for i in ${public_pkg[*]}
 	do
 		sh_splitpkg "$i"
 		cbase="${aPKGSPLIT[PKG_BASE]}"
 		cfullfilename="${aPKGSPLIT[PKG_FULLNAME]}"
-	   [[ -e "$CACHEDIR_ARCHIVES/$cfullfilename.desc" ]] || sh_wgetdesc
-		if test -e "$CACHEDIR_ARCHIVES/$cfullfilename.desc"; then
-	   	source "$CACHEDIR_ARCHIVES/$cfullfilename.desc"
-			if (( LDEPS )); then
-	   	  	deps+=(${dep[*]})
-      		deps+=($(grep ^depend "$CACHEDIR_ARCHIVES/$cfullfilename.desc" | awk -F"'" '{print $2}'))
-      	fi
-		fi
+	   [[ -e "$CACHEDIR_ARCHIVES/$cfullfilename.desc" ]] || sh_wgetdesc || return 1
+	   source "$CACHEDIR_ARCHIVES/$cfullfilename.desc"
+		if (( LDEPS )); then
+	     	deps+=(${dep[*]})
+      	deps+=($(grep ^depend "$CACHEDIR_ARCHIVES/$cfullfilename.desc" | awk -F"'" '{print $2}'))
+      fi
    done
 
 	#sanitize deps
-  	sh_adel ${deps[*]}
+	deps=($(sh_adel ${deps[*]}))
   	adeps=${deps[*]}
 	deps=()
-	ndep=0
+
 	for i in ${adeps[*]}
 	do
 		cdep="${i%%=*}"
 		cdep="${cdep%%.so*}"
 		cdep="${cdep%%>=*}"
-		cdep=$(grep -Po '^([a-z]+[-]?[a-z]+)' <<< "$i")
+		cdep=$(grep -Po '^([a-z]+[-|_]?[a-z]+)' <<< "$i")
 
 		if ! sh_ascanpkg "$cdep" "0"; then
 			cdep="${cdep#lib}"
 			if ! sh_ascanpkg "$cdep" "0"; then
-			#	unset deps[$ndep]
 				continue
 			fi
 		fi
 		deps+=("$cdep")
-#		deps[$ndep]="$cdep"
-#		debug ${deps[$ndep]}
-#		((++ndep))
 	done
+	deps=($(sh_adel ${deps[*]}))
 
-# 	for i in "${deps[@]}"
   	for i in ${deps[*]}
   	do
   		((++ncontadep))
@@ -1747,88 +1753,6 @@ sh_getdeps()
 # 	public_pkg_deps+=$GETDEPS
  	public_pkg_deps+=${GETDEPS[*]}
    return $?
-}
-
-sh_wgetresponse()
-{
-	local i="$1"
-	local cfile="${i##*/}"
-	local cfullfilename="$CACHEDIR_ARCHIVES/$cfile"
-	local lresult
-	export response
-
-	(( verbose >= 2 )) && log_info_msg "${DOT}${cyan}Fetching package ${cRaw}/packages/${orange}${i}"
-	response=$(curl -s -w "%{http_code}\n" -k -O "${cRaw}/packages/$i")
-	lresult=$?
-	(( verbose >= 2 )) && evaluate_retval $lresult
-
-	if [[ $response -eq 404 ]]; then
-		rm -f "$cfullfilename" &> /dev/null
-
-		if ! (( LSKIPERROR )); then
-			log_failure_msg "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/ - Use the ${yellow}--skiperror ${reset}option to force install. "
-			return 1
-		else
-			(( verbose >= 2 )) && log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
-		fi
-		return 1
-	fi
-	return 0
-}
-
-sh_wgetdesc()
-{
-	local cfullfilename="$1"
-	local cRaw
-   local nretval=1
-
-	if ! (( GITSITE )); then
-		cRaw=$SITE 	#site normal
-	else
-		cRaw=$RAW	#github
-	fi
-	pushd "$CACHEDIR_ARCHIVES/" &>/dev/null || return 1
-	sh_wgetresponse "$i.desc"
-	nretval=$?
-	popd &>/dev/null || return 1
-	return $nretval
-}
-
-sh_wgetfull()
-{
-	local cfullfilename="$1"
-	local cRaw
-   local nretval
-
-	if ! (( GITSITE )); then
-		cRaw="$SITE"	#site normal
-	else
-		cRaw="$RAW"		#github
-	fi
-	sh_wgetresponse "$i"
-	nretval=$?
-	return $nretval
-}
-
-sh_wgetpartial()
-{
-	local cfullfilename="$1"
-	local cRaw
-
-	if ! (( GITSITE )); then
-		cRaw="$SITE"	#site normal
-	else
-		cRaw="$RAW"	#github
-	fi
-
-	if ! test -e "$CACHEDIR_ARCHIVES/$cpacote"; then
-		sh_wgetresponse "$i"
-	fi
-
-	if ! test -e "$CACHEDIR_ARCHIVES/$cpacote.desc"; then
-		sh_wgetresponse "$i.desc"
-	fi
-	return $?
 }
 
 sh_splitpkg()
@@ -1981,16 +1905,17 @@ sh_install()
 {
 	local param="$@"
 	local loldverbose=$verbose
-	ntotal_pkg_listed="$public_ntotal_pkg_listed"
-	verbose=2
+	local ntotal_pkg_listed=0
 
-	sh_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
-	ntotal_pkg_listed="$public_ntotal_pkg_listed"
+#	verbose=2
+#	SPLITPOS='5'
+	fn_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param" || return 1
+	ntotal_pkg_listed=$public_ntotal_pkg_listed
 	verbose=$loldverbose
 
-	if [[ $public_pkg != "" ]]; then
+	if (( ntotal_pkg_listed )); then
 		[[ -d $CACHEDIR_ARCHIVES/ ]] || mkdir -p "$CACHEDIR_ARCHIVES/"
-		cd "$CACHEDIR_ARCHIVES/" || return 1
+		cd "$CACHEDIR_ARCHIVES/"     || return 1
 
 		if ! (( LAUTO )); then
 			echo
@@ -1999,7 +1924,7 @@ sh_install()
 				return
 			fi
 		fi
-      sh_installdownload
+      sh_installdownload || return 1
       sh_installdoinstallpkg
 	fi
 	sh_cdroot
@@ -2007,13 +1932,20 @@ sh_install()
 
 sh_installdownload()
 {
-	for i in $public_pkg; do
+	local cfullfilename
+	local cpacote
+	local cpacotebase
+
+	sh_checknet || return 1
+	for i in ${public_pkg[*]}; do
 		sh_splitpkg "$i"
-		local cfullfilename=${aPKGSPLIT[PKG_FULLNAME]}
-		local cpacote=${aPKGSPLIT[PKG_FULLNAME]}
-		local cpacotebase=${aPKGSPLIT[PKG_BASE]}
-		test -e "$CACHEDIR_ARCHIVES/$cpacote" || sh_wgetpartial "$i"
+		cfullfilename=${aPKGSPLIT[PKG_FULLNAME]}
+		cpacote=${aPKGSPLIT[PKG_FULLNAME]}
+		cpacotebase=${aPKGSPLIT[PKG_BASE]}
+
+		[[ -e "$CACHEDIR_ARCHIVES/$cpacote" ]] || sh_wgetpartial "$i"
 		local error_value=$?
+
 		if [ ${error_value} -ne 0 ]; then
 			log_failure_msg2 "ERROR: Downloading ${orange}${cfullfilename}"
 			log_wait_msg "Restarting download ${orange}${cfullfilename}"
@@ -2027,12 +1959,84 @@ sh_installdownload()
 	done
 }
 
+sh_wgetpartial()
+{
+	local cfullfilename="$1"
+	local cRaw
+
+	[[ -z "$cpacote" ]] && cpacote="${cfullfilename##*/}"
+	(( GITSITE )) && cRaw="$RAW" || cRaw="$SITE"
+
+	sh_wgetresponse "$i.desc" || return 1
+	sh_wgetresponse "$i" 	  || return 1
+}
+
+sh_wgetresponse()
+{
+	local i="$1"
+	local cfile="${i##*/}"
+	local cfullfilename="$CACHEDIR_ARCHIVES/$cfile"
+	local lresult
+	export response
+
+	sh_checknet || return 1
+	(( verbose >= 2 )) && log_info_msg "${DOT}${cyan}Fetching package ${cRaw}/packages/${orange}${i}"
+	response=$(curl -s -w "%{http_code}\n" -k -O "${cRaw}/packages/$i")
+	lresult=$?
+	(( verbose >= 2 )) && evaluate_retval $lresult
+
+	if ! [[ $response -eq 200 ]]; then
+		rm -f "$cfullfilename" 2>&-
+		if ! (( LSKIPERROR )); then
+			log_failure_msg "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/ - Use the ${yellow}--skiperror ${reset}option to skip install."
+		else
+			log_failure_msg2 "${red}error${reset}: $response NOT FOUND file ${orange}${cfile} ${reset}at $SITE/packages/"
+		fi
+		return 1
+	fi
+	return 0
+}
+
+sh_wgetdesc()
+{
+	local cfullfilename="$1"
+	local cRaw
+   local nretval=1
+
+	if ! (( GITSITE )); then
+		cRaw=$SITE 	#site normal
+	else
+		cRaw=$RAW	#github
+	fi
+	pushd "$CACHEDIR_ARCHIVES/" 2>&-
+	sh_wgetresponse "$i.desc"
+	nretval=$?
+	popd 2>&-
+	return $nretval
+}
+
+sh_wgetfull()
+{
+	local cfullfilename="$1"
+	local cRaw
+   local nretval
+
+	if ! (( GITSITE )); then
+		cRaw="$SITE"	#site normal
+	else
+		cRaw="$RAW"		#github
+	fi
+	sh_wgetresponse "$i"
+	nretval=$?
+	return $nretval
+}
+
 sh_installdoinstallpkg()
 {
 	local LINSTALLED=$false
 	local cpacoteinstalled
 
-	for i in $public_pkg; do
+	for i in ${public_pkg[*]}; do
 		sh_splitpkg "$i"
 		local cfullfilename=${aPKGSPLIT[PKG_FULLNAME]}
 		local cpacote=${aPKGSPLIT[PKG_FULLNAME]}
@@ -2137,7 +2141,7 @@ sh_installmeta()
 			LAUTO=$true
 		fi
 
-		pushd "$CACHEDIR_ARCHIVES/" &>/dev/null || return 1
+		pushd "$CACHEDIR_ARCHIVES/" 2>&- || return 1
 		for cmetafile in $metapkg; do
 			cmetapackage=$(echo "$cmetafile" | cut -d/ -f2)
 
@@ -2149,12 +2153,12 @@ sh_installmeta()
 			pkgInMeta+=("$(cat "$CACHEDIR_ARCHIVES/$cmetapackage")")
 		done
 
-		popd &>/dev/null || return 1
+		popd 2>&- || return 1
 		param="$pkgInMeta"
 
 #		[[ $verbose -eq 0 ]] && (( verbose=1 ))
 		verbose=0
-		sh_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
+		fn_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param"
 		local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
 		if [[ $public_pkg != "" ]]; then
@@ -2182,10 +2186,10 @@ sh_recreateFilesFromArch()
 	local aCache
 
 	(( verbose >= 2 )) && log_msg "Fixing packages installed by pacman"
-	pushd "/var/lib/pacman/local/" &> /dev/null || return 1
+	pushd "/var/lib/pacman/local/" 2>&- || return 1
 	mapfile -t aCache < <(printf '%s\n' *)
 	nfiles=$(lenarray "${aCache[*]}")
-	popd &> /dev/null || return 1
+	popd 2>&- || return 1
 
    if (( nfiles )); then
    	for item in $aCache; do
@@ -2415,7 +2419,7 @@ sh_manage_scripts_and_archives()
 		return 1
 	fi
 
-	pushd "/tmp/info/" &>/dev/null || return 1
+	pushd "/tmp/info/" 2>&- || return 1
 	if ! mv '/tmp/info/desc' "$CACHEDIR_DESC/${packname}.desc" ; then
 		log_failure_msg2 "ERROR! could not move desc to /${dir_desc}/${packname}.desc"
 		return 1
@@ -2427,11 +2431,11 @@ sh_manage_scripts_and_archives()
 	fi
 
 	if [[ -e "/tmp/info/.INSTALL" ]]; then
-		source /tmp/info/.INSTALL &> /dev/null
+		source /tmp/info/.INSTALL 2>&-
 		log_msg "running post_install hook"
-		post_install &> /dev/null
+		post_install 2>&-
 		log_msg "running post_upgrade hook"
-		post_upgrade &> /dev/null
+		post_upgrade 2>&-
 	fi
 
 	if [[ -e "/tmp/info/rm.sh" ]]; then
@@ -2441,7 +2445,7 @@ sh_manage_scripts_and_archives()
 		fi
     fi
 
-	popd &>/dev/null || return 1
+	popd 2>&- || return 1
 	[[ -d "/info/"      ]] && rm -r "/info/"
    [[ -d '/tmp/info/'  ]] && rm -r "/tmp/info/"
    [[ -e '/.BUILDINFO' ]] && rm "/.BUILDINFO"
@@ -2500,7 +2504,7 @@ fn_generate_desc()
 	#DESC=$(echo "${DESC//\'}") 		# remove apostrofe. ex: let´s => lets
 	DESC=${DESC//\'} 						# remove apostrofe. ex: let´s => lets
 
-	[[ ! -d "info" ]] && mkdir info &> /dev/null
+	[[ ! -d "info" ]] && mkdir info 2>&-
 
 	if [ -e info/desc ]; then
 		(( ncount++ ))
@@ -2560,7 +2564,7 @@ sh_doinstallpkg()
 				--extract                     \
 				--preserve-permissions        \
 				--touch                       \
-				--file "${packname}" -C "/tmp/" "./${DESCME}" "./${PRE_SH}" "./${INSTALL_SH}" &>/dev/null
+				--file "${packname}" -C "/tmp/" "./${DESCME}" "./${PRE_SH}" "./${INSTALL_SH}" 2>&-
 
 	if [[ ! -e "/tmp/${DESCME}" ]]; then
 		log_failure_msg2 "${red}ERROR! ${reset}I could not untar the file: ${orange}${packname}.desc${reset}"
@@ -2587,7 +2591,7 @@ sh_doinstallpkg()
 			--extract 							\
 			--preserve-permissions 			\
 			--touch 								\
-			--file "${packname}" -C / | tee -a ${CACHEDIR_LIST}/"${name_version_build}.list" || return 1
+			--file "${packname}" -C / | tee -a "$CACHEDIR_LIST/$name_version_build.list" || return 1
 
 	sh_create_list "$1" || return 1
 	sh_manage_scripts_and_archives "${packname}" || return 1
@@ -2655,24 +2659,22 @@ sh_initinstallpkg()
 
 sh_installpkg()
 {
-	while [[ -n "$1" ]]; do
-      local fullname="$1"
-      local package="${fullname##*/}"  				## tira o path
-		sh_doinstallpkg "$fullname" || return 1
-		local erro=$?
+	local cfileinstalled
+	local fullname
+	local package
 
-		if ! (( erro )); then
-         sh_splitpkg "$fullname"
-			local cfileinstalled=${aPKGSPLIT[$PKG_BASE_VERSION]}
-			cline=$(clinesplit)
-			if ! (( erro )); then
-				sed -i '/'"$cfileinstalled"'/d' "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
-				echo "${cline}" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
-			fi
-		fi
+	while [[ -n "$1" ]]; do
+		fullname="$1"
+		package="${fullname##*/}"  				## tira o path
+		sh_doinstallpkg "$fullname" || return $ERR_ERROR
+		sh_splitpkg "$fullname" || return $ERR_ERROR
+		cfileinstalled=${aPKGSPLIT[$PKG_BASE_VERSION]}
+		cline=$(clinesplit)
+		sed -i '/'"$cfileinstalled"'/d' "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" || return $ERR_ERROR
+		echo "${cline}" >> "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"
 		shift
 	done
-	return $erro
+	return $ERR_OK
 }
 
 _GPG_SIGN()
@@ -2691,9 +2693,9 @@ _GPG_SIGN()
 	[ "$REWRITE_SIGN" = "1" ] && rm -f "../$package.$PKG_EXT.$sig"
 	[ "$REWRITE_SIGN" = "1" ] && rm -f "$package.$PKG_EXT.$sig"
 
-	if which gpg &> /dev/null; then
+	if which gpg 2>&-; then
 		#Gerando Assinatura no pacote
-		gpg --detach-sign --pinentry-mode loopback "${package}.${PKG_EXT}" &>/dev/null || \
+		gpg --detach-sign --pinentry-mode loopback "${package}.${PKG_EXT}" 2>&- || \
 		gpg --detach-sign "${package}.${PKG_EXT}" || return 1
 		echo -e "${blue}[Create]${end} Your ${sig} on:   ../${package}.${PKG_EXT}.${sig}"
 	fi
@@ -2750,7 +2752,7 @@ fn_verify_on()
 
 	for check_script in 'pre.sh' 'pos.sh' 'rm.sh'; do
 		if [[ -e "${dir_info}/${check_script}" ]]; then
-	   	if _GREP 'rm[[:space:]]+\-(rf|fr)' "${dir_info}/${check_script}" &>/dev/null; then
+	   	if _GREP 'rm[[:space:]]+\-(rf|fr)' "${dir_info}/${check_script}" 2>&-; then
 		   	log_failure_msg2 "${red}ERROR ${reset}${PWD}/${dir_info}/$check_script contain command rm -rf. ABORTED NOW."
    			return 1
       	fi
@@ -2765,14 +2767,14 @@ fn_create_pkg()
 	local ext_desc='desc'
 
 	if tar --force-local --use-compress-program="zstd --ultra" --create --file ../"$package" .; then
-		cp "$DESCME" ../"$package.$ext_desc" &>/dev/null
-		pushd .. &>/dev/null || return 1
+		cp "$DESCME" ../"$package.$ext_desc" 2>&-
+		pushd .. 2>&- || return 1
 		if (( CREATE_SHA256 )); then
 			sha256sum "$package" > "$package".sha256
 		fi
 		if (( GPG_SIGN )); then
 			_GPG_SIGN "$package" || return 1
-			popd &>/dev/null || return 1
+			popd 2>&- || return 1
 		else
 			return 0
 		fi
@@ -2847,8 +2849,8 @@ fn_alienpkg_main()
 fn_alienpkg_initvars()
 {
 	BUILDDIR="${PKGCORE:=${CACHEDIR}/archives}"
-	[[ -n "${BUILDDIR}" ]] || BUILDDIR="${CACHEDIR}/archives" &> /dev/null
-	[[ -d "${BUILDDIR}" ]] || mkdir -p "${BUILDDIR}" &> /dev/null
+	[[ -n "${BUILDDIR}" ]] || BUILDDIR="${CACHEDIR}/archives" 2>&-
+	[[ -d "${BUILDDIR}" ]] || mkdir -p "${BUILDDIR}" 2>&-
 }
 
 fn_alienpkg_exec()
@@ -2931,14 +2933,14 @@ fn_alienpkg_exec()
 
 			(( ++ncount ))
 			(( verbose >= 1 )) && log_msg "$(fmt) Unpacking package $package at $destdir"
-			tar --use-compress-program=zstd --force-local --extract --file "$package" -C "$destdir" >/dev/null 2>&1
+			tar --use-compress-program=zstd --force-local --extract --file "$package" -C "$destdir" 2>&-
 
 			case $package in
 				luit-[0-9]* ) sed -i -e "/D_XOPEN/s/5/6/" configure;;
 			esac
 
-			sed -i 's/ = /="/g' "$destdir/.PKGINFO"  >/dev/null 2>&1
-			sed -i 's/$/"/g'    "$destdir/.PKGINFO"  >/dev/null 2>&1
+			sed -i 's/ = /="/g' "$destdir/.PKGINFO"  2>&-
+			sed -i 's/$/"/g'    "$destdir/.PKGINFO"  2>&-
 			source "$destdir/.PKGINFO"
 
 			export          DESC_BUILD="${pkgtar: -1}"
@@ -2953,8 +2955,8 @@ fn_alienpkg_exec()
 			export          DESC_BUILD="${pkgver: -1}"
 
 			deps=$(grep ^depend "$destdir"/.PKGINFO | awk -F'"' '{print $2}')
-			pushd "$destdir" >/dev/null 2>&1 || return 1
-			rm -f "$destdir"/.BUILDINFO "$destdir"/.MTREE "$destdir"/.PKGINFO >/dev/null 2>&1
+			pushd "$destdir" 2>&- || return 1
+			rm -f "$destdir"/.BUILDINFO "$destdir"/.MTREE "$destdir"/.PKGINFO 2>&-
 
 			(( ++ncount ))
 			fn_createpkg "$pkgtar"
@@ -2976,7 +2978,7 @@ fn_alienpkg_exec()
 		log_failure_msg "${red}error: ${orange}$x ${reset}package target ${yellow}${param} ${reset}was ${red}NOT ${reset}found in ${yellow}${ALIEN_CACHE_DIR} ${reset}for import"
 	fi
 	unset size ncount ntotalpkg
-	popd >/dev/null 2>&1 || return 1
+	popd 2>&- || return 1
 }
 
 fn_alienpkg_pkgsize()
@@ -3011,11 +3013,11 @@ sh_upgrade()
 	local pkgrepo
 	local ntotal_pkg_listed
 
-	[[ $verbose -gt 1 ]] || (( verbose=0 ))
+	(( verbose > 1 )) || verbose=0
 	LDEPS=$false
 	LEXACT=$true
 	LLIST=$false
-	sh_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
+	fn_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
 
 	local ntotal_pkg_listed=${public_ntotal_pkg_listed}
 
@@ -3104,7 +3106,7 @@ checkDependencies()
 sh_cleaning()
 {
 	log_msg "${pink}Cleaning temporary files${reset}"
-	rm -rf "${TMP_DIR_ROOT:?}"/ &> /dev/null
+	rm -rf "${TMP_DIR_ROOT:?}"/ 2>&-
 }
 
 sh_backup()
@@ -3112,9 +3114,9 @@ sh_backup()
 	if (( verbose >= 2 )); then
 		log_msg "${pink}Making backup: $CACHEDIR_SEARCH/${reset}"
 	fi
-	mkdir -p "$TMP_DIR_BACKUP"/ &> /dev/null
-	mkdir -p "$TMP_DIR_FOLDERS"/ &> /dev/null
-	cp -f "$CACHEDIR_SEARCH"/* "$TMP_DIR_BACKUP"/ &> /dev/null
+	mkdir -p "$TMP_DIR_BACKUP"/ 2>&-
+	mkdir -p "$TMP_DIR_FOLDERS"/ 2>&-
+	cp -f "$CACHEDIR_SEARCH"/* "$TMP_DIR_BACKUP"/ 2>&-
 }
 
 sh_version()
@@ -3254,7 +3256,7 @@ init()
   	while test $# -gt 0
 	do
 		case "${1}" in
-			-Si|-S|install)								shift;LSEARCHONLY=$false;sh_install "$@";return;;
+			-Si|-S|install)								shift;LSEARCHONLY=$false;LLIST=$true;sh_install "$@";return;;
 			-Sl|local)  									shift;sh_initinstallpkg "$@";exit;;
 			-Sa|alienpkg)	  		   					shift;fn_alienpkg_main "$@";return;;
 			-Sc|clean)  									shift;sh_clean "$@";exit;;
@@ -3315,8 +3317,8 @@ cleanup()
 	echo
  	echo "Interrupt signal received"
 	log_msg "${pink}Cleaning...${reset}"
-	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ &> /dev/null
-	rm -rf "${TMP_ROOT_BACKUP}"/ &> /dev/null
+	cp -f "$TMP_DIR_BACKUP"/* "$CACHEDIR_SEARCH"/ 2>&-
+	rm -rf "${TMP_ROOT_BACKUP}"/ 2>&-
 	rm -f "/tmp/ARRAYPKGFULL"
 	kill -TERM -$$
 	exit
@@ -3349,3 +3351,7 @@ else
 fi
 
 # vim:set ts=3 sw=3 et:
+
+# CodeBlock?
+# Ponteiro=Var ; Var='Valor apontado'
+# echo ${!Ponteiro}

@@ -161,7 +161,7 @@ configure()
 }
 
 sh_touchconf(){
-	[[ -d "${SYSCONFDIR}" ]] || mkdir -p >/dev/null 2>&-
+	[[ -d "${SYSCONFDIR}" ]] || mkdir -p "${SYSCONFDIR}" >/dev/null 2>&-
 	cat > "$SYSCONFDIR/fetch.conf" <<-'_EOF_'
 ######################################################################
 # fetch.conf

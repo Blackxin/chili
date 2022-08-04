@@ -696,7 +696,7 @@ sh_checknet()
 {
 	# have internet?
 	(( verbose >= 2 )) && log_info_msg "${cyan}Testing internet from ${SITE}"
-	curl --insecure $SITE 2>&- ||
+	curl --insecure $SITE >/dev/null 2>&- ||
 	{
 		(( verbose >= 2 )) && evaluate_retval
 		log_failure_msg2 "No route to server ($SITE) - ABORTED."

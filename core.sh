@@ -75,6 +75,27 @@ trancarstderr=2>&-
 #m1
 #m3
 
+# array bidimension
+#a=("00 01 02 03 04" "10 11 12 13 14" "20 21 22 23 24" "30 31 32 33 34")	#Init a 4x5 matrix
+#aset 2 3 9999 																				#Set a[2][3] = 9999
+#for r in "${a[@]}"; do																		# Show result
+#  echo $r
+#done
+#00 01 02 03 04																				#Outputs:
+#10 11 12 13 14
+#20 21 22 9999 24
+#30 31 32 33 34
+
+aset()
+{
+	row=$1
+	col=$2
+	value=$3
+	IFS=' ' read -r -a tmp <<< "${a[$row]}"
+	tmp[$col]=$value
+	a[$row]="${tmp[@]}"
+}
+
 fcreate()
 # $1 name
 # $2 qtde

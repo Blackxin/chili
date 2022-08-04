@@ -11,7 +11,7 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/08/01
+# 	Altered: 2022/08/04
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -36,7 +36,7 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
 # Import lib
-readonly _VERSION_="3.30.20220801"
+readonly _VERSION_="3.35.20220804"
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 [[ -f "${LIBRARY}/core.sh" ]] && source "${LIBRARY}/core.sh"
@@ -79,8 +79,8 @@ configure()
 	unset CDPATH
 	unset GREP_OPTIONS
 
-	[[ -e  "$SYSCONFDIR/fetch.conf" ]] || sh_touchconf
-	source "$SYSCONFDIR/fetch.conf"
+	[[ -s  "$SYSCONFDIR/fetch.conf" ]] || sh_touchconf
+	[[ -s  "$SYSCONFDIR/fetch.conf" ]] && source "$SYSCONFDIR/fetch.conf" || return 1
 
 	# files
    FOLDERS_METAPACKAGES='folders_metapackages.csv'
@@ -111,7 +111,7 @@ configure()
 	SEP=','
 	: ${PKG_EXT:='chi.zst'} # se PKG_EXT não estiver definida, recebe 'chi.zst'
 	: ${GITSITE:=0}			# se GITSITE não estiver definida, recebe 0
-	SITE="${PKG_SITE:=http://chililinux.com}"
+	SITE="${PKG_SITE:=https://chililinux.com}"
 	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
 	APP="fetch"
 	APP="${0##*/}"
@@ -162,7 +162,7 @@ configure()
 
 sh_touchconf(){
 	[[ -d "${SYSCONFDIR}" ]] || mkdir -p >/dev/null 2>&-
-	cat > "$SYSCONFDIR/fetch.conf" << '_EOF_'
+	cat > "$SYSCONFDIR/fetch.conf" <<-'_EOF_'
 ######################################################################
 # fetch.conf
 ######################################################################
@@ -224,6 +224,11 @@ clinesplit()
 clineascan()
 {
    printf '%s' "${aPKGARRAY[0]}$SEP${aPKGARRAY[1]}$SEP${aPKGARRAY[2]}$SEP${aPKGARRAY[3]}$SEP${aPKGARRAY[4]}$SEP${aPKGARRAY[5]}$SEP${aPKGARRAY[6]}"
+}
+
+clineinstallascan()
+{
+   printf "%s" "${aPKGARRAY[5]}  $(size_to_human "${aPKGARRAY[6]}")"
 }
 
 sh_arraypkgfullVET()
@@ -449,7 +454,6 @@ sh_write()
 
    [[ "$pos" = '-1' ]] && LSCAN=$false
 	(( LSCAN )) && sh_ascanpkg "$pkgsearch" "$pos"
-
    [[ -z "$status"       ]] && status=' A '
 	[[ "$clisting" == 'N' ]] && return 0
 	[[ "$status" = ' I '  ]] && strstatus='installed'
@@ -581,6 +585,7 @@ function fn_listpkgdisp()
 	local nstatus=0
 	local pgk_grep
 	local ncontapkg=0
+	local aBidi=()
 
 	[[ -e $file_list_installed ]] || printf '' > "${file_list_installed}"
 
@@ -633,7 +638,7 @@ function fn_listpkgdisp()
 					if (( LREMOVE )); then
 						log_failure_msg "${red}error: ${orange}$x ${reset}target was ${red}NOT INSTALLED. ${reset}Use the ${yellow}${0##*/} -Sr ${reset}option to rebuild installed packages."
 					else
-						log_failure_msg "${red}error: ${orange}$x ${reset}target was ${red}NOT found. ${reset}Use the ${yellow}--skiperror ${reset}option to force install. "
+						log_failure_msg "${red}error: ${orange}$x ${reset}target was ${red}NOT found. ${reset}Use the ${yellow}-Ss ${reset}option to search. "
 					fi
 					exit 1
 				else
@@ -676,9 +681,15 @@ function fn_listpkgdisp()
 		else
 			if (( LLIST )); then
 				if (( LCOLUMN )); then
-					printf "${bold}${black}%s\n" ${public_pkg[*]}
+#					printf "${bold}${black}%s\n" ${public_pkg[*]}
+#					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
+#					echo
+					for i in ${public_pkg[*]};{
+						if sh_ascanpkg "$i" '4'; then
+							printf "\t%-43s \t%18s\n"	"${bold}${black}${aPKGARRAY[0]}-${white}${aPKGARRAY[1]}" "${red}$(size_to_human "${aPKGARRAY[6]}")"
+						fi
+					}
 					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
-					echo
 				else
 					printf "${bold}${black}%s\n${reset}Packages ($public_ntotal_pkg_listed)" "${public_pkg[*]}"
 					echo
@@ -820,6 +831,7 @@ sh_checkdir()
 # -Sy
 fn_updaterepo()
 {
+	verbose=2
 	if (( LSELF )); then
 		sh_selfupdate "$@"
 		return $?
@@ -878,11 +890,13 @@ fn_update()
 	local nfilesInReposit
 	local nfilesInstalled
 	local nfilesInCache
+	local oldverbose=$verbose
 	local dw=("$CACHEDIR_SEARCH/$PACKAGES_SPLIT"
              "$CACHEDIR_SEARCH/$FOLDERS_METAPACKAGES"
              "$CACHEDIR_SEARCH/$METAPACKAGES"
             )
 
+	verbose=2
 	if (( LSELF )); then
 		sh_selfupdate "$@"
 		return $?
@@ -948,6 +962,7 @@ fn_update()
 #	{ kill $SPINNERPID; wait $SPINNERPID 2>/dev/null; echo ;}
 
 #	LLIST=$true ; sh_recreatefilepackagesinstalled
+	verbose=$oldverbose
 	fn_pkgincache
 	sh_cleaning
 	unset FOLDER_TEMP
@@ -1909,6 +1924,8 @@ sh_install()
 
 #	verbose=2
 #	SPLITPOS='5'
+	LCOLUMN=$true
+	LEXACT=$true
 	fn_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param" || return 1
 	ntotal_pkg_listed=$public_ntotal_pkg_listed
 	verbose=$loldverbose
@@ -1918,7 +1935,7 @@ sh_install()
 		cd "$CACHEDIR_ARCHIVES/"     || return 1
 
 		if ! (( LAUTO )); then
-			echo
+	#		echo
 			read -r -e -p "${blue}:: ${reset}Continue installation? [Y/n]" LDOWNLOAD
 			if [[ $(toupper "${LDOWNLOAD}") = "N" ]]; then
 				return

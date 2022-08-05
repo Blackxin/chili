@@ -117,7 +117,7 @@ fcreate()
 	return 1
 }
 
-sizeof.du(){ du -bs $1; }
+sizeof.du(){ du -bs $1 | cut -f1; }
 sizeof.find(){ echo $(( $(find $1 -printf %s+)0 )); }
 sizeof.sfs.sed(){ echo $(( $( unsquashfs -ll $1 | sed -r ' 1,3d; /s*-root\/dev/d; s/^([^ ]+ ){2}//; s/^ *([^ ]+) .*/\1+/; $s/\+//; ' ) )); }
 sizeof.sfs.awk(){ unsquashfs -ll $1 | awk '{m+=$3} END {print m}'; }

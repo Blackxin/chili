@@ -2536,6 +2536,8 @@ fn_generate_desc()
 			fi
 		fi
 	fi
+	[[ -z "$SIZE" ]] && SIZE=$(sizeof.du .)
+
 	cat > "info/desc" << EOF
 ######################################################################
 # Generated with fetch    - https://chilinux.com
@@ -2832,6 +2834,7 @@ fn_generatepkg()
 	   fi
 	   [[ -z "$field_build" ]] && field_build="$DESC_BUILD"
 		[[ -z "$DESC"        ]] && DESC="$field_pkgname-$field_version"
+
 		fn_generate_desc "$field_pkgname" "$field_version" "$field_build" "${field_pkgver::-2}" "$field_pkgrel" || return $ERR_ERROR
 	fi
 	return $ERR_OK
@@ -3277,11 +3280,11 @@ init()
 			-Sl|local)  									shift;sh_initinstallpkg "$@";exit;;
 			-Sa|alienpkg)	  		   					shift;fn_alienpkg_main "$@";return;;
 			-Sc|clean)  									shift;sh_clean "$@";exit;;
+			-c|-C|create)					   			shift;fn_createpkg "$@";exit;;
 			-Sg|-g|generate)							   shift;fn_generatepkg "$@";exit;;
 			-Ss|search)	     								shift;sh_search "$@";exit;;
 			-Sy|update)										shift;fn_updaterepo "$@";exit;;
 			-Syy|refresh)									shift;fn_update "$@";exit;;
-			-c|-C|create)					   			shift;fn_createpkg "$@";exit;;
 			-Sm|--meta|meta) 		            		shift;sh_installmeta "$@";exit;;
 			-R|remove) 										shift;sh_remove "$@";exit;;
 			-Sw|download) 									shift;sh_download "$@";exit;;

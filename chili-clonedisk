@@ -232,7 +232,9 @@ choosedisk()
             done
          }
       fi
-    	break
+		DEVICE_ORIGEM="${ARRAY_DSK_DISKS[index]}"
+		MODEL_ORIGEM="$sddest [${ARRAY_DSK_SIZE[index]}] [${ARRAY_DSK_MODEL[index]}]"
+      choosediskdestin
     done
 }
 

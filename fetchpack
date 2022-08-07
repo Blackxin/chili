@@ -46,6 +46,13 @@ declare movedir=
 declare USE_COLOR='y'
 #readonly PKG_RE='(.+)-(([^-]+)-([0-9]))-([^.]+)(\.chi\.zst)'     #VC OLD
 readonly PKG_RE='(.+)-(([^-]+)-([0-9])+)-([^.]+)(\.chi\.zst)'     #VC
+#readonly FETCH_RE='-[^-]+([0-9]+)-[0-9]+.'							   #VC
+#readonly  FETCH_RE='-[^a-z]+?[^-]+-\d.*-'							  		#VC
+#readonly FETCH_RE='-[^-]+[0-9]+-[^.]+-'										   #VC
+#readonly FETCH_RE='-[^-]+-[0-9]-'										   #VC
+#boareadonly  FETCH_RE='-[^-]+[0-9]+-([^.]+)[.]chi.*'							  		#VC
+readonly  FETCH_RE='-[^-]+[0-9]+-[^.]+.chi.*'							  		#VC
+
 # Expand to nothing if there are no matches
 shopt -s nullglob
 shopt -s extglob
@@ -253,17 +260,7 @@ main()
 	local pkg_base=
 	local candidates=()
 	local cachedir
-	local re
-
-   #'[0-9]+([.][0-9]+)+'
-   #'-[0-9]+(.[0-9]+)+'
-   #'-[0-9]+([.][0-9]+)+'
-   #'[0-9]+([.][0-9]+)(.+)'
-   #'(([^-]+)-([0-9]+))-'
-   #'(.+)-(([^-]+)-([0-9]))-([^.]+)'
-   #'.*?(?=-[^-]+-[0-9]-.*)')
-   #'\-[^-]+-[0-9]-')
- 	re='-[^-]+-[0-9]+-'
+	local re="$FETCH_RE"
 
 	if (( QUIET )); then
 		verbose=0
@@ -281,7 +278,7 @@ main()
 
 	for cachedir in "${cachedirs[@]}"
 	do
-		[[ -d $cachedir ]]            || die "Error: cachedir '$cachedir' does not exist or is not a directory"
+		[[ -d $cachedir ]]            || { log_failure_msg2 "${red}Error: cachedir '$cachedir' does not exist or is not a directory -- skipping"; continue; }
 		pushd "$cachedir" &>/dev/null || die "Error: failed to chdir to $cachedir"
 
 		if [ $# -lt 1 ]; then
@@ -293,14 +290,13 @@ main()
 		while read -r pkgInAll; do
 			pkg_base="$pkgInAll"
 			[[ -z "$pkg_base" ]] &&	continue
-			(( pkgNumber++ ))
+			((++pkgNumber))
 
 			if (( verbose >= 3 )); then
 				printf "  $(DOT)${white}candidate package ${purple}(%04d) ${green}%s\n" "$pkgNumber" "$pkg_base"
 			fi
-
-			candidates+=("$pkgInAll")
-			candesc+=("$pkgInAll.desc")
+			[[ -e "$pkgInAll"      ]] && candidates+=("$pkgInAll")
+			[[ -e "$pkgInAll.desc" ]] && candesc+=("$pkgInAll.desc")
 		done <<< "$AllOldPackages"  #done < <(printf '%s\n' "$AllOldPackages") #done <<< $(printf '%s\n' "$AllOldPackages")
 		popd >/dev/null 2>&1
 	done
@@ -313,35 +309,38 @@ main()
 	if (( verbose >= 2 )); then
 		pkgNumber=0
 		while read -r pkg; do
-			(( pkgNumber++ ))
+			((++pkgNumber))
 			printf "  $(DOT)${white}found package ${purple}(%04d) ${green}%42s\n" "$pkgNumber" "$pkg"
 		done <<< "$(printf '%s\n' "${candidates[@]}")"
 		#done < <(printf '%s\n' "${candidates[@]}") #done <<< "${candidates[@]}"
 	fi
 
-	pkgcount=$((${#candidates[*]} + ${#candesc[*]}))
-	totalsaved=$(printf '%s\0' "${candidates[@]}" | xargs -0 stat -c %s | awk '{ sum += $1 } END { print sum }')
-	totalsaved+=$(printf '%s\0' "${candesc[@]}"   | xargs -0 stat -c %s | awk '{ sum += $1 } END { print sum }')
+	ncandidates=${#candidates[*]}
+	ncandesc=${#candesc[*]}
+	pkgcount=$((ncandidates + ncandesc))
+
+	(( ncandidates )) && totalsaved=$(printf '%s\0' "${candidates[@]}" | xargs -0 stat -c %s | awk '{ sum += $1 } END { print sum }')
+	(( ncandesc    )) && totalsaved+=$(printf '%s\0' "${candesc[@]}"   | xargs -0 stat -c %s | awk '{ sum += $1 } END { print sum }')
 	set -o errexit # Exit immediately if a pipeline returns non-zero.
 
 	if (( delete )); then
 		(( verbose )) && cmdopts+=(-v); cmdopts+=(-f)
-		printf '%s\0' "${candidates[@]}" | runcmd xargs -0 rm "${cmdopts[@]}"
-		printf '%s\0' "${candesc[@]}"    | runcmd xargs -0 rm "${cmdopts[@]}"
+		(( ncandidates )) && printf '%s\0' "${candidates[@]}" | runcmd xargs -0 rm "${cmdopts[@]}"
+		(( ncandesc    )) && printf '%s\0' "${candesc[@]}"    | runcmd xargs -0 rm "${cmdopts[@]}"
 	elif (( move )); then
 		(( verbose )) && cmdopts+=(-v); cmdopts+=(-f)
-		printf '%s\0' "${candidates[@]}" | runcmd xargs -0 mv "${cmdopts[@]}" -t "$movedir"
-		printf '%s\0' "${candesc[@]}"    | runcmd xargs -0 mv "${cmdopts[@]}" -t "$movedir"
+		(( ncandidates )) && printf '%s\0' "${candidates[@]}" | runcmd xargs -0 mv "${cmdopts[@]}" -t "$movedir"
+		(( ncandesc    )) && printf '%s\0' "${candesc[@]}"    | runcmd xargs -0 mv "${cmdopts[@]}" -t "$movedir"
 	elif (( verbose )); then
-		printf '%s\0' "${candidates[@]}" | xargs -0 printf "  $(DOT)%s\n" "${cmdopts[@]}"
-		printf '%s\0' "${candesc[@]}"    | xargs -0 printf "  $(DOT)%s\n" "${cmdopts[@]}"
+		(( ncandidates )) && printf '%s\0' "${candidates[@]}" | xargs -0 printf "  $(DOT)%s\n" "${cmdopts[@]}"
+		(( ncandesc    )) && printf '%s\0' "${candesc[@]}"    | xargs -0 printf "  $(DOT)%s\n" "${cmdopts[@]}"
 	fi
 
-	if (( !QUIET )); then
+	if (( ! QUIET )); then
 		if (( dryrun )); then
-			msg "${yellow}$output finish dry-run (packages found: $pkgcount with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
+			msg "${yellow}$output finish dry-run (packages found: $ncandidates with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
 		else
-			msg "$output (packages found: $pkgcount with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
+			msg "$output (packages found: $ncandidates with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
 		fi
 	fi
 	return 0
@@ -350,25 +349,27 @@ main()
 usage()
 {
 	cat <<EOF
-A flexible cache cleaning utility.
-Usage: ${myname} <operation> [options] [targets...]
+${cyan}Usage: ${yellow}fetch -Sc <operation> [options] [targets...]${reset}
 
   Operations:
-     -d, --dryrun          perform a dry run, only finding candidate packages.
-     -m, --move <dir>      move candidate packages to "dir".
-     -r, --remove          remove candidate packages.
+${red}     -d, --dryrun          ${reset}perform a dry run, only finding candidate packages.
+${red}     -m, --move <dir>      ${reset}move candidate packages to "dir".
+${red}     -r, --remove          ${reset}remove candidate packages.
 
   Options:
-     -c, --cachedir <dir>  scan "dir" for packages. can be used more than once.
+${red}     -c, --cachedir <dir>  ${reset}scan "dir" for packages. can be used more than once.
                            (default: read from /etc/fetch/fetch.conf).
-     -k, --keep <num>      keep "num" of each package in the cache (default: 3).
-     -f, --force           apply force to mv(1) and rm(1) operations.
-     -h, --help            display this help message and exit.
-         --nocolor         remove color from output.
-     -q, --quiet           quiet output.
-     -v, --verbose         increase verbosity. specify up to 3 times ([-v][-vv][-vvv]).
+${red}     -k, --keep <num>      ${reset}keep "num" of each package in the cache (default: 1).
+${red}     -f, --force           ${reset}apply force to mv(1) and rm(1) operations.
+${red}     -h, --help            ${reset}display this help message and exit.
+${red}         --nocolor         ${reset}remove color from output.
+${red}     -q, --quiet           ${reset}quiet output.
+${red}     -v, --verbose         ${reset}increase verbosity. specify up to 3 times ([-v][-vv][-vvv]).
+
+${cyan}most common use: ${yellow}fetch -Sc -k1 -r -v${reset}
 EOF
 }
+
 
 sh_checkroot
 checkDependencies

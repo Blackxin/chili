@@ -150,7 +150,9 @@ configure()
 		#SED_RE='^.+>(.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).*[ ]([0-9]+k?)(.*)'
 		#SED_RE='^.+="(.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)".+<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).+[ ]([0-9]+k?)(.*)'
 		SED_RE='^.*["|\/](.+)-(([^-]+)-([0-9]+))-([^.]+)(.chi.zst)".+<.a>.*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[A-z]{3}-[0-9]{4})[ ]([0-9]{2}:[0-9]{2}).+[ ]([0-9]+k?).*'
-		FETCH_RE='-[^-]+-[0-9]+-'
+#		FETCH_RE='-[^a-z]+?[^-]+-[0-9].*-'
+#		FETCH_RE='-[^-]+-[0-9]-'
+		FETCH_RE='-[^-]+[0-9]+-[^.]+.chi.*'
 	else
 		CHILI_OS=$false
 		#PKG_RE='(.+)-(([^-]+)-([0-9]+))\.mz' 						#SOEN
@@ -3196,7 +3198,7 @@ fetchpack_main()
 	local pkg_base=
 	local candidates=()
 	local cachedir
-	local re=$FETCH_RE
+	local re="$FETCH_RE"
 
 	if (( QUIET )); then
 		verbose=0
@@ -3239,7 +3241,7 @@ fetchpack_main()
 
 	if (( ! ${#candidates[*]} )); then
 		log_msg "${green}NO candidates packages found for pruning"
-		exit
+		return 1
 	fi
 
 	if (( verbose >= 2 )); then
@@ -3274,9 +3276,9 @@ fetchpack_main()
 
 	if (( ! QUIET )); then
 		if (( dryrun )); then
-			msg "${yellow}$output finish dry-run (packages found: $pkgcount with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
+			msg "${yellow}$output finish dry-run (packages found: $ncandidates with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
 		else
-			msg "$output (packages found: $pkgcount with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
+			msg "$output (packages found: $ncandidates with .desc) (disk space saved: %s)" "$(size_to_human "$totalsaved")"
 		fi
 	fi
 	return 0
@@ -3316,7 +3318,7 @@ fetchpack_init()
 	OPT_LONG=('arch:' 'cachedir:' 'dryrun' 'force' 'help' 'ignore:' 'keep:' 'move:' 'nocolor' 'quiet' 'remove' 'uninstalled' 'version' 'verbose' 'null' 'ctime:')
 
 	if ! parseopts "$OPT_SHORT" "${OPT_LONG[@]}" -- "$@"; then
-		exit 1
+		return 1
 	fi
 	set -- "${OPTRET[@]}"
 	unset OPT_SHORT OPT_LONG OPTRET
@@ -3335,7 +3337,7 @@ fetchpack_init()
 				cmdopts=(-f) ;;
 			-h|--help)
 				fetchpack_usage
-				exit 0 ;;
+				return;;
 			-m|--move)
 				move=1 movedir=$2
 				shift ;;
@@ -3349,7 +3351,7 @@ fetchpack_init()
 				delete=1 ;;
 			-V|--version)
 				logo
-				exit 0 ;;
+				return ;;
 			-v|--verbose)
 				(( ++verbose )) ;;
 			-z|--null)

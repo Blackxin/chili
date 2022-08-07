@@ -11,7 +11,7 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 # 	MazonOS GNU/Linux - http://mazonos.com
 #
 # 	Created: 2019/04/05
-# 	Altered: 2022/08/04
+# 	Altered: 2022/08/07
 #
 # 	Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -36,7 +36,7 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
 # Import lib
-readonly _VERSION_="3.35.20220804"
+readonly _VERSION_="3.36.20220807"
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 [[ -f "${LIBRARY}/core.sh" ]] && source "${LIBRARY}/core.sh"

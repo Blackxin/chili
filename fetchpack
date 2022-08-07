@@ -7,7 +7,7 @@
 #  MazonOS GNU/Linux - http://mazonos.com
 #
 #  Created: 2020/10/05
-#  Altered: 2022/08/05
+#  Altered: 2022/08/07
 #
 #  Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
 #
@@ -33,7 +33,7 @@ export LC_ALL=C
 export LANG=C
 readonly DEPENDENCIES=(which find sed grep sort cat awk tput dialog)
 declare -r myname='fetchpack'
-declare -r myver='1.31.20220805'
+declare -r myver='1.32.20220807'
 declare -a cachedirs=()
 declare -a candidates=() cmdopts=() candesc=()
 declare -i delete=0 dryrun=0 move=0 totalsaved=0 pkgcount=0

@@ -52,6 +52,44 @@ trancarstderr=2>&-
 : ${ARRAY_DSK_MODEL=()}
 : ${ARRAY_DSK_TRAN=()}
 
+function DrawBox1
+{
+    string="$*";
+    tamanho=${#string}
+    tput setaf 4; printf "\e(0\x6c\e(B"
+    for i in $(seq $tamanho)
+        do printf "\e(0\x71\e(B"
+    done
+    printf "\e(0\x6b\e(B\n"; tput sgr0;
+    tput setaf 4; printf "\e(0\x78\e(B"
+    tput setaf 1; tput bold; echo -n $string; tput sgr0
+    tput setaf 4; printf "\e(0\x78\e(B\n"; tput sgr0;
+    tput setaf 4; printf "\e(0\x6d\e(B"
+    for i in $(seq $tamanho)
+        do printf "\e(0\x71\e(B"
+    done
+    printf "\e(0\x6a\e(B\n"; tput sgr0;
+}
+
+function DrawBox
+{
+    string="$*";
+    tamanho=${#string}
+    tput setaf 4; printf "\e(0\x6c\e(B"
+    printf -v linha "%${tamanho}s" ' '
+    printf -v traco "\e(0\x71\e(B"
+    echo -n ${linha// /$traco}
+    printf "\e(0\x6b\e(B\n"; tput sgr0;
+    tput setaf 4; printf "\e(0\x78\e(B"
+    tput setaf 1; tput bold; echo -n $string; tput sgr0
+    tput setaf 4; printf "\e(0\x78\e(B\n"; tput sgr0;
+    tput setaf 4; printf "\e(0\x6d\e(B"
+    printf -v linha "%${tamanho}s" ' '
+    printf -v traco "\e(0\x71\e(B"
+    echo -n ${linha// /$traco}
+    printf "\e(0\x6a\e(B\n"; tput sgr0;
+}
+
 #comparar dois arquivos e ver as diferencas
 # awk 'NR == FNR {file1[$1]++; next} !($0 in file1)' file1 file2
 #file1
@@ -1072,6 +1110,12 @@ linhaHorizontal()
 	printf -v Traco "\e(0\x71\e(B"
 	tput cup $1 $2; echo ${Espacos// /$Traco}
 }
+
+function LerMatricula {
+	read -p "Matricula: " cMatr
+	((${#cMatr} == 6 )) && [[ -z ${cMatr//[0-9]/} ]] && return 0 || return 1; 
+}
+
 
 function maxcol()
 {

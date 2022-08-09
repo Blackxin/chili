@@ -36,7 +36,7 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 # 	contains portion of software https://bananapkg.github.io/
 #########################################################################
 # Import lib
-readonly _VERSION_="3.36.20220807"
+readonly _VERSION_="3.37.20220807"
 LIBRARY=${LIBRARY:-'/usr/share/fetch'}
 SYSCONFDIR=${SYSCONFDIR:-'/etc/fetch'}
 [[ -f "${LIBRARY}/core.sh" ]] && source "${LIBRARY}/core.sh"
@@ -542,7 +542,7 @@ sh_list()
 			done
 		fi
 	else
-		if (( LCOLUMN )); then
+		if (( LTABLE )); then
 			printf "${bold}${black}%s\n" ${aout[*]}
 			printf "%s\n" "${reset}Packages ($nfiles)"
 		else
@@ -554,6 +554,7 @@ sh_list()
 	return 0
 }
 
+# -Li
 sh_listinstalled()
 {
 	local param="$@"
@@ -566,14 +567,10 @@ sh_listinstalled()
 
 	(( verbose >= 2 )) && log_msg "Listing installed packages"
 	LLIST=$true
-	LALL=$false
 	LDEPS=$false
 	SPLITPOS='0'
 
-	if [[ -z "${param}" ]]; then
-		LALL=$true
-	fi
-
+	[[ -z "${param}" ]] && LALL=$true || LALL=$false
 	fn_listpkgdisp "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" "$param"
 }
 
@@ -684,12 +681,12 @@ function fn_listpkgdisp()
 			}
 		else
 			if (( LLIST )); then
-				if (( LCOLUMN )); then
+				if (( LTABLE )); then
 #					printf "${bold}${black}%s\n" ${public_pkg[*]}
 #					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
 #					echo
 					for i in ${public_pkg[*]};{
-						if sh_ascanpkg "$i" '4'; then
+						if sh_ascanpkg "$i" '0'; then
 							printf "\t%-43s \t%18s\n"	"${bold}${black}${aPKGARRAY[0]}-${white}${aPKGARRAY[1]}" "${red}$(size_to_human "${aPKGARRAY[6]}")"
 						fi
 					}
@@ -1293,7 +1290,7 @@ fn_pkgincache()
 
 	if ((LLIST)); then
 		if ((nfilesincache)); then
-			if (( LCOLUMN )); then
+			if (( LTABLE )); then
 				printf "${bold}${black}%s\n" ${aPkgIn[*]}
 				printf "%s\n" "${reset}Packages ($nfilesincache)"
 			else
@@ -1341,7 +1338,7 @@ sh_pkgoutcache()
 
 	if ((LLIST)); then
 		if ((nfilesoutcache)); then
-			if (( LCOLUMN )); then
+			if (( LTABLE )); then
 				printf "${bold}${black}%s\n" ${aPkgOut[*]}
 				printf "%s\n" "${reset}Packages ($nfilesoutcache)"
 			else
@@ -1928,7 +1925,7 @@ sh_install()
 
 #	verbose=2
 #	SPLITPOS='5'
-	LCOLUMN=$true
+	LTABLE=$true
 	LEXACT=$true
 	fn_listpkgdisp	"$CACHEDIR_SEARCH/$PACKAGES_SPLIT" "$param" || return 1
 	ntotal_pkg_listed=$public_ntotal_pkg_listed
@@ -3463,7 +3460,7 @@ sh_parseparam()
 	LTIME=$false
 	LSEARCHONLY=$true
 	LSKIPERROR=$false
-	LCOLUMN=$false
+	LTABLE=$false
 
 	for s in $param
    do
@@ -3495,7 +3492,7 @@ sh_parseparam()
       [[ $(tolower "${s}") = "--all"        ]] && { LALL=$true; continue; }
       [[ $(tolower "${s}") = "--skiperror"  ]] && { LSKIPERROR=$true; continue; }
       [[ $(tolower "${s}") = "--nocolor"    ]] && { unsetvarcolors; continue;}
-      [[ $(tolower "${s}") = "--table"      ]] && { LCOLUMN=$true; continue;}
+      [[ $(tolower "${s}") = "--table"      ]] && { LTABLE=$true; continue;}
 #		newparam="$newparam $(echo ${s})"
 		newparam+="$s "
    done
@@ -3527,7 +3524,7 @@ init()
 			-La|avaiable) 									shift;sh_list "$@";exit;;
 			-Lc|list-cache) 	        					shift;LLIST=$true;fn_pkgincache "$@";exit;;
 			-Pi|in-cache) 	        						shift;LLIST=$true;fn_pkgincache "$@";exit;;
-			-Li|list-installed)							shift;sh_listinstalled "$@";exit;;
+			-Li|list-installed)							shift;LLIST=$true;sh_listinstalled "$@";exit;;
 			-Po|out-cache)	            				shift;LLIST=$true;sh_pkgoutcache "$@";exit;;
 			-Qi|show) 										shift;sh_show "$@";exit;;
 			-Su|upgrade)									shift;sh_upgrade "$@";exit;;
@@ -3537,7 +3534,7 @@ init()
       	-exact|--exact)								LEXACT=1;;
       	-q|--quiet)										verbose=0;;
       	--nocolor)										unsetvarcolors;;
-      	--table)											LCOLUMN=1;;
+      	--table)											LTABLE=1;;
       	-v*|--no-verbose|--verbose)				(( ++verbose ));test "${1:0:5}" = "--no-" && verbose=0;;
       	-h|--help)										usage;exit $(( $# ? 0 : 1 ));;
 #      	*)													usage;exit 0;_last_positional="$1";_positionals+=("$_last_positional");_positionals_count=$((_positionals_count + 1));;

@@ -1,0 +1,30 @@
+#!/usr/bin/env/bash
+
+#You must declare your array before use with
+#declare -A myArray
+#myArray=([red]=1 [orange]=2 [green]=3)
+#echo ${myArray['orange']}
+
+array=({a..z})
+#echo ${array[@]}
+#echo ${array[@]/b//}
+#echo ${array[@]/b//} | cut -d/ -f1
+#echo ${array[@]/green//} | cut -d/ -f1 | wc -w | tr -d ' '
+#search=z
+#n=$(cut -d/ -f1 <<< "${array[@]/$search//}" | wc -w | tr -d ' ')
+#echo $n
+#echo ${array[n]}
+
+unset array
+#mapfile -t array < /var/cache/fetch/search/packages-split.csv
+array=($(awk -F',' '{ print $1 }' /var/cache/fetch/search/packages-split.csv))
+#echo ${array[@]}
+#echo ${array[@]/b//}
+#echo ${array[@]/b//} | cut -d/ -f1
+#echo ${array[@]/green//} | cut -d/ -f1 | wc -w | tr -d ' '
+search='tree'
+echo ${array[@]}
+cut -d/ -f1 <<< "${array[@]/$search//}" | wc -w | tr -d ' '
+n=$(cut -d/ -f1 <<< "${array[@]/$search//}" | wc -w | tr -d ' ')
+echo $n
+echo ${array[n]}

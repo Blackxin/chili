@@ -373,6 +373,53 @@ done
 
 sh_ascanpkg()
 {
+#	local pkgsearch="^$1$"
+	local pkgsearch="$1"
+	local pos="$2"
+	local indice
+	aPKGARRAY=()
+
+	indice=$(awk -F$SEP -v var="^$pkgsearch$" -v field=$((++pos)) '$field ~ var { print NR}' "$CACHEDIR_SEARCH/$PACKAGES_SPLIT")
+
+#	case $pos in
+#		0) indice=$(awk -F$SEP -v var="$pkgsearch" -v field=1 '$'"field"' ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		0) indice=$(awk -F$SEP -v var="$pkgsearch" -v field=$((++pos)) '$field ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		0) indice=$(awk -F$SEP -v var="$pkgsearch" '$1 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		1) indice=$(awk -F$SEP -v var="$pkgsearch" '$2 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		2) indice=$(awk -F$SEP -v var="$pkgsearch" '$3 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		3) indice=$(awk -F$SEP -v var="$pkgsearch" '$4 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		4) indice=$(awk -F$SEP -v var="$pkgsearch" '$5 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		5) indice=$(awk -F$SEP -v var="$pkgsearch" '$6 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		6) indice=$(awk -F$SEP -v var="$pkgsearch" '$7 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#		7) indice=$(awk -F$SEP -v var="$pkgsearch" '$8 ~ var { print NR}' /var/cache/fetch/search/packages-split.csv);;
+#	esac
+
+	if [[ -z $indice ]]; then
+		return 1
+	fi
+
+	indice=$(printf "%d %d %d %d %d %d %d %d %d %d" $indice) # corrigir bug do retorno do indice pelo awk quando varios pacotes mesmo nome
+	indice=${indice%% *}
+	((--indice))
+
+	aPKGARRAY=(	"${public_pkg_base[$indice]}"
+					"${public_pkg_version[$indice]}"
+					"${public_pkg_build[$indice]}"
+					"${public_pkg_fullname[$indice]}"
+					"${public_pkg_dirfullname[$indice]}"
+					"${public_pkg_base_version[$indice]}"
+					"${public_pkg_size[$indice]}"
+					"${public_pkg_site[$indice]}"
+					)
+	strstatus=''
+	if grep -q ^"$pkgsearch$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"; then
+		strstatus='[installed]'
+	fi
+	return 0
+}
+
+sh_ascanpkgGREP()
+{
 	local pkgsearch="$1"
 	local pos="$2"
 	local indice=0
@@ -451,7 +498,7 @@ sh_write()
 	local pkgsearch="$1"
 	local pos="$2"
 	local pkgCheckNumber="$3"
-	local strstatus='         '
+	local strstatus=''
    local status="$4"
    local clisting="$5"
    local LSCAN=$true
@@ -463,6 +510,13 @@ sh_write()
 	[[ "$status" = ' I '  ]] && strstatus='installed'
 
 	if (( verbose >= 2 )); then
+		if grep -q ^"$pkgsearch$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT"; then
+			strstatus='installed'
+			[[ "$status" != 'dep'  ]] && status=' I '
+		else
+			strstatus='         '
+			[[ "$status" != 'dep'  ]] && status=' N '
+		fi
 		printf "${green}%s(%04d) ${cyan}%-3s ${orange}%-43s$cyan $strstatus ${reset}%-15s%15s %s\n"	\
 				 ""		 																										\
 				 "$pkgCheckNumber" 																							\
@@ -504,13 +558,13 @@ sh_list()
 	fi
 
 	if [[ -z "$cListSearch" ]]; then
-		if (( LALL )); then
+#		if (( LALL )); then
  			pkg=${public_pkg_base[@]}
  			aout=${public_pkg_base_version[@]}
-		else
-			log_failure_msg "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
-			return 1
-		fi
+#		else
+#			log_failure_msg "${red}error${reset}: nenhum alvo definido (use -h para obter ajuda)"
+#			return 1
+#		fi
 	else
 		for x in ${cListSearch}; do
 			(( LEXACT )) && y="^$x$SEP" || y="$x"
@@ -525,33 +579,8 @@ sh_list()
 		return 1
 	fi
 
-	if (( verbose >= 2 )); then
-		if (( LLIST )); then
-			pkgCheckNumber=0
-			(( verbose >= 2 )) && sh_cabec "$nfiles"
-
-			for i in ${pkg[*]}; do
-				((++pkgCheckNumber))
-				if (( verbose >= 2 )); then
-					if   grep -q ^"$i$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT";
-					then status=' I '
-					else status=' A '
-					fi
-				fi
-				(( LLIST )) && sh_write "$i" '0' "$pkgCheckNumber" "$status"
-			done
-		fi
-	else
-		if (( LTABLE )); then
-			printf "${bold}${black}%s\n" ${aout[*]}
-			printf "%s\n" "${reset}Packages ($nfiles)"
-		else
-			printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${aout[*]}"
-		fi
-		return 0
-	fi
-	printf "${yellow}(%05d) %s\n" "$nfiles" "${cyan}packages listed${reset}"
-	return 0
+	fn_writetable "${pkg[*]}" '0' $nfiles
+	return $?
 }
 
 # -Li
@@ -670,38 +699,60 @@ function fn_listpkgdisp()
 		#sanitize
 		public_pkg=($(sh_adel ${public_pkg[*]}))
 		public_ntotal_pkg_listed=$(lenarray "${public_pkg[*]}")
+		fn_writetable "${public_pkg[*]}" '0' $public_ntotal_pkg_listed $nstatus
+	fi
+	return 1
+}
 
+fn_writetable()
+{
+	local arr=("$1")
+	local campo="$2"
+	local nfiles=$3
+	local nstatus=$4
+	local nlen
+	local status
+
+	if ((nlen=$(lenarray "${arr[*]}"))); then
 		if (( verbose >= 2)); then
-			sh_cabec "$public_ntotal_pkg_listed"
+			sh_cabec "$nfiles"
 			pkgNumber=0
 
-			for i in ${public_pkg[*]};{
-				((pkgNumber > nstatus)) && cst='dep' || cst=' S '
-				sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "$cst"
-			}
+			for i in ${arr[*]}; do
+				if (( verbose >= 2 )); then
+					[[ -n "$nstatus" ]] && ((pkgNumber > nstatus)) && status='dep' || status=' S '
+#					if   grep -q ^"$i$SEP" "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT";
+#					then status=' I '
+#					else status=' A '
+#					fi
+				fi
+#				(( LLIST )) && sh_write "$i" "$SPLITPOS" $((++pkgNumber)) "$status"
+				(( LLIST )) && sh_write "$i" $campo $((++pkgNumber)) "$status"
+			done
 		else
 			if (( LLIST )); then
 				if (( LTABLE )); then
-#					printf "${bold}${black}%s\n" ${public_pkg[*]}
-#					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
-#					echo
-					for i in ${public_pkg[*]};{
-						if sh_ascanpkg "$i" '0'; then
-							printf "\t%-43s \t%18s\n"	"${bold}${black}${aPKGARRAY[0]}-${white}${aPKGARRAY[1]}" "${red}$(size_to_human "${aPKGARRAY[6]}")"
+					for i in ${arr[*]};{
+						if sh_ascanpkg "$i" $campo; then
+							repo=${aPKGARRAY[4]%%/*}
+							printf "%-60s\t%s\t%15s\n" \
+									 "${bold}${pink}$repo/${white}${aPKGARRAY[0]}-${black}${aPKGARRAY[1]}" \
+									 "${red}$(size_to_human "${aPKGARRAY[6]}")"	\
+									 "${cyan}$strstatus"
 						fi
 					}
-					printf "%s\n" "${reset}Packages ($public_ntotal_pkg_listed)"
+					printf "%s\n" "${reset}Packages ($nfiles)"
 				else
-					printf "${bold}${black}%s\n${reset}Packages ($public_ntotal_pkg_listed)" "${public_pkg[*]}"
+					printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${arr[*]}"
+					printf "\n${red}use the option --table or --verbose for more details"
 					echo
 				fi
 			fi
 			return 0
 		fi
-		printf "${yellow}(%05d) %s\n" "$public_ntotal_pkg_listed" "${cyan}packages listed${reset}"
-		return 0
 	fi
-	return 1
+	printf "${yellow}(%05d) %s\n" "$nfiles" "${cyan}packages listed${reset}"
+	return 0
 }
 
 sh_checknet()
@@ -1258,7 +1309,7 @@ sh_filesincache()
    return 0
 }
 
-# -Lc/-Pi
+# -Pi
 fn_pkgincache()
 {
 	local lfind=$false
@@ -1274,30 +1325,24 @@ fn_pkgincache()
 	(( verbose >= 2 )) && log_msg "Wait, doing some calculations..."
 	sh_filesincache
 
+	nfilesincache=${#aCache[*]}
+	fn_writetable "${aCache[*]}" '0' $nfilesincache
+
+:<<'comment'
 	for y in ${public_pkg_base[*]};do
 		if ! ascan "$y" "${aCache[@]}"; then
 			((++nfilesoutcache))
-			#aPkgOut+=("$y")
   		   aPkgOut+=("${public_pkg_base_version[$indice]}")
 		else
 			((++nfilesincache))
 			(( verbose >= 2 )) && sh_write "$y" "0" "$nfilesincache"
-			#aPkgIn+=("$y")
 			aPkgIn+=("${public_pkg_base_version[$indice]}")
 		fi
 		((++indice))
 	done
+	fn_writetable "${aPkgIn[*]}" '5' $nfilesincache
+comment
 
-	if ((LLIST)); then
-		if ((nfilesincache)); then
-			if (( LTABLE )); then
-				printf "${bold}${black}%s\n" ${aPkgIn[*]}
-				printf "%s\n" "${reset}Packages ($nfilesincache)"
-			else
-				printf "${bold}${black}%s\n${reset}Packages ($nfilesincache)" "${aPkgIn[*]}"
-			fi
-		fi
-	fi
 	if (( verbose >= 2 )); then
 		printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
 		printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
@@ -1336,16 +1381,8 @@ sh_pkgoutcache()
 		((++indice))
 	done
 
-	if ((LLIST)); then
-		if ((nfilesoutcache)); then
-			if (( LTABLE )); then
-				printf "${bold}${black}%s\n" ${aPkgOut[*]}
-				printf "%s\n" "${reset}Packages ($nfilesoutcache)"
-			else
-				printf "${bold}${black}%s\n${reset}Packages ($nfilesoutcache)" "${aPkgOut[*]}"
-			fi
-		fi
-	fi
+	fn_writetable "${aPkgOut[*]}" '5' $nfilesoutcache
+
 	if (( verbose >= 2 )); then
 		printf "${yellow}(%05d) %s\n" "$nfilesincache" "${cyan}packages in cache"
 		printf "${yellow}(%05d) %s\n" "$nfilesoutcache" "${cyan}packages OUT CACHE $CACHEDIR_ARCHIVES"
@@ -3423,6 +3460,7 @@ ${red}  -Qq, total          ${reset}- total packages installed
 ${red}  -V,  version        ${reset}- output version information and exit
 ${red}  --nocolor           ${reset}- remove color from output
 ${red}  --table             ${reset}- output in columns
+${red}  --verbose           ${reset}- verbose output
 ${cyan}ex:
   ${reset}fetch ${pink}-Sy ${reset} self ${yellow}=> Update self fetch via internet
   ${reset}fetch ${pink}-Sy ${reset}      ${yellow}=> Update database
@@ -3520,8 +3558,8 @@ init()
 			-Sw|download) 									shift;sh_download "$@";exit;;
 			-Sr|recreate)									shift;LLIST=$true;sh_recreatefilepackagesinstalled;exit;;
 			-Qq|total)									   shift;sh_totalpackagesinstalled;exit;;
-			-L|list)    	 								shift;sh_list "$@";exit;;
-			-La|avaiable) 									shift;sh_list "$@";exit;;
+			-L|list)    	 								shift;LLIST=$true;sh_list "$@";exit;;
+			-La|avaiable) 									shift;LLIST=$true;sh_list "$@";exit;;
 			-Lc|list-cache) 	        					shift;LLIST=$true;fn_pkgincache "$@";exit;;
 			-Pi|in-cache) 	        						shift;LLIST=$true;fn_pkgincache "$@";exit;;
 			-Li|list-installed)							shift;LLIST=$true;sh_listinstalled "$@";exit;;

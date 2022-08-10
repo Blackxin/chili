@@ -54,6 +54,8 @@ import threading
 import itertools
 import time
 import re
+import sys
+import argparse
 
 for module in modules:
     try:
@@ -74,12 +76,12 @@ from requests_html import HTMLSession
 from consolecolor import FontColor
 from consolecolor import Colors
 from sty import fg, bg, ef, rs, RgbFg
-fg.set_style('orange', RgbFg(255, 150, 50))
+#fg.set_style('orange', RgbFg(255, 150, 50))
 
 def version():
     print('''    __      _       _
    / _| ___| |_ ___| |__           Copyright (C) 2019-2020 Vilmar Catafesta <vcatafesta@gmail.com>
-  | |_ / _ \ __/ __| '_ \                                                                         
+  | |_ / _ \ __/ __| '_ \
   |  _|  __/ || (__| | | |         Este programa pode ser redistribuído livremente
   |_|  \___|\__\___|_| |_|         sob os termos da Licença Pública Geral GNU.
 fetch 1.00.00.20200817
@@ -527,27 +529,25 @@ except KeyboardInterrupt:
     exit(0)
 
 
-import sys
-import argparse
+def main():
+    # (1)
+    parser = argparse.ArgumentParser(description='ChiliOS fetch')
+    parser.add_argument('-Sy', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
+    parser.add_argument('-Su', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
+    parser.add_argument('-f', dest='force', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
+    parser.add_argument('-y', dest='auto', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
+    args = parser.parse_args() #(3)
 
-#def main():
-#    parser = argparse.ArgumentParser(description='ChiliOS fetch')  # (1)
-#    parser.add_argument('-Sy', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
-#    parser.add_argument('-Su', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
-#    parser.add_argument('-f', dest='force', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
-#    parser.add_argument('-y', dest='auto', nargs='*', type=str, default='', required=False, help='Sync')  #(2)
-#    args = parser.parse_args() #(3)
-
-#    choose = 'Sy'
-#    if choose in switches:
-#        functions = locals()
-#        pause( functions )
-#        functions['update']()
-#   print("Sy={}".format(args.Sy)) # (4)
-#   print("Su={}".format(args.Su)) # (4)
-#   print(" f={}".format(args.force)) # (4)
-#   print(" y={}".format(args.auto)) # (4)
-#    return 0
+    choose = 'Sy'
+    if choose in switches:
+        functions = locals()
+        pause( functions )
+        functions['update']()
+    print("Sy={}".format(args.Sy)) # (4)
+    print("Su={}".format(args.Su)) # (4)
+    print(" f={}".format(args.force)) # (4)
+    print(" y={}".format(args.auto)) # (4)
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -344,13 +344,13 @@ sh_adduser()
 		msg "INFO" "$(log_info_msg "$cmsgadduser: ${AsUser[cuser]} - ${AsUser[cfullname]} ")"
 		chroot "$dir_install" /bin/bash -c "useradd -m ${AsUser[cuser]} -G ${AsUser[cgroups]} -p ${AsUser[cpass]} -c "${AsUser[cfullname]}" > /dev/null 2>&1"
 	   chroot "$dir_install" /bin/bash -c "(echo ${AsUser[cuser]}:${AsUser[cpass]}) | chpasswd -m > /dev/null 2>&1"
-	   debug "347 evaluate_retval"
+	   evaluate_retval
 	fi
 
 	if [[ -n "${AsUser[cpassroot]}" ]]; then
 		msg "INFO" "$(log_info_msg "$cmsgadduser: root")"
 	   chroot "$dir_install" /bin/bash -c "(echo root:${AsUser[cpassroot]}) | chpasswd -m > /dev/null 2>&1"
-	   debug "354 evaluate_retval"
+	   evaluate_retval
 	fi
 
 	msg "INFO" "$(log_info_msg "Ajustando configurações herdadas")"
@@ -360,13 +360,13 @@ sh_adduser()
    	chown ${AsUser[cuser]}:${AsUser[cuser]} . -R > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -R live > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -r live > /dev/null 2>&1"
-	   debug "363 evaluate_retval"
+	   evaluate_retval
 
 		msg "INFO" "$(log_info_msg "Finalizando configuração de usuario")"
 	   chroot "$dir_install" /bin/bash -c "cp /etc/skel/.xinitrc /home/${AsUser[cuser]} > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -R live > /dev/null 2>&1"
 #	   chroot "$dir_install" /bin/bash -c "userdel -r live > /dev/null 2>&1"
-	   debug "369 evaluate_retval"
+	   evaluate_retval
 }
 
 sh_execcopia()

@@ -31,7 +31,7 @@
 #------------------- VARIABLES ------------------------>
 
 # Paths
-url     = 'https://mazonos.com/packages/' # Official Repository
+url     = 'http://mazonos.com/packages/' # Official Repository
 filecsv = '/var/lib/mz/mz_base.csv'      # Repository package list
 dircsv  = '/var/lib/mz/'                 # Folder for the .csv file
 dirlist = '/var/lib/banana/list/'        # Folder for the .list file
@@ -82,7 +82,7 @@ for module in modules:
         print('Installing modules...')
         os.system('pip3 install ' + str(module))
         os.system('clear')
-        
+
 import requests, requests_html, bs4
 
 from urllib.request import urlopen
@@ -107,7 +107,7 @@ def check():
         print('Created file ' + filecsv + '.')
         os.system('clear')
         update()
-        
+
 
 def main():
     try:
@@ -118,7 +118,7 @@ def main():
     else:
         global choose
         choose = str(sys.argv[1])
-        
+
 
 def menu():
     print(''' mz 1.0.0.1 (amd64)
@@ -139,7 +139,7 @@ def menu():
 
 def internet_on():
     try:
-        response = urlopen('https://www.google.com/', timeout=10)
+        response = urlopen(url, timeout=10)
         return True
     except:
         return False
@@ -187,10 +187,11 @@ def search():
 
             if not found:
                 print(package_not_found)
-                
+
 def i():
     install()
-                
+
+
 def install():
     if internet_on():
         try:

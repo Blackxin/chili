@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # License: MIT                                                              #
 
-#url     = 'http://mazonos.com/packages/'        # Official Repository
-url     = 'http://localhost/packages/'           # Official Repository
-#url      = 'https://github.com/vcatafesta/ChiliOS/tree/master/'           # Official Repository
-#filecsv = '/var/lib/fetch/database.db'          # Repository package list
-filecsv = 'database.db'                          # Repository package list
+#url      = 'http://mazonos.com/packages/'        # Official Repository
+url      = 'http://localhost/packages/'          # Official Repository
+#url      = 'http://vcatafesta.online/packages/'  # Official Repository
+#url     = 'https://github.com/vcatafesta/ChiliOS/tree/master/'           # Official Repository
+#filecsv  = '/var/lib/fetch/database.db'          # Repository package list
+filecsv = 'database.csv'                         # Repository package list
 dircsv  = '/var/lib/fetch/'                      # Folder for the .csv file
 dirlist = '/var/lib/banana/list/'                # Folder for the .list file
 PRG     = '.chi.zst'
@@ -46,7 +47,7 @@ switches = [
     'c', 'checkdesc'
     ]
 
-modules = ['requests', 'requests_html', 'bs4', 'argparse', 'consolecolor', 'sty']
+modules = ['requests', 'requests_html', 'bs4', 'argparse', 'consolecolor', 'sty', 'ssl']
 import sys
 import os
 import csv
@@ -69,6 +70,7 @@ for module in modules:
 import requests
 import requests_html
 import bs4
+import ssl
 
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
@@ -137,10 +139,18 @@ use "fetch {-h --help}" com uma operação para ver as opções disponíveis
 
 
 def internet_on():
+    #ssl ignore
+#   ctx = ssl.create_default_context()
+#   ctx.check_hostname = False
+#   ctx.verify_mode = ssl.CERT_NONE
+
     try:
-        response = urlopen(url, timeout=10)
+#       responde = urlopen(url, timeout=10, context=ctx).read()
+#       response = urlopen(url, timeout=10)
+        requests.get(url, timeout=10)
         return True
-    except:
+    #except:
+    except exceptions.ConnectionError:
         return False
 
 

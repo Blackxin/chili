@@ -109,8 +109,8 @@ configure()
 
 	verbose=0
 	SEP=','
-	: ${PKG_EXT:='chi.zst'} # se PKG_EXT não estiver definida, recebe 'chi.zst'
-	: ${GITSITE:=0}			# se GITSITE não estiver definida, recebe 0
+	: "${PKG_EXT:='chi.zst'}" 	# se PKG_EXT não estiver definida, recebe 'chi.zst'
+	: "${GITSITE:=0}"				# se GITSITE não estiver definida, recebe 0
 	SITE="${PKG_SITE:=https://chililinux.com}"
 	RAW="${PKG_RAW:=https://raw.githubusercontent.com/vcatafesta/ChiliOS/master}"
 	APP="fetch"
@@ -680,7 +680,7 @@ function fn_listpkgdisp()
 			if ! (( LREMOVE )); then
 				if ! (( LSEARCHONLY )); then
 					pkginstalled=$(grep ^"$x"$SEP "$CACHEDIR_SEARCH/$PACKAGES_INSTALLED_SPLIT" | cut -d$SEP "$SEARCH_CUT")
-					if [[ -n "$pkginstalled" && "${pkginstalled##*/} = ${pkg_grep##*/}" ]]; then
+					if [[ -n "$pkginstalled" && "${pkginstalled##*/}" = "${pkg_grep##*/}" ]]; then
 						log_failure_msg "${yellow}atenção${reset}: ${orange}${pkginstalled##*/} ${reset}está atualizado -- reinstalando."
 		 			fi
 	  			fi
@@ -744,8 +744,7 @@ fn_writetable()
 					printf "%s\n" "${reset}Packages ($nfiles)"
 				else
 					printf "${bold}${black}%s\n${reset}Packages ($nfiles)" "${arr[*]}"
-					printf "\n${red}use the option --table or --verbose for more details"
-					echo
+					printf "%s\n" "\n${red}use the option --table or --verbose for more details"
 				fi
 			fi
 			return 0
@@ -957,7 +956,7 @@ fn_update()
 	#internet?
 	sh_checknet || return 1
 
-	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "$SITE/packages/") -eq 404 ]]; then
+	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "$SITE/packages/") = "404" ]]; then
 		log_failure_msg "${red}error${reset}: $response Not Found $orange==> $SITE/packages/"
 		exit 1
 	fi
@@ -978,7 +977,7 @@ fn_update()
 
 	for Folders in ${FoldersInRepo[*]}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
-		if [[ response=$(curl --compressed -k -s -w "%{http_code}\n" --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP") -eq 404 ]]; then
+		if [[ response=$(curl --compressed -k -s -w "%{http_code}\n" --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP") = "404" ]]; then
 			log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/$Folders/"
 			exit 1
 		fi
@@ -1057,7 +1056,7 @@ fn_updateOLD()
 	#internet?
 	sh_checknet || return 1
 
-	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/") -eq 404 ]]; then
+	if [[ response=$(curl --compressed -s -w "%{http_code}\n" -o /dev/null -k --url "${SITE}/packages/") = "404" ]]; then
 		log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/"
 		exit 1
 	fi
@@ -1076,7 +1075,7 @@ fn_updateOLD()
 	log_msg "${pink}Synchronizing package databases from ${SITE}${reset}"
 	for Folders in ${FoldersInRepo[*]}; do
 		FOLDER_TEMP="$TMP_DIR_FOLDERS/$Folders"
-		if [[ response=$(curl --compressed -k -s -w "%{http_code}\n" --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP") -eq 404 ]]; then
+		if [[ response=$(curl --compressed -k -s -w "%{http_code}\n" --url "$SITE/packages/$Folders/" --output "$FOLDER_TEMP") = 404 ]]; then
 			log_failure_msg "${red}error${reset}: $response Not Found ${orange}==> $SITE/packages/$Folders/"
 			exit 1
 		fi
@@ -3180,7 +3179,7 @@ sh_backup()
 sh_version()
 {
    orange=$(tput setaf 166);
-	printf "${orange}${0##*/} v${_VERSION_}\n"
+	printf "%s\n" "${orange}${0##*/} v${_VERSION_}"
 }
 
 #figlet
